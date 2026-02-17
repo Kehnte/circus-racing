@@ -10,8 +10,10 @@ function toggleTeamManagement() {
   const teamSection = document.getElementById("teams-manager-section");
   const teamSep = document.getElementById("teams-separator");
 
-  if (teamSection) teamSection.style.display = isTeamManagementActive ? "block" : "none";
-  if (teamSep) teamSep.style.display = isTeamManagementActive ? "block" : "none";
+  if (teamSection)
+    teamSection.style.display = isTeamManagementActive ? "block" : "none";
+  if (teamSep)
+    teamSep.style.display = isTeamManagementActive ? "block" : "none";
 
   if (typeof saveAllToLocal === "function") saveAllToLocal();
   displayRace();
@@ -92,7 +94,7 @@ function changeLap(index, delta) {
   if (newLaps >= 1 && !pilot.dnf) {
     pilot.laps = newLaps;
     pilot.finished = pilot.laps > totalLaps;
-    
+
     recalculatePositions();
     checkRaceEnd();
     if (typeof saveAllToLocal === "function") saveAllToLocal();
@@ -133,7 +135,7 @@ function jumpToPosition(index, newPosValue) {
 function toggleDNF(index) {
   raceList[index].dnf = !raceList[index].dnf;
   if (raceList[index].dnf) raceList[index].finished = false;
-  
+
   recalculatePositions();
   checkRaceEnd();
   if (typeof saveAllToLocal === "function") saveAllToLocal();
@@ -162,22 +164,26 @@ function displayRace() {
 
   // Clear existing rows from the table body
   tableBody.innerHTML = "";
-  
+
   // Update the pilot count element with the current number of pilots
   if (pilotCountEl) pilotCountEl.textContent = raceList.length;
 
-  
   // Iterate over each pilot in the race list and create a row for them
   raceList.forEach((pilot, index) => {
-    const team = typeof teams !== 'undefined' ? teams.find((t) => t.id === pilot.teamId) : null;
+    const team =
+      typeof teams !== "undefined"
+        ? teams.find((t) => t.id === pilot.teamId)
+        : null;
     const isRunning = raceStatus === "running";
-    
+
     // Determine the display value for laps (Finished if finished, otherwise current lap count)
     const lapDisplay = pilot.finished ? "Finished" : pilot.laps;
 
     // Create an HTML row for the pilot
     const row = `
-      <tr class="${pilot.dnf ? "dnf-row" : ""} ${pilot.finished ? "finished-row" : ""}">
+      <tr class="${pilot.dnf ? "dnf-row" : ""} ${
+        pilot.finished ? "finished-row" : ""
+      }">
         <td><strong>${pilot.position}</strong></td>
         <td>${pilot.name}</td>
         <td class="team-ext" style="color: ${team ? team.color : "inherit"}">
@@ -185,19 +191,29 @@ function displayRace() {
         </td>
         <td>${lapDisplay}</td>
         <td>
-          <button onclick="changeLap(${index}, -1)" ${!isRunning ? 'disabled' : ''}>-</button>
-          <button onclick="changeLap(${index}, 1)" ${!isRunning || pilot.finished ? 'disabled' : ''}>+</button>
+          <button onclick="changeLap(${index}, -1)" ${
+            !isRunning ? "disabled" : ""
+          }>-</button>
+          <button onclick="changeLap(${index}, 1)" ${
+            !isRunning || pilot.finished ? "disabled" : ""
+          }>+</button>
         </td>
         <td>
           <input type="number" value="${pilot.position}" 
             onchange="jumpToPosition(${index}, this.value)" style="width: 40px">
         </td>
         <td>
-          <button onclick="movePilot(${index}, -1)" ${index === 0 ? 'disabled' : ''}>↑</button>
-          <button onclick="movePilot(${index}, 1)" ${index === raceList.length - 1 ? 'disabled' : ''}>↓</button>
+          <button onclick="movePilot(${index}, -1)" ${
+            index === 0 ? "disabled" : ""
+          }>↑</button>
+          <button onclick="movePilot(${index}, 1)" ${
+            index === raceList.length - 1 ? "disabled" : ""
+          }>↓</button>
         </td>
         <td>
-          <button onclick="toggleDNF(${index})">${pilot.dnf ? "Reset" : "DNF"}</button>
+          <button onclick="toggleDNF(${index})">${
+            pilot.dnf ? "Reset" : "DNF"
+          }</button>
         </td>
       </tr>`;
     // Insert the row into the table body
@@ -213,7 +229,8 @@ function displayRace() {
 // Checks if the race has ended and updates the status accordingly
 function checkRaceEnd() {
   const activePilots = raceList.filter((p) => !p.dnf);
-  const allFinished = activePilots.length > 0 && activePilots.every((p) => p.finished);
+  const allFinished =
+    activePilots.length > 0 && activePilots.every((p) => p.finished);
 
   if (allFinished && raceStatus === "running") {
     raceStatus = "finished";

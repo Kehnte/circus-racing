@@ -10,7 +10,7 @@ function addShip() {
   const img = document.getElementById("ship-img").value.trim();
 
   if (!brand || !model) {
-    alert("Please fill in Brand and Model");
+    alert("Please fill in brand and model");
     return;
   }
 
@@ -78,7 +78,7 @@ function deleteShip(idToDelete) {
   if (shipToDelete) {
     if (
       confirm(
-        `Are you sure you want to delete the ship ${shipToDelete.brand} ${shipToDelete.model} ?`
+        `Are you sure you want to delete the ship ${shipToDelete.brand} ${shipToDelete.model} ?`,
       )
     ) {
       ships = ships.filter((s) => s.id !== idToDelete);
