@@ -1,10 +1,13 @@
+// storage.js
+
+// Define constants for localStorage keys
 const STORAGE_KEYS = {
   TEAMS: 'circusRacing_teams',
   SHIPS: 'circusRacing_ships',
   CONTROLS: 'circusRacing_controls',
   PILOTS: 'circusRacing_pilots'
 };
-
+// Load data from localStorage
 function loadFromStorage() {
   try {
     const savedTeams = localStorage.getItem(STORAGE_KEYS.TEAMS);
@@ -35,6 +38,7 @@ function loadFromStorage() {
   }
 }
 
+// Save data to localStorage
 function saveToStorage() {
   try {
     localStorage.setItem(STORAGE_KEYS.TEAMS, JSON.stringify(teams));
@@ -47,6 +51,7 @@ function saveToStorage() {
   }
 }
 
+// Reset teams and remove from localStorage
 function resetTeams() {
   if (confirm('Are you sure you want to delete all teams?')) {
     teams = [];
@@ -58,6 +63,7 @@ function resetTeams() {
   }
 }
 
+// Reset ships and remove from localStorage
 function resetShips() {
   if (confirm('Are you sure you want to delete all ships?')) {
     ships = [];
@@ -69,6 +75,7 @@ function resetShips() {
   }
 }
 
+// Reset controls and remove from localStorage
 function resetControls() {
   if (confirm('Are you sure you want to delete all controls?')) {
     controlsList = [];
@@ -80,6 +87,7 @@ function resetControls() {
   }
 }
 
+// Reset pilots and remove from localStorage
 function resetPilots() {
   if (confirm('Are you sure you want to delete all pilots?')) {
     pilots = [];
@@ -89,6 +97,7 @@ function resetPilots() {
   }
 }
 
+// Event listener for DOMContentLoaded event
 document.addEventListener('DOMContentLoaded', () => {
   console.log('Loading data from LocalStorage...');
   loadFromStorage();

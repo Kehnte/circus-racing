@@ -13,7 +13,7 @@ function addControl() {
   const newControl = {
     id: Date.now(),
     type: type,
-    img: img || "https://via.placeholder.com/30",
+    img: img || "https://placehold.co/40x40/png",
   };
 
   controlsList.push(newControl);
@@ -25,7 +25,7 @@ function addControl() {
 }
 
 function displayControls() {
-  const tableBody = document.getElementById("control-list");
+  const tableBody = document.getElementById("controls-list");
   if (!tableBody) return;
   tableBody.innerHTML = "";
 
@@ -41,7 +41,7 @@ function displayControls() {
 function createControlDisplayRow(ctrl) {
   return `
     <tr>
-      <td><img src="${ctrl.img}" width="30"></td>
+      <td><img src="${ctrl.img}"></td>
       <td>${ctrl.type}</td>
       <td>
         <button onclick="startEditControl(${ctrl.id})">Edit</button>

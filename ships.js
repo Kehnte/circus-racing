@@ -1,6 +1,9 @@
+//ships.js
+
 let ships = [];
 let editingShipId = null;
 
+// Add a new ship to the array, clear the form, update the display, and save changes
 function addShip() {
   const brand = document.getElementById("ship-brand").value.trim();
   const model = document.getElementById("ship-model").value.trim();
@@ -15,7 +18,7 @@ function addShip() {
     id: Date.now(),
     brand: brand,
     model: model,
-    img: img || "https://via.placeholder.com/60x30?text=No+Image",
+    img: img || "https://placehold.co/40x40/png",
   };
 
   ships.push(newShip);
@@ -25,8 +28,9 @@ function addShip() {
   saveToStorage();
 }
 
+// Display all ships in the table
 function displayShips() {
-  const tableBody = document.getElementById("ship-list");
+  const tableBody = document.getElementById("ships-list");
   if (!tableBody) return;
 
   tableBody.innerHTML = "";
@@ -40,10 +44,11 @@ function displayShips() {
   });
 }
 
+// Create a display row for a ship
 function createShipDisplayRow(ship) {
   return `
     <tr>
-      <td><img src="${ship.img}" width="60" style="border-radius: 3px;"></td>
+      <td><img src="${ship.img}"></td>
       <td>${ship.brand}</td>
       <td>${ship.model}</td>
       <td>
@@ -53,6 +58,7 @@ function createShipDisplayRow(ship) {
     </tr>`;
 }
 
+// Create an edit row for a ship
 function createShipEditRow(ship) {
   return `
     <tr>
@@ -66,6 +72,7 @@ function createShipEditRow(ship) {
     </tr>`;
 }
 
+// Delete a ship from the array and update display
 function deleteShip(idToDelete) {
   const shipToDelete = ships.find((s) => s.id === idToDelete);
   if (shipToDelete) {
@@ -83,16 +90,19 @@ function deleteShip(idToDelete) {
   }
 }
 
+// Start editing a ship
 function startEditShip(id) {
   editingShipId = id;
   displayShips();
 }
 
+// Cancel editing and return to display mode
 function cancelEditShip() {
   editingShipId = null;
   displayShips();
 }
 
+// Save changes made during an edit
 function saveEditShip(id) {
   const ship = ships.find((s) => s.id === id);
   const brand = document.getElementById("edit-ship-brand").value.trim();
@@ -114,6 +124,7 @@ function saveEditShip(id) {
   saveToStorage();
 }
 
+// Update the dropdown menu for selecting a ship
 function updateShipDropdown() {
   const select = document.getElementById("pilot-ship");
   if (!select) return;
@@ -124,6 +135,7 @@ function updateShipDropdown() {
   });
 }
 
+// Clear the input form fields
 function clearShipForm() {
   document.getElementById("ship-brand").value = "";
   document.getElementById("ship-model").value = "";

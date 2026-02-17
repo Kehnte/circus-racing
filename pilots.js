@@ -1,6 +1,9 @@
+// src/pilots.js
+
 let pilots = [];
 let editingPilotId = null;
 
+// Update the dropdown for selecting a team
 function updateTeamDropdown() {
   const select = document.getElementById("pilot-team");
   if (!select) return;
@@ -11,6 +14,7 @@ function updateTeamDropdown() {
   });
 }
 
+// Update the dropdown for selecting a ship
 function updateShipDropdown() {
   const select = document.getElementById("pilot-ship");
   if (!select) return;
@@ -21,6 +25,7 @@ function updateShipDropdown() {
   });
 }
 
+// Update the dropdown for selecting controls
 function updateControlDropdown() {
   const select = document.getElementById("pilot-controls");
   if (!select) return;
@@ -31,6 +36,7 @@ function updateControlDropdown() {
   });
 }
 
+// Add a new pilot
 function addPilot() {
   const name = document.getElementById("pilot-name").value.trim();
   const teamId = document.getElementById("pilot-team").value;
@@ -48,7 +54,7 @@ function addPilot() {
   const newPilot = {
     id: Date.now(),
     name: name,
-    avatar: avatar || "https://via.placeholder.com/40",
+    avatar: avatar || "https://placehold.co/40x40/png",
     teamId: isTeamManagementActive ? parseInt(teamId) : null,
     shipId: parseInt(shipId),
     controlId: parseInt(controlId),
@@ -60,8 +66,9 @@ function addPilot() {
   saveToStorage();
 }
 
+// Display all pilots in the table
 function displayPilots() {
-  const tableBody = document.getElementById("pilot-list");
+  const tableBody = document.getElementById("pilots-list");
   if (!tableBody) return;
 
   tableBody.innerHTML = "";
@@ -75,6 +82,7 @@ function displayPilots() {
   });
 }
 
+// Create a display row for a pilot
 function createPilotDisplayRow(pilot) {
   const team = teams.find((t) => t.id === pilot.teamId);
   const ship = ships.find((s) => s.id === pilot.shipId);
@@ -98,6 +106,7 @@ function createPilotDisplayRow(pilot) {
       </tr>`;
 }
 
+// Create an edit row for a pilot
 function createPilotEditRow(pilot) {
   let teamOptions = teams
     .map(
@@ -144,6 +153,7 @@ function createPilotEditRow(pilot) {
     </tr>`;
 }
 
+// Delete a pilot
 function deletePilot(idToDelete) {
   const pilotToDelete = pilots.find((p) => p.id === idToDelete);
   if (
@@ -156,16 +166,19 @@ function deletePilot(idToDelete) {
   }
 }
 
+// Start editing a pilot
 function startEditPilot(id) {
   editingPilotId = id;
   displayPilots();
 }
 
+// Cancel editing a pilot
 function cancelEditPilot() {
   editingPilotId = null;
   displayPilots();
 }
 
+// Save changes made to an edited pilot
 function saveEditPilot(id) {
   const pilot = pilots.find((p) => p.id === id);
   const name = document.getElementById("edit-pilot-name").value.trim();
@@ -189,6 +202,7 @@ function saveEditPilot(id) {
   saveToStorage();
 }
 
+// Clear the form fields
 function clearPilotForm() {
   document.getElementById("pilot-name").value = "";
   document.getElementById("pilot-avatar").value = "";
@@ -197,6 +211,7 @@ function clearPilotForm() {
   document.getElementById("pilot-controls").value = "";
 }
 
+// Event listener to update dropdowns when the DOM content is loaded
 document.addEventListener("DOMContentLoaded", () => {
   updateTeamDropdown();
   updateShipDropdown();

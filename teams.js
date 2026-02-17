@@ -1,6 +1,9 @@
+// teams.js
+
 let teams = [];
 let editingTeamId = null;
 
+// Add a new team to the teams array and updates the display
 function addTeam() {
   const name = document.getElementById("name").value.trim();
   const acronym = document.getElementById("acronym").value.trim();
@@ -25,6 +28,7 @@ function addTeam() {
   saveToStorage();
 }
 
+// Clear the form input fields
 function clearForm() {
   document.getElementById("name").value = "";
   document.getElementById("acronym").value = "";

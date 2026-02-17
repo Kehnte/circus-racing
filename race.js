@@ -1,11 +1,14 @@
+// race.js
+
 let raceList = [];
 let isTeamManagementActive = true;
 let raceStatus = "standby";
 
+// Toggles the visibility of the team management section and updates the local storage
 function toggleTeamManagement() {
   isTeamManagementActive = !isTeamManagementActive;
-  const teamSection = document.getElementById("team-manager-section");
-  const teamSep = document.getElementById("team-separator");
+  const teamSection = document.getElementById("teams-manager-section");
+  const teamSep = document.getElementById("teams-separator");
 
   if (teamSection) teamSection.style.display = isTeamManagementActive ? "block" : "none";
   if (teamSep) teamSep.style.display = isTeamManagementActive ? "block" : "none";
@@ -14,9 +17,10 @@ function toggleTeamManagement() {
   displayRace();
 }
 
+// Starts the race if there are pilots loaded
 function startRace() {
   if (raceList.length === 0) {
-    alert("Please load pilots first!");
+    alert("Please load pilots first");
     return;
   }
   raceStatus = "running";
@@ -25,6 +29,7 @@ function startRace() {
   displayRace();
 }
 
+// Pauses the race
 function pauseRace() {
   raceStatus = "paused";
   updateControls();
@@ -32,8 +37,9 @@ function pauseRace() {
   displayRace();
 }
 
+// Ends the race manually and locks the current standings
 function endRaceManually() {
-  if (confirm("Do you want to end the race and lock the current standings?")) {
+  if (confirm("End the race and lock the current standings?")) {
     raceStatus = "finished";
     updateControls();
     if (typeof saveAllToLocal === "function") saveAllToLocal();
@@ -41,6 +47,7 @@ function endRaceManually() {
   }
 }
 
+// Resets the laps for the current race
 function resetRace() {
   if (confirm("Reset laps for the current race?")) {
     raceList.forEach((p) => {
@@ -56,6 +63,7 @@ function resetRace() {
   }
 }
 
+// Reloads the pilots into the race list
 function reloadPilots() {
   if (raceList.length > 0 && !confirm("Overwrite current race list?")) return;
 
@@ -73,11 +81,12 @@ function reloadPilots() {
   displayRace();
 }
 
+// Changes the lap count for a pilot
 function changeLap(index, delta) {
   if (raceStatus !== "running") return;
 
   const pilot = raceList[index];
-  const totalLaps = parseInt(document.getElementById("total-laps").value) || 5;
+  const totalLaps = parseInt(document.getElementById("total-laps").value) || 3;
   let newLaps = pilot.laps + delta;
 
   if (newLaps >= 1 && !pilot.dnf) {
@@ -91,6 +100,7 @@ function changeLap(index, delta) {
   }
 }
 
+// Moves a pilot up or down in the race list
 function movePilot(index, delta) {
   const newPos = index + delta;
   if (newPos < 0 || newPos >= raceList.length) return;
@@ -104,6 +114,7 @@ function movePilot(index, delta) {
   displayRace();
 }
 
+// Jumps a pilot to a new position in the race list
 function jumpToPosition(index, newPosValue) {
   const newPos = parseInt(newPosValue);
   if (isNaN(newPos) || newPos < 1 || newPos > raceList.length) {
@@ -118,6 +129,7 @@ function jumpToPosition(index, newPosValue) {
   displayRace();
 }
 
+// Toggles the DNF status for a pilot
 function toggleDNF(index) {
   raceList[index].dnf = !raceList[index].dnf;
   if (raceList[index].dnf) raceList[index].finished = false;
@@ -128,6 +140,7 @@ function toggleDNF(index) {
   displayRace();
 }
 
+// Recalculates the positions of all pilots based on their lap counts and DNF status
 function recalculatePositions() {
   raceList.sort((a, b) => {
     if (a.dnf !== b.dnf) return a.dnf ? 1 : -1;
@@ -141,20 +154,28 @@ function recalculatePositions() {
   });
 }
 
+// Displays the current state of the race in the UI
 function displayRace() {
   const tableBody = document.getElementById("race-list");
   const pilotCountEl = document.getElementById("pilot-count");
   if (!tableBody) return;
 
+  // Clear existing rows from the table body
   tableBody.innerHTML = "";
+  
+  // Update the pilot count element with the current number of pilots
   if (pilotCountEl) pilotCountEl.textContent = raceList.length;
 
+  
+  // Iterate over each pilot in the race list and create a row for them
   raceList.forEach((pilot, index) => {
     const team = typeof teams !== 'undefined' ? teams.find((t) => t.id === pilot.teamId) : null;
     const isRunning = raceStatus === "running";
     
+    // Determine the display value for laps (Finished if finished, otherwise current lap count)
     const lapDisplay = pilot.finished ? "Finished" : pilot.laps;
 
+    // Create an HTML row for the pilot
     const row = `
       <tr class="${pilot.dnf ? "dnf-row" : ""} ${pilot.finished ? "finished-row" : ""}">
         <td><strong>${pilot.position}</strong></td>
@@ -179,14 +200,17 @@ function displayRace() {
           <button onclick="toggleDNF(${index})">${pilot.dnf ? "Reset" : "DNF"}</button>
         </td>
       </tr>`;
+    // Insert the row into the table body
     tableBody.insertAdjacentHTML("beforeend", row);
   });
 
+  // Toggle the visibility of team extensions based on whether team management is active
   document.querySelectorAll(".team-ext").forEach((el) => {
     el.style.display = isTeamManagementActive ? "" : "none";
   });
 }
 
+// Checks if the race has ended and updates the status accordingly
 function checkRaceEnd() {
   const activePilots = raceList.filter((p) => !p.dnf);
   const allFinished = activePilots.length > 0 && activePilots.every((p) => p.finished);
@@ -194,10 +218,10 @@ function checkRaceEnd() {
   if (allFinished && raceStatus === "running") {
     raceStatus = "finished";
     updateControls();
-    alert("Race Finished!");
   }
 }
 
+// Updates the controls based on the current race status
 function updateControls() {
   const btnStart = document.getElementById("btn-start");
   const btnPause = document.getElementById("btn-pause");

@@ -3,17 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Circus Racing Manager</title>
+    <title>Circus Racing</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <h1>Circus Racing</h1>
 
     <div id="race-manager-section">
-      <h2>Race Manager</h2>
+      <h2>Race</h2>
       <div id="race-settings">
         <div>
-          <label>Race Name:</label> <input type="text" id="setting-race-name" />
+          <label>Race name:</label> <input type="text" id="setting-race-name" />
           <label>Location:</label> <input type="text" id="setting-location" />
           <label>Session:</label>
           <select id="setting-session">
@@ -23,15 +23,15 @@
           </select>
         </div>
         <div>
-          <label>Time of Day:</label>
+          <label>Time of day:</label>
           <select id="setting-tod">
             <option value="Day">Day</option>
             <option value="Night">Night</option>
           </select>
-          <label>Start Type:</label>
+          <label>Start type:</label>
           <select id="setting-start-type">
-            <option value="Grid Start">Grid Start</option>
-            <option value="Rolling Start">Rolling Start</option>
+            <option value="Grid Start">Grid start</option>
+            <option value="Rolling Start">Rolling start</option>
           </select>
           <span>Pilots: <span id="pilot-count">0</span></span>
         </div>
@@ -39,13 +39,13 @@
       <br />
       <div class="race-controls">
         <label>Total Laps: </label>
-        <input type="number" id="total-laps" value="5" min="1" />
-        <button onclick="startRace()" id="btn-start">Start Race</button>
-        <button onclick="pauseRace()" id="btn-pause" disabled>Pause Race</button>
-        <button onclick="endRaceManually()" id="btn-finish" disabled>Finish Race</button>
-        <button onclick="resetRace()">Reset Race</button>
-        <button onclick="reloadPilots()">Reload Pilots</button>
-        <button onclick="toggleTeamManagement()">Toggle Teams</button>
+        <input type="number" id="total-laps" value="3" min="1" />
+        <button onclick="startRace()" id="btn-start">Start race</button>
+        <button onclick="pauseRace()" id="btn-pause" disabled>Pause race</button>
+        <button onclick="endRaceManually()" id="btn-finish" disabled>Finish race</button>
+        <button onclick="resetRace()">Reset race</button>
+        <button onclick="reloadPilots()">Reload pilots</button>
+        <button onclick="toggleTeamManagement()">Toggle teams</button>
       </div>
       <br />
       <table border="1">
@@ -67,8 +67,8 @@
 
     <hr />
 
-    <div id="pilot-manager-section">
-      <h2>Pilots Manager <button onclick="resetPilots()">Reset Pilots</button></h2>
+    <div id="pilots-manager-section">
+      <h2>Pilots <button onclick="resetPilots()">Reset pilots</button></h2>
       <table border="1">
         <thead>
           <tr>
@@ -80,7 +80,7 @@
             <th>Actions</th>
           </tr>
         </thead>
-        <tbody id="pilot-list"></tbody>
+        <tbody id="pilots-list"></tbody>
         <tfoot>
           <tr>
             <td><input type="url" id="pilot-avatar" placeholder="Image URL" /></td>
@@ -88,16 +88,16 @@
             <td class="team-ext"><select id="pilot-team"></select></td>
             <td><select id="pilot-ship"></select></td>
             <td><select id="pilot-controls"></select></td>
-            <td><button type="button" onclick="addPilot()">Add Pilot</button></td>
+            <td><button type="button" onclick="addPilot()">Add pilot</button></td>
           </tr>
         </tfoot>
       </table>
     </div>
 
-    <hr id="team-separator" />
+    <hr id="teams-separator" />
 
-    <div id="team-manager-section">
-      <h2>Teams Manager <button onclick="resetTeams()">Reset Teams</button></h2>
+    <div id="teams-manager-section">
+      <h2>Teams <button onclick="resetTeams()">Reset teams</button></h2>
       <table border="1">
         <thead>
           <tr>
@@ -113,7 +113,7 @@
             <td><input type="text" id="name" placeholder="Team name" required /></td>
             <td><input type="text" id="acronym" maxlength="4" placeholder="ACRO" required /></td>
             <td><input type="color" id="color" value="#3498db" /></td>
-            <td><button type="button" onclick="addTeam()">Add Team</button></td>
+            <td><button type="button" onclick="addTeam()">Add team</button></td>
           </tr>
         </tfoot>
       </table>
@@ -122,7 +122,7 @@
     <hr />
 
     <div id="ships-manager-section">
-      <h2>Ships Manager <button onclick="resetShips()">Reset Ships</button></h2>
+      <h2>Ships <button onclick="resetShips()">Reset ships</button></h2>
       <table border="1">
         <thead>
           <tr>
@@ -132,13 +132,13 @@
             <th>Actions</th>
           </tr>
         </thead>
-        <tbody id="ship-list"></tbody>
+        <tbody id="ships-list"></tbody>
         <tfoot>
           <tr>
             <td><input type="url" id="ship-img" placeholder="Image URL" /></td>
             <td><input type="text" id="ship-brand" placeholder="Brand" /></td>
             <td><input type="text" id="ship-model" placeholder="Model" /></td>
-            <td><button type="button" onclick="addShip()">Add Ship</button></td>
+            <td><button type="button" onclick="addShip()">Add ship</button></td>
           </tr>
         </tfoot>
       </table>
@@ -147,7 +147,7 @@
     <hr />
 
     <div id="controls-manager-section">
-      <h2>Controls Manager <button onclick="resetControls()">Reset Controls</button></h2>
+      <h2>Controls <button onclick="resetControls()">Reset controls</button></h2>
       <table border="1">
         <thead>
           <tr>
@@ -156,12 +156,12 @@
             <th>Actions</th>
           </tr>
         </thead>
-        <tbody id="control-list"></tbody>
+        <tbody id="controls-list"></tbody>
         <tfoot>
           <tr>
             <td><input type="url" id="control-img" placeholder="Image URL" /></td>
             <td><input type="text" id="control-type" placeholder="Control Type" /></td>
-            <td><button type="button" onclick="addControl()">Add Control</button></td>
+            <td><button type="button" onclick="addControl()">Add control</button></td>
           </tr>
         </tfoot>
       </table>
@@ -170,11 +170,11 @@
     <hr />
 
     <div id="data-manager-section">
-      <h2>Data Manager</h2>
+      <h2>Data</h2>
       <div>
-        <button onclick="exportData()">Export All Data (JSON)</button>
-        <button onclick="importData()">Import Data (JSON)</button>
-        <button onclick="resetAllData()">Reset ALL Data</button>
+        <button onclick="exportData()">Export all data (JSON)</button>
+        <button onclick="importData()">Import data (JSON)</button>
+        <button onclick="resetAllData()">Reset all data</button>
       </div>
       <input type="file" id="import-file-input" accept=".json" style="display: none;" onchange="handleFileImport(event)">
     </div>
