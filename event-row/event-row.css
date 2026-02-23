@@ -1,0 +1,103 @@
+/* --- CSS Reset : Force le calcul des largeurs comme sur Figma --- */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+/* --- Global Styles --- */
+body {
+    font-family: "Zalando Sans SemiExpanded", sans-serif;
+    background-color: transparent;
+    margin: 0;
+    padding: 0;
+    color: #fafafa;
+}
+
+/* --- Main Container --- */
+.event-row {
+    display: inline-flex;
+    flex-direction: row;
+    gap: 2px;
+    align-items: stretch;
+
+    position: absolute;
+    top: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+/* --- Icon Container --- */
+.event-icon {
+    width: 50px;
+    height: 50px;
+    background-color: #e91e63;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* --- Data Container --- */
+.event-data {
+    display: flex;
+    flex-direction: row;
+    gap: 0;
+    padding: 0;
+    align-items: stretch;
+    background-color: #212121;
+}
+
+/* --- Event Label --- */
+.event-label {
+    width: 170px;
+    background-color: #2b2b2b;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 0 10px;
+    font-size: 20px;
+    font-weight: 600;
+    font-style: italic;
+    text-transform: uppercase;
+}
+
+/* --- Pilot Name --- */
+.pilot-name {
+    width: 195px;
+    background-color: #212121;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 0 10px;
+    font-size: 20px;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+/* --- Ship Model --- */
+.ship-model {
+    width: 155px;
+    background-color: #212121;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0 10px;
+    gap: 5px;
+    font-size: 20px;
+    font-weight: 500;
+    font-style: italic;
+    text-transform: uppercase;
+}
+
+/* --- Event Result --- */
+.event-result {
+    width: 130px;
+    background-color: #2b2b2b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 10px;
+    font-family: "Roboto Mono", monospace;
+    font-size: 20px;
+    font-weight: 400;
+}
