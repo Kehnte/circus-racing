@@ -31,7 +31,6 @@ body {
 .event-icon {
     width: 70px;
     height: 70px;
-    background-color: #e91e63;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -128,6 +127,7 @@ body {
     font-style: italic;
 }
 
+/* Event result */
 .event-result {
     width: auto;
     background-color: #2b2b2b;
@@ -138,4 +138,22 @@ body {
     font-family: "Roboto Mono", monospace;
     font-size: 20px;
     font-weight: 400;
+}
+
+/* Statuses */
+.event-row[data-status="fastest-lap"] .event-icon {
+    background-color: #e91e63;
+}
+
+.event-row[data-status="incident"] .event-icon {
+    background-color: #ffc107;
+}
+
+.event-row[data-status="incident"] .event-result {
+    font-family: inherit;
+    text-transform: uppercase;
+}
+
+.event-row[data-status="finished"] .event-icon {
+    background-color: #212121;
 }
