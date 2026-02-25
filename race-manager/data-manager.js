@@ -8,7 +8,7 @@ function exportData() {
             raceSettings: {
                 raceName: document.getElementById("setting-race-name").value,
                 session: document.getElementById("setting-session").value,
-                timeOfDay: document.getElementById("setting-tod").value,
+                weather: document.getElementById("setting-weather").value,
                 startType: document.getElementById("setting-start-type").value,
                 totalLaps: document.getElementById("total-laps").value,
             },
@@ -79,9 +79,9 @@ function handleFileImport(event) {
                     if (s.session !== undefined)
                         document.getElementById("setting-session").value =
                             s.session;
-                    if (s.timeOfDay !== undefined)
-                        document.getElementById("setting-tod").value =
-                            s.timeOfDay;
+                    if (s.weather !== undefined)
+                        document.getElementById("setting-weather").value =
+                            s.weather;
                     if (s.startType !== undefined)
                         document.getElementById("setting-start-type").value =
                             s.startType;

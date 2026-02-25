@@ -14,14 +14,15 @@ function updateTeamDropdown() {
     });
 }
 
-// Update the dropdown for selecting a ship
+// Update the dropdown for selecting a ship (Model only)
 function updateShipDropdown() {
     const select = document.getElementById("pilot-ship");
     if (!select) return;
 
     select.innerHTML = '<option value="">Select a ship</option>';
     ships.forEach((ship) => {
-        select.innerHTML += `<option value="${ship.id}">${ship.brand} - ${ship.model}</option>`;
+        // Updated to show only the model
+        select.innerHTML += `<option value="${ship.id}">${ship.model}</option>`;
     });
 }
 
@@ -36,13 +37,12 @@ function updateControlDropdown() {
     });
 }
 
-// Add a new pilot
+// Add a new pilot (Avatar removed)
 function addPilot() {
     const name = document.getElementById("pilot-name").value.trim();
     const teamId = document.getElementById("pilot-team").value;
     const shipId = document.getElementById("pilot-ship").value;
     const controlId = document.getElementById("pilot-controls").value;
-    const avatar = document.getElementById("pilot-avatar").value.trim();
 
     const isTeamValid = isTeamManagementActive ? teamId : true;
 
@@ -54,7 +54,6 @@ function addPilot() {
     const newPilot = {
         id: Date.now(),
         name: name,
-        avatar: avatar || "https://placehold.co/40x40/png",
         teamId: isTeamManagementActive ? parseInt(teamId) : null,
         shipId: parseInt(shipId),
         controlId: parseInt(controlId),
@@ -82,7 +81,7 @@ function displayPilots() {
     });
 }
 
-// Create a display row for a pilot
+// Create a display row for a pilot (Avatar removed, Brand removed)
 function createPilotDisplayRow(pilot) {
     const team = teams.find((t) => t.id === pilot.teamId);
     const ship = ships.find((s) => s.id === pilot.shipId);
@@ -90,14 +89,13 @@ function createPilotDisplayRow(pilot) {
 
     return `
       <tr>
-        <td><img src="${pilot.avatar}" width="40" height="40"></td>
         <td>${pilot.name}</td>
         <td class="team-ext" style="display: ${
             isTeamManagementActive ? "" : "none"
         }">
           ${team ? team.name : "---"}
         </td>
-        <td>${ship ? `${ship.brand} ${ship.model}` : "No ship"}</td>
+        <td>${ship ? ship.model : "No ship"}</td>
         <td>${ctrl ? ctrl.type : "Unknown"}</td>
         <td>
           <button onclick="startEditPilot(${pilot.id})">Edit</button>
@@ -106,7 +104,7 @@ function createPilotDisplayRow(pilot) {
       </tr>`;
 }
 
-// Create an edit row for a pilot
+// Create an edit row for a pilot (Avatar removed, Brand removed)
 function createPilotEditRow(pilot) {
     let teamOptions = teams
         .map(
@@ -122,7 +120,7 @@ function createPilotEditRow(pilot) {
             (s) =>
                 `<option value="${s.id}" ${
                     s.id === pilot.shipId ? "selected" : ""
-                }>${s.brand} ${s.model}</option>`,
+                }>${s.model}</option>`,
         )
         .join("");
 
@@ -137,7 +135,6 @@ function createPilotEditRow(pilot) {
 
     return `
     <tr>
-      <td><input type="url" id="edit-pilot-avatar" value="${pilot.avatar}"></td>
       <td><input type="text" id="edit-pilot-name" value="${pilot.name}"></td>
       <td class="team-ext" style="display: ${
           isTeamManagementActive ? "" : "none"
@@ -180,7 +177,7 @@ function cancelEditPilot() {
     displayPilots();
 }
 
-// Save changes made to an edited pilot
+// Save changes made to an edited pilot (Avatar removed)
 function saveEditPilot(id) {
     const pilot = pilots.find((p) => p.id === id);
     const name = document.getElementById("edit-pilot-name").value.trim();
@@ -194,7 +191,6 @@ function saveEditPilot(id) {
     }
 
     pilot.name = name;
-    pilot.avatar = document.getElementById("edit-pilot-avatar").value.trim();
     pilot.teamId = isTeamManagementActive ? parseInt(teamId) : pilot.teamId;
     pilot.shipId = parseInt(shipId);
     pilot.controlId = parseInt(controlId);
@@ -204,10 +200,9 @@ function saveEditPilot(id) {
     saveToStorage();
 }
 
-// Clear the form fields
+// Clear the form fields (Avatar removed)
 function clearPilotForm() {
     document.getElementById("pilot-name").value = "";
-    document.getElementById("pilot-avatar").value = "";
     document.getElementById("pilot-team").value = "";
     document.getElementById("pilot-ship").value = "";
     document.getElementById("pilot-controls").value = "";

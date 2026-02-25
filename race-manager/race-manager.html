@@ -10,7 +10,6 @@
     <body>
         <h1>Circus Racing</h1>
 
-        <!-- Race Manager -->
         <div id="race-manager-section">
             <h2>Race</h2>
             <div id="race-settings">
@@ -25,10 +24,14 @@
                     </select>
                 </div>
                 <div>
-                    <label>Time of day:</label>
-                    <select id="setting-tod">
-                        <option value="Day">Day</option>
-                        <option value="Night">Night</option>
+                    <label>Weather:</label>
+                    <select id="setting-weather">
+                        <option value="Clear">Clear</option>
+                        <option value="Cloudy">Cloudy</option>
+                        <option value="Fog">Fog</option>
+                        <option value="Rain">Rain</option>
+                        <option value="Storm">Storm</option>
+                        <option value="Snow">Snow</option>
                     </select>
                     <label>Start type:</label>
                     <select id="setting-start-type">
@@ -73,7 +76,6 @@
 
         <hr />
 
-        <!-- Pilots Manager -->
         <div id="pilots-manager-section">
             <h2>
                 Pilots <button onclick="resetPilots()">Reset pilots</button>
@@ -81,7 +83,6 @@
             <table border="1">
                 <thead>
                     <tr>
-                        <th>Avatar</th>
                         <th>Name</th>
                         <th class="team-ext">Team</th>
                         <th>Ship</th>
@@ -92,13 +93,6 @@
                 <tbody id="pilots-list"></tbody>
                 <tfoot>
                     <tr>
-                        <td>
-                            <input
-                                type="url"
-                                id="pilot-avatar"
-                                placeholder="Image URL"
-                            />
-                        </td>
                         <td>
                             <input
                                 type="text"
@@ -123,7 +117,6 @@
 
         <hr id="teams-separator" />
 
-        <!-- Teams Manager -->
         <div id="teams-manager-section">
             <h2>Teams <button onclick="resetTeams()">Reset teams</button></h2>
             <table border="1">
@@ -170,14 +163,12 @@
 
         <hr />
 
-        <!-- Ships Manager -->
         <div id="ships-manager-section">
             <h2>Ships <button onclick="resetShips()">Reset ships</button></h2>
             <table border="1">
                 <thead>
                     <tr>
                         <th>Image</th>
-                        <th>Brand</th>
                         <th>Model</th>
                         <th>Actions</th>
                     </tr>
@@ -190,13 +181,6 @@
                                 type="url"
                                 id="ship-img"
                                 placeholder="Image URL"
-                            />
-                        </td>
-                        <td>
-                            <input
-                                type="text"
-                                id="ship-brand"
-                                placeholder="Brand"
                             />
                         </td>
                         <td>
@@ -218,7 +202,6 @@
 
         <hr />
 
-        <!-- Controls Manager -->
         <div id="controls-manager-section">
             <h2>
                 Controls
@@ -261,7 +244,6 @@
 
         <hr />
 
-        <!-- Data Manager -->
         <div id="data-manager-section">
             <h2>Data</h2>
             <div>
