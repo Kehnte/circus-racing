@@ -1,0 +1,14 @@
+{
+    "yaml.schemas": {
+        "file:///c%3A/Users/kehnt/.vscode/extensions/continue.continue-1.2.11-win32-x64/config-yaml-schema.json": [
+            ".continue/**/*.yaml"
+        ],
+        "file:///c%3A/Users/kehnt/.vscode/extensions/continue.continue-1.2.14-win32-x64/config-yaml-schema.json": [
+            ".continue/**/*.yaml"
+        ],
+        "file:///c%3A/Users/kehnt/.vscode/extensions/continue.continue-1.2.16-win32-x64/config-yaml-schema.json": [
+            ".continue/**/*.yaml"
+        ],
+        "file:///c:/Users/kehnt/.vscode/extensions/continue.continue-1.2.14-win32-x64/config-yaml-schema.json": "file:///c%3A/Users/kehnt/.continue/config.yaml"
+    }
+}
