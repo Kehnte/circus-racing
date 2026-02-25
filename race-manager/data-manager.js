@@ -7,7 +7,6 @@ function exportData() {
         const data = {
             raceSettings: {
                 raceName: document.getElementById("setting-race-name").value,
-                location: document.getElementById("setting-location").value,
                 session: document.getElementById("setting-session").value,
                 timeOfDay: document.getElementById("setting-tod").value,
                 startType: document.getElementById("setting-start-type").value,
@@ -77,9 +76,6 @@ function handleFileImport(event) {
                     if (s.raceName !== undefined)
                         document.getElementById("setting-race-name").value =
                             s.raceName;
-                    if (s.location !== undefined)
-                        document.getElementById("setting-location").value =
-                            s.location;
                     if (s.session !== undefined)
                         document.getElementById("setting-session").value =
                             s.session;

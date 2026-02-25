@@ -31,7 +31,9 @@
 
             <div class="empty-cell"></div>
             <div class="circuit-header-container">
-                <div class="grid-cell circuit-name">PEREGRINE CIRCUIT</div>
+                <div class="grid-cell circuit-name" id="lb-location">
+                    PEREGRINE CIRCUIT
+                </div>
                 <div class="grid-cell weather-icon">
                     <svg
                         viewBox="0 0 24 24"
@@ -48,124 +50,26 @@
 
             <div class="empty-cell"></div>
             <div class="setting-session-container">
-                <div class="grid-cell session-type">Practicing</div>
-                <div class="grid-cell start-type">Rolling Start</div>
+                <div class="grid-cell session-type" id="lb-session">
+                    Practicing
+                </div>
+                <div class="grid-cell start-type" id="lb-start-type">
+                    Rolling Start
+                </div>
             </div>
             <div class="empty-cell"></div>
 
             <div class="empty-cell"></div>
             <div class="grid-cell lap-container">
-                LAP &nbsp;<span class="lap-current">3</span
-                ><span class="lap-total">/3</span>
+                LAP &nbsp;<span class="lap-current" id="lb-lap-current">0</span
+                ><span class="lap-total" id="lb-lap-total">/0</span>
             </div>
             <div class="empty-cell"></div>
 
-            <div class="grid-cell icon-cell status-fastest">
-                <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 40 40"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                >
-                    <path
-                        d="M20 40C30.9413 40 40 30.9217 40 20C40 9.05884 30.9608 0 20.0196 0C18.9805 0 18.4707 0.627452 18.4707 1.64706V9.23531C18.4707 10.0981 19.0588 10.7647 19.9019 10.7647C20.7648 10.7647 21.353 10.0981 21.353 9.23531V1.60785L19.9804 3.33334C29.2746 3.33334 36.6471 10.7451 36.6471 20C36.6471 29.255 29.255 36.6668 20 36.6668C10.7451 36.6668 3.31373 29.255 3.33334 20C3.35295 15.8628 4.82353 12.1177 7.29414 9.23531C7.88237 8.4706 7.92159 7.54904 7.27453 6.86275C6.62747 6.17649 5.54904 6.2353 4.82354 7.09806C1.84314 10.5882 0 15.1177 0 20C0 30.9217 9.07845 40 20 40Z"
-                        fill="white"
-                    />
-                    <path
-                        d="M23.1375 22.8238C24.6866 21.1965 24.3728 19.02 22.5101 17.7259L12.1375 10.4709C11.1571 9.78465 10.1375 10.8239 10.8238 11.7847L18.0592 22.1572C19.3728 24.02 21.5493 24.3533 23.1375 22.8238Z"
-                        fill="white"
-                    />
-                </svg>
-            </div>
-
-            <div class="pilot-row">
-                <div class="pilot-rank rank-first">1</div>
-                <div class="team-color" style="background-color: #ffd54f"></div>
-                <div class="pilot-infos">
-                    <div class="pilot-country">
-                        <span class="fi fi-fr fis"></span>
-                    </div>
-                    <div class="pilot-name">KEHNTE</div>
-                </div>
-                <div class="pilot-laps">3</div>
-                <div class="pilot-chrono">00:00.000</div>
-            </div>
-
-            <div class="grid-cell icon-cell status-finished">
-                <svg
-                    width="30"
-                    height="30"
-                    viewBox="0 0 30 30"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                >
-                    <rect width="7.5" height="7.5" fill="white" />
-                    <rect
-                        x="7.5"
-                        y="7.5"
-                        width="7.5"
-                        height="7.5"
-                        fill="white"
-                    />
-                    <rect x="15" width="7.5" height="7.5" fill="white" />
-                    <rect
-                        x="22.5"
-                        y="7.5"
-                        width="7.5"
-                        height="7.5"
-                        fill="white"
-                    />
-                    <rect y="15" width="7.5" height="7.5" fill="white" />
-                    <rect
-                        x="7.5"
-                        y="22.5"
-                        width="7.5"
-                        height="7.5"
-                        fill="white"
-                    />
-                    <rect x="15" y="15" width="7.5" height="7.5" fill="white" />
-                    <rect
-                        x="22.5"
-                        y="22.5"
-                        width="7.5"
-                        height="7.5"
-                        fill="white"
-                    />
-                    <rect x="7.5" width="7.5" height="7.5" fill="black" />
-                    <rect y="7.5" width="7.5" height="7.5" fill="black" />
-                    <rect x="22.5" width="7.5" height="7.5" fill="black" />
-                    <rect
-                        x="15"
-                        y="7.5"
-                        width="7.5"
-                        height="7.5"
-                        fill="black"
-                    />
-                    <rect
-                        x="7.5"
-                        y="15"
-                        width="7.5"
-                        height="7.5"
-                        fill="black"
-                    />
-                    <rect y="22.5" width="7.5" height="7.5" fill="black" />
-                    <rect
-                        x="22.5"
-                        y="15"
-                        width="7.5"
-                        height="7.5"
-                        fill="black"
-                    />
-                    <rect
-                        x="15"
-                        y="22.5"
-                        width="7.5"
-                        height="7.5"
-                        fill="black"
-                    />
-                </svg>
-            </div>
+            <div class="empty-cell"></div>
+            <div id="lb-pilots-container" style="display: contents"></div>
         </div>
+
+        <script src="leaderboard.js"></script>
     </body>
 </html>
