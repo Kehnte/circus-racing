@@ -14,14 +14,13 @@ function updateTeamDropdown() {
     });
 }
 
-// Update the dropdown for selecting a ship (Model only)
+// Update the dropdown for selecting a ship
 function updateShipDropdown() {
     const select = document.getElementById("pilot-ship");
     if (!select) return;
 
     select.innerHTML = '<option value="">Select a ship</option>';
     ships.forEach((ship) => {
-        // Updated to show only the model
         select.innerHTML += `<option value="${ship.id}">${ship.model}</option>`;
     });
 }
@@ -37,9 +36,13 @@ function updateControlDropdown() {
     });
 }
 
-// Add a new pilot (Avatar removed)
+// Add a new pilot
 function addPilot() {
     const name = document.getElementById("pilot-name").value.trim();
+    const country = document
+        .getElementById("pilot-country")
+        .value.trim()
+        .toLowerCase();
     const teamId = document.getElementById("pilot-team").value;
     const shipId = document.getElementById("pilot-ship").value;
     const controlId = document.getElementById("pilot-controls").value;
@@ -54,6 +57,7 @@ function addPilot() {
     const newPilot = {
         id: Date.now(),
         name: name,
+        country: country || "un",
         teamId: isTeamManagementActive ? parseInt(teamId) : null,
         shipId: parseInt(shipId),
         controlId: parseInt(controlId),
@@ -81,15 +85,17 @@ function displayPilots() {
     });
 }
 
-// Create a display row for a pilot (Avatar removed, Brand removed)
+// Create a display row for a pilot
 function createPilotDisplayRow(pilot) {
     const team = teams.find((t) => t.id === pilot.teamId);
     const ship = ships.find((s) => s.id === pilot.shipId);
     const ctrl = controlsList.find((c) => c.id === pilot.controlId);
+    const safeCountry = pilot.country || "un";
 
     return `
       <tr>
         <td>${pilot.name}</td>
+        <td><span class="fi fi-${safeCountry} fis"></span> (${safeCountry.toUpperCase()})</td>
         <td class="team-ext" style="display: ${
             isTeamManagementActive ? "" : "none"
         }">
@@ -104,7 +110,7 @@ function createPilotDisplayRow(pilot) {
       </tr>`;
 }
 
-// Create an edit row for a pilot (Avatar removed, Brand removed)
+// Create an edit row for a pilot
 function createPilotEditRow(pilot) {
     let teamOptions = teams
         .map(
@@ -133,9 +139,12 @@ function createPilotEditRow(pilot) {
         )
         .join("");
 
+    const safeCountry = pilot.country || "un";
+
     return `
     <tr>
       <td><input type="text" id="edit-pilot-name" value="${pilot.name}"></td>
+      <td><input type="text" id="edit-pilot-country" value="${safeCountry}" maxlength="2" style="width: 40px"></td>
       <td class="team-ext" style="display: ${
           isTeamManagementActive ? "" : "none"
       }">
@@ -177,10 +186,14 @@ function cancelEditPilot() {
     displayPilots();
 }
 
-// Save changes made to an edited pilot (Avatar removed)
+// Save changes made to an edited pilot
 function saveEditPilot(id) {
     const pilot = pilots.find((p) => p.id === id);
     const name = document.getElementById("edit-pilot-name").value.trim();
+    const country = document
+        .getElementById("edit-pilot-country")
+        .value.trim()
+        .toLowerCase();
     const teamId = document.getElementById("edit-pilot-team").value;
     const shipId = document.getElementById("edit-pilot-ship").value;
     const controlId = document.getElementById("edit-pilot-controls").value;
@@ -191,6 +204,7 @@ function saveEditPilot(id) {
     }
 
     pilot.name = name;
+    pilot.country = country || "un";
     pilot.teamId = isTeamManagementActive ? parseInt(teamId) : pilot.teamId;
     pilot.shipId = parseInt(shipId);
     pilot.controlId = parseInt(controlId);
@@ -200,9 +214,10 @@ function saveEditPilot(id) {
     saveToStorage();
 }
 
-// Clear the form fields (Avatar removed)
+// Clear the form fields
 function clearPilotForm() {
     document.getElementById("pilot-name").value = "";
+    document.getElementById("pilot-country").value = "";
     document.getElementById("pilot-team").value = "";
     document.getElementById("pilot-ship").value = "";
     document.getElementById("pilot-controls").value = "";

@@ -32,7 +32,6 @@ function updateLeaderboard() {
     const teams = readJSON(STORAGE_KEYS.TEAMS, []);
     const settings = readJSON(STORAGE_KEYS.SETTINGS, {});
 
-    // Correction ici : on utilise raceName au lieu de location
     document.getElementById("lb-location").textContent =
         settings.raceName || "UNKNOWN RACE";
     document.getElementById("lb-session").textContent =
@@ -40,6 +39,11 @@ function updateLeaderboard() {
     document.getElementById("lb-start-type").textContent =
         settings.startType || "Start Type";
 
+    const weatherKey = settings.weather || "Clear";
+    const weatherIconContainer = document.getElementById("lb-weather-icon");
+    if (weatherIconContainer && WEATHER_ICONS[weatherKey]) {
+        weatherIconContainer.innerHTML = WEATHER_ICONS[weatherKey];
+    }
     const totalLaps = parseInt(settings.totalLaps) || 0;
     let leaderLaps = raceList.length > 0 ? raceList[0].laps : 0;
     if (totalLaps > 0) {
@@ -66,9 +70,10 @@ function updateLeaderboard() {
             rightCell = `<div class="grid-cell icon-cell status-finished">${ICONS.finished}</div>`;
         }
 
-        const flagHTML = `<span class="fi fi-un fis"></span>`;
+        // Apply nationality code, default to 'un'
+        const safeCountry = pilot.country ? pilot.country.toLowerCase() : "un";
+        const flagHTML = `<span class="fi fi-${safeCountry} fis"></span>`;
 
-        // Correction ici : DNF remplace le chrono, et on affiche bien le nombre de tours effectués
         const chronoDisplay = pilot.dnf ? "DNF" : "00:00.000";
 
         const pilotRow = `
