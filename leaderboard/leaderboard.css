@@ -190,6 +190,7 @@ body {
 }
 
 .pilot-chrono {
+    width: 95px;
     padding: 0 10px;
     background-color: #212121;
     font-weight: 400;
