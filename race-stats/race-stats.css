@@ -12,7 +12,7 @@ body {
     margin: 0;
     padding: 0;
     color: #fafafa;
-    min-height: 100vh; /* S'assure que le body prend toute la hauteur */
+    min-height: 100vh;
     position: relative;
 }
 
@@ -26,9 +26,8 @@ body {
     background-color: #212121;
     align-items: stretch;
 
-    /* Positionnement en bas au centre */
-    position: fixed; /* ou 'absolute' selon si tu veux qu'il suive le scroll */
-    bottom: 40px; /* 40px du bas */
+    position: fixed;
+    bottom: 40px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 1000;
