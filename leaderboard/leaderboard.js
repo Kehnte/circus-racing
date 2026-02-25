@@ -44,8 +44,11 @@ function updateLeaderboard() {
     if (weatherIconContainer && WEATHER_ICONS[weatherKey]) {
         weatherIconContainer.innerHTML = WEATHER_ICONS[weatherKey];
     }
+
     const totalLaps = parseInt(settings.totalLaps) || 0;
     let leaderLaps = raceList.length > 0 ? raceList[0].laps : 0;
+
+    // Plafonner l'affichage du tour actuel du leader
     if (totalLaps > 0) {
         leaderLaps = Math.min(leaderLaps, totalLaps);
     }
@@ -63,6 +66,9 @@ function updateLeaderboard() {
         const teamColor = team ? team.color : "#ffffff";
         const rankClass = index === 0 ? "rank-first" : "";
 
+        // Gérer la classe de transparence pour le DNF
+        const dnfClass = pilot.dnf ? "dnf-row" : "";
+
         let leftCell = `<div class="empty-cell"></div>`;
         let rightCell = `<div class="empty-cell"></div>`;
 
@@ -70,21 +76,24 @@ function updateLeaderboard() {
             rightCell = `<div class="grid-cell icon-cell status-finished">${ICONS.finished}</div>`;
         }
 
-        // Apply nationality code, default to 'un'
         const safeCountry = pilot.country ? pilot.country.toLowerCase() : "un";
         const flagHTML = `<span class="fi fi-${safeCountry} fis"></span>`;
 
         const chronoDisplay = pilot.dnf ? "DNF" : "00:00.000";
 
+        // Plafonner l'affichage des tours individuels pour ne pas dépasser le max
+        const displayLaps =
+            totalLaps > 0 ? Math.min(pilot.laps, totalLaps) : pilot.laps;
+
         const pilotRow = `
-            <div class="pilot-row">
+            <div class="pilot-row ${dnfClass}">
                 <div class="pilot-rank ${rankClass}">${pilot.position}</div>
                 <div class="team-color" style="background-color: ${teamColor}"></div>
                 <div class="pilot-infos">
                     <div class="pilot-country">${flagHTML}</div>
                     <div class="pilot-name">${pilot.name}</div>
                 </div>
-                <div class="pilot-laps">${pilot.laps}</div>
+                <div class="pilot-laps">${displayLaps}</div>
                 <div class="pilot-chrono">${chronoDisplay}</div>
             </div>
         `;

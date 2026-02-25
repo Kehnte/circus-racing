@@ -236,3 +236,7 @@ body {
     height: auto;
     display: block;
 }
+
+.pilot-row.dnf-row {
+    opacity: 0.8;
+}

@@ -98,7 +98,7 @@ function changeLap(index, delta) {
         parseInt(document.getElementById("total-laps").value) || 3;
     let newLaps = pilot.laps + delta;
 
-    if (newLaps >= 0 && !pilot.dnf) {
+    if (newLaps >= 1 && !pilot.dnf) {
         pilot.laps = newLaps;
         pilot.finished = pilot.laps > totalLaps;
 
@@ -235,11 +235,9 @@ function displayRace() {
 
 // Checks if the race has ended and updates the status accordingly
 function checkRaceEnd() {
-    const activePilots = raceList.filter((p) => !p.dnf);
-    const allFinished =
-        activePilots.length > 0 && activePilots.every((p) => p.finished);
+    const stillRacing = raceList.some((p) => !p.finished && !p.dnf);
 
-    if (allFinished && raceStatus === "running") {
+    if (!stillRacing && raceList.length > 0 && raceStatus === "running") {
         raceStatus = "finished";
         updateControls();
     }
