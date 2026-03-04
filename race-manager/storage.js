@@ -1,3 +1,6 @@
+// storage.js
+
+// LocalStorage key constants — centralised to avoid typos across the codebase
 const STORAGE_KEYS = {
     TEAMS: "circusRacing_teams",
     SHIPS: "circusRacing_ships",
@@ -8,6 +11,7 @@ const STORAGE_KEYS = {
     TEAM_MGMT: "circusRacing_teamMgmt",
 };
 
+// Hydrate all in-memory arrays and flags from LocalStorage on page load
 function loadFromStorage() {
     try {
         const savedTeams = localStorage.getItem(STORAGE_KEYS.TEAMS);
@@ -22,6 +26,7 @@ function loadFromStorage() {
         const savedPilots = localStorage.getItem(STORAGE_KEYS.PILOTS);
         if (savedPilots) pilots = JSON.parse(savedPilots);
 
+        // Restore the team management toggle state (stored as the string "true"/"false")
         const savedTeamMgmt = localStorage.getItem(STORAGE_KEYS.TEAM_MGMT);
         if (
             savedTeamMgmt !== null &&
@@ -34,6 +39,7 @@ function loadFromStorage() {
     }
 }
 
+// Persist the four database arrays (teams, ships, controls, pilots) to LocalStorage
 function saveToStorage() {
     try {
         localStorage.setItem(STORAGE_KEYS.TEAMS, JSON.stringify(teams));
@@ -48,6 +54,7 @@ function saveToStorage() {
     }
 }
 
+// Read the race settings form and persist it alongside the team management flag
 function saveRaceSettings() {
     try {
         const settings = {
@@ -70,6 +77,7 @@ function saveRaceSettings() {
     }
 }
 
+// Convenience wrapper: save everything (databases + settings + live race list) in one call
 function saveAllToLocal() {
     saveToStorage();
     saveRaceSettings();
@@ -85,6 +93,7 @@ function saveAllToLocal() {
     }
 }
 
+// Clear the teams array and its LocalStorage entry, then refresh all dependent UI
 function resetTeams() {
     teams = [];
     localStorage.removeItem(STORAGE_KEYS.TEAMS);
@@ -93,6 +102,7 @@ function resetTeams() {
     if (typeof displayPilots === "function") displayPilots();
 }
 
+// Clear the ships array and its LocalStorage entry, then refresh all dependent UI
 function resetShips() {
     ships = [];
     localStorage.removeItem(STORAGE_KEYS.SHIPS);
@@ -101,6 +111,7 @@ function resetShips() {
     if (typeof displayPilots === "function") displayPilots();
 }
 
+// Clear the controlsList array and its LocalStorage entry, then refresh all dependent UI
 function resetControls() {
     controlsList = [];
     localStorage.removeItem(STORAGE_KEYS.CONTROLS);
@@ -109,6 +120,7 @@ function resetControls() {
     if (typeof displayPilots === "function") displayPilots();
 }
 
+// Clear the pilots array and its LocalStorage entry, then refresh the pilots table
 function resetPilots() {
     pilots = [];
     localStorage.removeItem(STORAGE_KEYS.PILOTS);
@@ -116,6 +128,7 @@ function resetPilots() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+    // Restore all saved data before rendering any tables
     loadFromStorage();
 
     if (typeof displayTeams === "function") displayTeams();
@@ -127,6 +140,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (typeof updateShipDropdown === "function") updateShipDropdown();
     if (typeof updateControlDropdown === "function") updateControlDropdown();
 
+    // Auto-save race settings (and re-broadcast race state) whenever any setting changes
     [
         "setting-race-name",
         "setting-session",

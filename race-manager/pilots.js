@@ -1,23 +1,25 @@
 // pilots.js
 
+// Master list of registered pilots
 let pilots = [];
+// ID of the pilot row currently open for inline editing (null = none)
 let editingPilotId = null;
 
-// Helper: get value from md- or native element
+// Return the trimmed string value of a form element by ID, works for both native inputs and Material Web md- components
 function getVal(id) {
     const el = document.getElementById(id);
     if (!el) return "";
     return (el.value ?? "").toString().trim();
 }
 
-// Helper: set value on md- or native element
+// Set the value of a form element by ID (native or md- component)
 function setVal(id, value) {
     const el = document.getElementById(id);
     if (!el) return;
     el.value = value;
 }
 
-// Update the dropdown for selecting a team
+// Rebuild the team dropdown options from the current teams array
 function updateTeamDropdown() {
     const select = document.getElementById("pilot-team");
     if (!select) return;
@@ -28,7 +30,7 @@ function updateTeamDropdown() {
     });
 }
 
-// Update the dropdown for selecting a ship
+// Rebuild the ship dropdown options from the current ships array
 function updateShipDropdown() {
     const select = document.getElementById("pilot-ship");
     if (!select) return;
@@ -39,7 +41,7 @@ function updateShipDropdown() {
     });
 }
 
-// Update the dropdown for selecting controls
+// Rebuild the controls dropdown options from the current controlsList array
 function updateControlDropdown() {
     const select = document.getElementById("pilot-controls");
     if (!select) return;
@@ -50,7 +52,7 @@ function updateControlDropdown() {
     });
 }
 
-// Add a new pilot
+// Read the add-pilot form, validate it and push a new pilot into the pilots array
 function addPilot() {
     const name = getVal("pilot-name");
     const country = getVal("pilot-country").toLowerCase();
@@ -58,6 +60,7 @@ function addPilot() {
     const shipId = getVal("pilot-ship");
     const controlId = getVal("pilot-controls");
 
+    // Team is only required when team management is enabled
     const isTeamValid = isTeamManagementActive ? teamId : true;
 
     if (!name || !isTeamValid || !shipId || !controlId) {
@@ -80,7 +83,7 @@ function addPilot() {
     saveToStorage();
 }
 
-// Display all pilots in the table
+// Re-render the pilots table, switching rows between display and edit mode as needed
 function displayPilots() {
     const tableBody = document.getElementById("pilots-list");
     if (!tableBody) return;
@@ -96,7 +99,7 @@ function displayPilots() {
     });
 }
 
-// Create a display row for a pilot
+// Build the read-only HTML table row for a given pilot
 function createPilotDisplayRow(pilot) {
     const team = teams.find((t) => t.id === pilot.teamId);
     const ship = ships.find((s) => s.id === pilot.shipId);
@@ -125,7 +128,7 @@ function createPilotDisplayRow(pilot) {
       </tr>`;
 }
 
-// Create an edit row for a pilot
+// Build the editable HTML table row for a given pilot (inline form fields)
 function createPilotEditRow(pilot) {
     const safeCountry = pilot.country || "un";
 
@@ -163,7 +166,7 @@ function createPilotEditRow(pilot) {
     </tr>`;
 }
 
-// Delete a pilot
+// Remove a pilot from the array by ID and refresh the table
 function deletePilot(idToDelete) {
     const pilotToDelete = pilots.find((p) => p.id === idToDelete);
     if (pilotToDelete) {
@@ -173,19 +176,19 @@ function deletePilot(idToDelete) {
     }
 }
 
-// Start editing a pilot
+// Open a pilot row for inline editing
 function startEditPilot(id) {
     editingPilotId = id;
     displayPilots();
 }
 
-// Cancel editing a pilot
+// Discard in-progress edits and revert the row back to display mode
 function cancelEditPilot() {
     editingPilotId = null;
     displayPilots();
 }
 
-// Save changes made to an edited pilot
+// Validate the inline edit form and persist changes to the pilot object
 function saveEditPilot(id) {
     const pilot = pilots.find((p) => p.id === id);
     const name = getVal("edit-pilot-name");
@@ -201,6 +204,7 @@ function saveEditPilot(id) {
 
     pilot.name = name;
     pilot.country = country || "un";
+    // Only overwrite teamId when team management is active; otherwise keep the original
     pilot.teamId = isTeamManagementActive ? parseInt(teamId) : pilot.teamId;
     pilot.shipId = parseInt(shipId);
     pilot.controlId = parseInt(controlId);
@@ -210,7 +214,7 @@ function saveEditPilot(id) {
     saveToStorage();
 }
 
-// Clear the form fields
+// Reset all add-pilot form fields to empty
 function clearPilotForm() {
     setVal("pilot-name", "");
     setVal("pilot-country", "");
@@ -219,7 +223,7 @@ function clearPilotForm() {
     setVal("pilot-controls", "");
 }
 
-// Event listener to update dropdowns when the DOM content is loaded
+// Populate all dropdowns once the DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
     updateTeamDropdown();
     updateShipDropdown();

@@ -1,8 +1,11 @@
 // teams.js
 
+// Master list of registered teams
 let teams = [];
+// ID of the team row currently open for inline editing (null = none)
 let editingTeamId = null;
 
+// Read the add-team form, validate it and push a new team into the teams array
 function addTeam() {
     const name = document.getElementById("name").value?.trim();
     const acronym = document.getElementById("acronym").value?.trim();
@@ -26,11 +29,13 @@ function addTeam() {
     saveToStorage();
 }
 
+// Reset the add-team text fields (color swatch keeps its current selection)
 function clearForm() {
     document.getElementById("name").value = "";
     document.getElementById("acronym").value = "";
 }
 
+// Re-render the teams table and re-attach color swatch click handlers
 function displayTeams() {
     const tableBody = document.getElementById("team-list");
     tableBody.innerHTML = "";
@@ -40,9 +45,11 @@ function displayTeams() {
         tableBody.insertAdjacentHTML("beforeend", row);
     });
 
+    // Re-attach swatch click listeners after each re-render
     document.querySelectorAll(".color-swatch[data-prefix]").forEach((swatch) => {
         swatch.addEventListener("click", () => {
             const prefix = swatch.dataset.prefix;
+            // Deselect all swatches for this prefix group, then select the clicked one
             document.querySelectorAll(`.color-swatch[data-prefix="${prefix}"]`).forEach((s) => s.classList.remove("selected"));
             swatch.classList.add("selected");
             const color = swatch.dataset.color;
@@ -53,6 +60,7 @@ function displayTeams() {
     });
 }
 
+// Material Design 3 color palette used for team color selection
 const M3_COLORS = [
     "#E57373","#F06292","#BA68C8","#9575CD","#7986CB",
     "#64B5F6","#4FC3F7","#4DD0E1","#4DB6AC","#81C784",
@@ -60,6 +68,7 @@ const M3_COLORS = [
     "#FF8A65","#A1887F","#E0E0E0","#90A4AE"
 ];
 
+// Build the HTML for a color swatch palette with a hidden input holding the selected value idPrefix is used to namespace element IDs so multiple palettes can coexist on the page
 function buildSwatchesHTML(selectedColor, idPrefix) {
     const swatches = M3_COLORS.map((c) => {
         const sel = c.toLowerCase() === selectedColor.toLowerCase() ? "selected" : "";
@@ -77,6 +86,7 @@ function buildSwatchesHTML(selectedColor, idPrefix) {
         </div>`;
 }
 
+// Build the inline edit row HTML for a team (text fields + color palette)
 function createEditRow(team) {
     return `
     <tr>
@@ -92,6 +102,7 @@ function createEditRow(team) {
     </tr>`;
 }
 
+// Build the read-only display row HTML for a team
 function createDisplayRow(team) {
     return `
     <tr>
@@ -107,6 +118,7 @@ function createDisplayRow(team) {
     </tr>`;
 }
 
+// Remove a team by ID, then refresh all dependent UI (team dropdown, pilots table)
 function deleteTeam(idToDelete) {
     const teamToDelete = teams.find((t) => t.id === idToDelete);
     if (teamToDelete) {
@@ -118,16 +130,19 @@ function deleteTeam(idToDelete) {
     }
 }
 
+// Open a team row for inline editing
 function startEdit(id) {
     editingTeamId = id;
     displayTeams();
 }
 
+// Discard in-progress edits and revert the row back to display mode
 function cancelEdit() {
     editingTeamId = null;
     displayTeams();
 }
 
+// Validate the inline edit form and persist changes to the team object
 function saveEdit(id) {
     const team = teams.find((t) => t.id === id);
     const name = document.getElementById("edit-name").value?.trim();
@@ -140,6 +155,7 @@ function saveEdit(id) {
 
     team.name = name;
     team.acronym = acronym;
+    // Fall back to the existing color if the edit palette hidden input is missing
     team.color = document.getElementById("edit-color-value")?.value || team.color;
 
     editingTeamId = null;

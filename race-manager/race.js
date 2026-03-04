@@ -2,11 +2,16 @@
 
 const socket = io();
 
+// Current race pilot list (ordered by position)
 let raceList = [];
+// Snapshot of raceList from the previous render cycle, used to detect lap/DNF changes
 let previousRaceList = [];
+// Whether team management features (columns, dropdowns) are visible
 let isTeamManagementActive = true;
+// Race lifecycle state: "standby" | "running" | "paused" | "finished"
 let raceStatus = "standby";
 
+// Toggle team management on/off, show/hide related UI sections and re-render
 function toggleTeamManagement() {
     isTeamManagementActive = !isTeamManagementActive;
     const teamSection = document.getElementById("teams-manager-section");
@@ -19,12 +24,14 @@ function toggleTeamManagement() {
     displayRace();
 }
 
+// Start or resume the race; initialises laps to 1 on a fresh start
 function startRace() {
     if (raceList.length === 0) {
         alert("Please load pilots first");
         return;
     }
 
+    // If every pilot is still on lap 0, it's a fresh start — bump everyone to lap 1
     const isFreshStart = raceList.every((p) => p.laps === 0);
     if (isFreshStart) {
         raceList.forEach((p) => (p.laps = 1));
@@ -36,6 +43,7 @@ function startRace() {
     displayRace();
 }
 
+// Pause the race (can be resumed with startRace)
 function pauseRace() {
     raceStatus = "paused";
     updateControls();
@@ -43,6 +51,7 @@ function pauseRace() {
     displayRace();
 }
 
+// Force-end the race regardless of how many pilots have finished
 function endRaceManually() {
     raceStatus = "finished";
     updateControls();
@@ -50,6 +59,7 @@ function endRaceManually() {
     displayRace();
 }
 
+// Reset all pilot lap counts, clear DNF/finished flags and return to standby
 function resetRace() {
     raceList.forEach((p) => {
         p.laps = 0;
@@ -64,8 +74,8 @@ function resetRace() {
     displayRace();
 }
 
+// Rebuild raceList from the pilots database with blank race state
 function reloadPilots() {
-
     raceList = pilots.map((p, index) => ({
         ...p,
         laps: 0,
@@ -81,6 +91,7 @@ function reloadPilots() {
     displayRace();
 }
 
+// Increment or decrement the lap count for a pilot by delta (+1/-1). Also marks a pilot as finished when their lap count exceeds totalLaps
 function changeLap(index, delta) {
     if (raceStatus !== "running") return;
 
@@ -99,6 +110,7 @@ function changeLap(index, delta) {
     }
 }
 
+// Swap a pilot one step up or down in the raceList array
 function movePilot(index, delta) {
     const newPos = index + delta;
     if (newPos < 0 || newPos >= raceList.length) return;
@@ -112,6 +124,7 @@ function movePilot(index, delta) {
     displayRace();
 }
 
+// Move a pilot directly to a specific 1-based position entered in the inline input
 function jumpToPosition(index, newPosValue) {
     const newPos = parseInt(newPosValue);
     if (isNaN(newPos) || newPos < 1 || newPos > raceList.length) {
@@ -126,6 +139,7 @@ function jumpToPosition(index, newPosValue) {
     displayRace();
 }
 
+// Toggle the DNF flag for a pilot; removing DNF also clears the finished flag
 function toggleDNF(index) {
     raceList[index].dnf = !raceList[index].dnf;
     if (raceList[index].dnf) raceList[index].finished = false;
@@ -136,6 +150,7 @@ function toggleDNF(index) {
     displayRace();
 }
 
+// Sort raceList by race order (DNF last, finished first, then by lap count) and reassign sequential position numbers
 function recalculatePositions() {
     raceList.sort((a, b) => {
         if (a.dnf !== b.dnf) return a.dnf ? 1 : -1;
@@ -149,6 +164,7 @@ function recalculatePositions() {
     });
 }
 
+// Compare current raceList against the previous snapshot to detect DNF and finish events, then emit them to the server via Socket.IO
 function detectAndEmitEvents() {
     if (previousRaceList.length === 0) return;
 
@@ -162,6 +178,7 @@ function detectAndEmitEvents() {
         const durationInput = document.getElementById("event-duration");
         const displayDuration = durationInput ? parseInt(durationInput.value) || 5 : 5;
 
+        // Base payload shared by all event types
         const eventPayload = {
             pilotId: pilot.id,
             pilotName: pilot.name,
@@ -172,16 +189,19 @@ function detectAndEmitEvents() {
             displayDuration: displayDuration,
         };
 
+        // Emit an incident event when a pilot is newly marked DNF
         if (!previous.dnf && pilot.dnf) {
             socket.emit("race-event", { ...eventPayload, type: "incident" });
         }
 
+        // Emit a finished event when a pilot crosses the finish line
         if (!previous.finished && pilot.finished) {
             socket.emit("race-event", { ...eventPayload, type: "finished" });
         }
     });
 }
 
+// Render the race table, emit the current race state to all connected clients and update the previousRaceList snapshot for event detection
 function displayRace() {
     const tableBody = document.getElementById("race-list");
     const pilotCountEl = document.getElementById("pilot-count");
@@ -194,6 +214,8 @@ function displayRace() {
 
     raceList.forEach((pilot, index) => {
         const team = typeof teams !== "undefined" ? teams.find((t) => t.id === pilot.teamId) : null;
+
+        // Show "Finished" label instead of lap count for completed pilots
         const lapDisplay = pilot.finished
             ? `<span class="lap-display finished">Finished</span>`
             : `<span class="lap-display">${pilot.laps}</span>`;
@@ -254,13 +276,16 @@ function displayRace() {
         tableBody.insertAdjacentHTML("beforeend", row);
     });
 
+    // Show/hide all team-related columns across the page
     document.querySelectorAll(".team-ext").forEach((el) => {
         el.style.display = isTeamManagementActive ? "" : "none";
     });
 
     detectAndEmitEvents();
+    // Save a deep copy of raceList as the baseline for the next event detection pass
     previousRaceList = raceList.map((p) => ({ ...p }));
 
+    // Broadcast the full race state to the leaderboard and other overlays
     socket.emit("race-update", {
         raceList: raceList,
         teams: typeof teams !== "undefined" ? teams : [],
@@ -274,6 +299,7 @@ function displayRace() {
     });
 }
 
+// Automatically end the race when every non-DNF pilot has finished
 function checkRaceEnd() {
     const stillRacing = raceList.some((p) => !p.finished && !p.dnf);
 
@@ -283,6 +309,7 @@ function checkRaceEnd() {
     }
 }
 
+// Enable/disable the Start, Pause and Finish buttons to match the current race status
 function updateControls() {
     const btnStart = document.getElementById("btn-start");
     const btnPause = document.getElementById("btn-pause");
@@ -299,6 +326,7 @@ function updateControls() {
         btnPause.disabled = true;
         btnFinish.disabled = false;
     } else {
+        // standby or finished
         btnStart.disabled = false;
         btnPause.disabled = true;
         btnFinish.disabled = true;

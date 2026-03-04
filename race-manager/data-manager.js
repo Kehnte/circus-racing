@@ -1,6 +1,6 @@
 // data-manager.js
 
-// Function to export data as a JSON file
+// Serialize the full application state (settings + all databases) to a JSON file and trigger a browser download with a timestamped filename
 function exportData() {
     try {
         const data = {
@@ -14,6 +14,7 @@ function exportData() {
             pilots: typeof pilots !== "undefined" ? pilots : [],
             teams: typeof teams !== "undefined" ? teams : [],
             ships: typeof ships !== "undefined" ? ships : [],
+            // Support both variable names used across different script versions
             controls:
                 typeof controlsList !== "undefined"
                     ? controlsList
@@ -25,6 +26,7 @@ function exportData() {
         const jsonString = JSON.stringify(data, null, 2);
         const blob = new Blob([jsonString], { type: "application/json" });
 
+        // Create a temporary anchor to trigger the file download
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
@@ -41,13 +43,13 @@ function exportData() {
     }
 }
 
-// Function to open a file input for importing data
+// Programmatically click the hidden file input to open the system file picker
 function importData() {
     const fileInput = document.getElementById("import-file-input");
     if (fileInput) fileInput.click();
 }
 
-// Event handler function to handle the file selection and parsing
+// Handle the file selected by the user: parse the JSON and overwrite the current state
 function handleFileImport(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -62,7 +64,7 @@ function handleFileImport(event) {
                     "Import data? This will overwrite current settings and database.",
                 )
             ) {
-                // Import race settings
+                // Restore race settings fields from the imported object
                 if (data.raceSettings) {
                     const s = data.raceSettings;
                     if (s.raceName !== undefined)
@@ -82,16 +84,17 @@ function handleFileImport(event) {
                             s.totalLaps;
                 }
 
-                // Import database and ensure backward compatibility for nationality
+                // Restore pilots with backward compatibility: default missing country to "un"
                 if (data.pilots) {
                     pilots = data.pilots.map((p) => ({
                         ...p,
-                        country: p.country || "un", // Force 'un' if country is missing
+                        country: p.country || "un",
                     }));
                 }
 
                 if (data.teams) teams = data.teams;
                 if (data.ships) ships = data.ships;
+                // Write to whichever controls variable exists in the current scope
                 if (data.controls) {
                     if (typeof controlsList !== "undefined")
                         controlsList = data.controls;
@@ -99,7 +102,7 @@ function handleFileImport(event) {
                         controls = data.controls;
                 }
 
-                // Save and refresh the display
+                // Persist and re-render everything
                 if (typeof saveAllToLocal === "function") saveAllToLocal();
                 if (typeof displayRace === "function") displayRace();
                 if (typeof displayPilots === "function") displayPilots();
@@ -115,10 +118,11 @@ function handleFileImport(event) {
         }
     };
     reader.readAsText(file);
+    // Reset the input so the same file can be re-imported if needed
     event.target.value = "";
 }
 
-// Function to reset all data by clearing local storage and reloading the page
+// Wipe LocalStorage and reload the page, effectively resetting the entire application
 function resetAllData() {
     if (confirm("Delete everything?")) {
         localStorage.clear();

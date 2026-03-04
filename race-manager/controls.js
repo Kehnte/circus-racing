@@ -1,8 +1,11 @@
 // controls.js
 
+// Master list of registered control types (e.g. keyboard, gamepad, wheel)
 let controlsList = [];
+// ID of the control row currently open for inline editing (null = none)
 let editingControlId = null;
 
+// Read the add-control form, validate it and push a new control type into controlsList
 function addControl() {
     const type = document.getElementById("control-type").value?.trim();
     const img = document.getElementById("control-img").value?.trim();
@@ -15,6 +18,7 @@ function addControl() {
     const newControl = {
         id: Date.now(),
         type: type,
+        // Fall back to a placeholder image when no URL is provided
         img: img || "https://placehold.co/40x40/png",
     };
 
@@ -26,6 +30,7 @@ function addControl() {
     saveToStorage();
 }
 
+// Re-render the controls table, switching rows between display and edit mode as needed
 function displayControls() {
     const tableBody = document.getElementById("controls-list");
     if (!tableBody) return;
@@ -37,6 +42,7 @@ function displayControls() {
     });
 }
 
+// Build the read-only display row HTML for a control type
 function createControlDisplayRow(ctrl) {
     return `
     <tr>
@@ -51,6 +57,7 @@ function createControlDisplayRow(ctrl) {
     </tr>`;
 }
 
+// Build the inline edit row HTML for a control type (image URL + type text fields)
 function createControlEditRow(ctrl) {
     return `
     <tr>
@@ -65,6 +72,7 @@ function createControlEditRow(ctrl) {
     </tr>`;
 }
 
+// Ask for confirmation, then remove a control type by ID and refresh dependent UI
 function deleteControl(id) {
     if (confirm("Delete this control type?")) {
         controlsList = controlsList.filter((c) => c.id !== id);
@@ -75,16 +83,19 @@ function deleteControl(id) {
     }
 }
 
+// Open a control row for inline editing
 function startEditControl(id) {
     editingControlId = id;
     displayControls();
 }
 
+// Discard in-progress edits and revert the row back to display mode
 function cancelEditControl() {
     editingControlId = null;
     displayControls();
 }
 
+// Persist the inline-edited values back to the control object and close edit mode
 function saveEditControl(id) {
     const ctrl = controlsList.find((c) => c.id === id);
     ctrl.type = document.getElementById("edit-control-type").value?.trim();
@@ -96,6 +107,7 @@ function saveEditControl(id) {
     saveToStorage();
 }
 
+// Rebuild the controls dropdown options in the pilot form from the current controlsList
 function updateControlDropdown() {
     const select = document.getElementById("pilot-controls");
     if (!select) return;
