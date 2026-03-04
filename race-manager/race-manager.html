@@ -45,6 +45,8 @@
             <div class="race-controls">
                 <label>Total Laps: </label>
                 <input type="number" id="total-laps" value="3" min="1" />
+                <label>Event display duration (s): </label>
+                <input type="number" id="event-duration" value="5" min="1" max="30" style="width: 50px" />
                 <button onclick="startRace()" id="btn-start">Start race</button>
                 <button onclick="pauseRace()" id="btn-pause" disabled>
                     Pause race
@@ -269,7 +271,7 @@
                 onchange="handleFileImport(event)"
             />
         </div>
-        
+
         <script src="/socket.io/socket.io.js"></script>
         <script src="storage.js"></script>
         <script src="teams.js"></script>

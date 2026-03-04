@@ -1,9 +1,10 @@
 // race.js
 
 // Real-time server connection
-const socket = io(); 
+const socket = io();
 
 let raceList = [];
+let previousRaceList = [];
 let isTeamManagementActive = true;
 let raceStatus = "standby";
 
@@ -31,7 +32,7 @@ function startRace() {
 
     const isFreshStart = raceList.every((p) => p.laps === 0);
     if (isFreshStart) {
-        raceList.forEach((p) => (p.laps = 1)); // Start at lap 1
+        raceList.forEach((p) => (p.laps = 1));
     }
 
     raceStatus = "running";
@@ -66,6 +67,7 @@ function resetRace() {
             p.finished = false;
             p.dnf = false;
         });
+        previousRaceList = [];
         raceStatus = "standby";
         recalculatePositions();
         updateControls();
@@ -86,6 +88,7 @@ function reloadPilots() {
         dnf: false,
     }));
 
+    previousRaceList = [];
     raceStatus = "standby";
     updateControls();
     if (typeof saveAllToLocal === "function") saveAllToLocal();
@@ -100,10 +103,9 @@ function changeLap(index, delta) {
     const totalLaps = parseInt(document.getElementById("total-laps").value) || 3;
     let newLaps = pilot.laps + delta;
 
-    // Minimum 1 lap
     if (newLaps >= 1 && !pilot.dnf) {
         pilot.laps = newLaps;
-        pilot.finished = pilot.laps > totalLaps; // Check if finished
+        pilot.finished = pilot.laps > totalLaps;
 
         recalculatePositions();
         checkRaceEnd();
@@ -166,6 +168,47 @@ function recalculatePositions() {
     });
 }
 
+// Detect state transitions and emit race events
+function detectAndEmitEvents() {
+    if (previousRaceList.length === 0) return;
+
+    raceList.forEach((pilot) => {
+        const previous = previousRaceList.find((p) => p.id === pilot.id);
+        if (!previous) return;
+
+        const team = typeof teams !== "undefined"
+            ? teams.find((t) => t.id === pilot.teamId)
+            : null;
+
+        const ship = typeof ships !== "undefined"
+            ? ships.find((s) => s.id === pilot.shipId)
+            : null;
+
+        const durationInput = document.getElementById("event-duration");
+        const displayDuration = durationInput ? parseInt(durationInput.value) || 5 : 5;
+
+        const eventPayload = {
+            pilotId: pilot.id,
+            pilotName: pilot.name,
+            pilotCountry: pilot.country || "un",
+            teamName: team ? team.name : null,
+            teamColor: team ? team.color : null,
+            shipModel: ship ? ship.model : null,
+            displayDuration: displayDuration,
+        };
+
+        // Transition: DNF
+        if (!previous.dnf && pilot.dnf) {
+            socket.emit("race-event", { ...eventPayload, type: "incident" });
+        }
+
+        // Transition: Finished
+        if (!previous.finished && pilot.finished) {
+            socket.emit("race-event", { ...eventPayload, type: "finished" });
+        }
+    });
+}
+
 // Update UI and sync server
 function displayRace() {
     const tableBody = document.getElementById("race-list");
@@ -176,7 +219,9 @@ function displayRace() {
     if (pilotCountEl) pilotCountEl.textContent = raceList.length;
 
     raceList.forEach((pilot, index) => {
-        const team = typeof teams !== "undefined" ? teams.find((t) => t.id === pilot.teamId) : null;
+        const team = typeof teams !== "undefined"
+            ? teams.find((t) => t.id === pilot.teamId)
+            : null;
         const isRunning = raceStatus === "running";
         const lapDisplay = pilot.finished ? "Finished" : pilot.laps;
 
@@ -210,17 +255,23 @@ function displayRace() {
         el.style.display = isTeamManagementActive ? "" : "none";
     });
 
-    // Sync data to server
-    socket.emit('race-update', {
+    // Detect transitions before updating the snapshot
+    detectAndEmitEvents();
+
+    // Update snapshot
+    previousRaceList = raceList.map((p) => ({ ...p }));
+
+    // Sync full race data to server
+    socket.emit("race-update", {
         raceList: raceList,
-        teams: typeof teams !== 'undefined' ? teams : [],
+        teams: typeof teams !== "undefined" ? teams : [],
         settings: {
             raceName: document.getElementById("setting-race-name")?.value || "",
             session: document.getElementById("setting-session")?.value || "",
             weather: document.getElementById("setting-weather")?.value || "",
             startType: document.getElementById("setting-start-type")?.value || "",
-            totalLaps: document.getElementById("total-laps")?.value || "3"
-        }
+            totalLaps: document.getElementById("total-laps")?.value || "3",
+        },
     });
 }
 

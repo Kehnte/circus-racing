@@ -13,9 +13,14 @@ app.use(express.static(__dirname));
 io.on('connection', (socket) => {
     console.log('Un utilisateur est connecté');
 
-    // Broadcast race updates to all clients
+    // Broadcast full race state to all clients
     socket.on('race-update', (data) => {
         socket.broadcast.emit('race-data', data);
+    });
+
+    // Broadcast race events (finished, incident, fastest-lap) to all clients
+    socket.on('race-event', (data) => {
+        socket.broadcast.emit('race-event', data);
     });
 
     socket.on('disconnect', () => {
@@ -28,4 +33,5 @@ server.listen(PORT, () => {
     console.log(`Serveur lancé sur http://localhost:${PORT}`);
     console.log(`Le Manager sera sur http://localhost:${PORT}/race-manager/race-manager.html`);
     console.log(`Le Leaderboard sera sur http://localhost:${PORT}/leaderboard/leaderboard.html`);
+    console.log(`L'Event Row sera sur http://localhost:${PORT}/event-row/event-row.html`);
 });

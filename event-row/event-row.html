@@ -11,51 +11,31 @@
             href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,100..700;1,100..700&family=Zalando+Sans+SemiExpanded:ital,wght@0,200..900;1,200..900&display=swap"
             rel="stylesheet"
         />
-
         <link
             rel="stylesheet"
             href="https://cdn.jsdelivr.net/npm/flag-icons/css/flag-icons.min.css"
         />
-
         <link rel="stylesheet" href="event-row.css" />
     </head>
     <body>
         <div class="event-row" data-status="fastest-lap">
-            <div class="event-icon">
-                <svg
-                    width="50"
-                    height="50"
-                    viewBox="0 0 40 40"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                >
-                    <path
-                        d="M20 40C30.9413 40 40 30.9217 40 20C40 9.05884 30.9608 0 20.0196 0C18.9805 0 18.4707 0.627452 18.4707 1.64706V9.23531C18.4707 10.0981 19.0588 10.7647 19.9019 10.7647C20.7648 10.7647 21.353 10.0981 21.353 9.23531V1.60785L19.9804 3.33334C29.2746 3.33334 36.6471 10.7451 36.6471 20C36.6471 29.255 29.255 36.6668 20 36.6668C10.7451 36.6668 3.31373 29.255 3.33334 20C3.35295 15.8628 4.82353 12.1177 7.29414 9.23531C7.88237 8.4706 7.92159 7.54904 7.27453 6.86275C6.62747 6.17649 5.54904 6.2353 4.82354 7.09806C1.84314 10.5882 0 15.1177 0 20C0 30.9217 9.07845 40 20 40Z"
-                        fill="white"
-                    />
-                    <path
-                        d="M23.1375 22.8238C24.6866 21.1965 24.3728 19.02 22.5101 17.7259L12.1375 10.4709C11.1571 9.78465 10.1375 10.8239 10.8238 11.7847L18.0592 22.1572C19.3728 24.02 21.5493 24.3533 23.1375 22.8238Z"
-                        fill="white"
-                    />
-                </svg>
-            </div>
+            <div class="event-icon"></div>
 
             <div class="event-data">
-                <div class="event-label">Fastest lap</div>
+                <div class="event-label"></div>
                 <div class="pilot-infos">
                     <div class="pilot-name-wrapper">
-                        <div class="pilot-country">
-                            <span class="fi fi-fr fis"></span>
-                        </div>
-                        <div class="pilot-name">Neoscris</div>
+                        <div class="pilot-country"></div>
+                        <div class="pilot-name"></div>
                     </div>
-                    <div class="pilot-team">Circus Racing</div>
+                    <div class="pilot-team"></div>
                 </div>
-                <div class="ship-model">Gladius</div>
-                <div class="event-result">00:00.000</div>
+                <div class="ship-model"></div>
+                <div class="event-result"></div>
             </div>
         </div>
 
+        <script src="/socket.io/socket.io.js"></script>
         <script src="event-row.js"></script>
     </body>
 </html>
