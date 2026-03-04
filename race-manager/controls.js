@@ -1,9 +1,11 @@
+// controls.js
+
 let controlsList = [];
 let editingControlId = null;
 
 function addControl() {
-    const type = document.getElementById("control-type").value.trim();
-    const img = document.getElementById("control-img").value.trim();
+    const type = document.getElementById("control-type").value?.trim();
+    const img = document.getElementById("control-img").value?.trim();
 
     if (!type) {
         alert("Please fill in the control type");
@@ -30,10 +32,7 @@ function displayControls() {
     tableBody.innerHTML = "";
 
     controlsList.forEach((ctrl) => {
-        const row =
-            ctrl.id === editingControlId
-                ? createControlEditRow(ctrl)
-                : createControlDisplayRow(ctrl);
+        const row = ctrl.id === editingControlId ? createControlEditRow(ctrl) : createControlDisplayRow(ctrl);
         tableBody.insertAdjacentHTML("beforeend", row);
     });
 }
@@ -44,8 +43,10 @@ function createControlDisplayRow(ctrl) {
       <td><img src="${ctrl.img}"></td>
       <td>${ctrl.type}</td>
       <td>
-        <button onclick="startEditControl(${ctrl.id})">Edit</button>
-        <button onclick="deleteControl(${ctrl.id})">Delete</button>
+        <div class="action-buttons">
+          <md-icon-button onclick="startEditControl(${ctrl.id})" title="Edit"><md-icon>edit</md-icon></md-icon-button>
+          <md-icon-button onclick="deleteControl(${ctrl.id})" title="Delete" style="--md-icon-button-icon-color: var(--md-sys-color-error);"><md-icon>delete</md-icon></md-icon-button>
+        </div>
       </td>
     </tr>`;
 }
@@ -53,11 +54,13 @@ function createControlDisplayRow(ctrl) {
 function createControlEditRow(ctrl) {
     return `
     <tr>
-      <td><input type="url" id="edit-control-img" value="${ctrl.img}"></td>
-      <td><input type="text" id="edit-control-type" value="${ctrl.type}"></td>
+      <td><md-outlined-text-field id="edit-control-img" value="${ctrl.img}" style="width:100%;"></md-outlined-text-field></td>
+      <td><md-outlined-text-field id="edit-control-type" value="${ctrl.type}" style="width:100%;"></md-outlined-text-field></td>
       <td>
-        <button onclick="saveEditControl(${ctrl.id})">Save</button>
-        <button onclick="cancelEditControl()">Cancel</button>
+        <div class="action-buttons">
+          <md-icon-button onclick="saveEditControl(${ctrl.id})" title="Save"><md-icon>check</md-icon></md-icon-button>
+          <md-icon-button onclick="cancelEditControl()" title="Cancel"><md-icon>close</md-icon></md-icon-button>
+        </div>
       </td>
     </tr>`;
 }
@@ -66,8 +69,7 @@ function deleteControl(id) {
     if (confirm("Delete this control type?")) {
         controlsList = controlsList.filter((c) => c.id !== id);
         displayControls();
-        if (typeof updateControlDropdown === "function")
-            updateControlDropdown();
+        if (typeof updateControlDropdown === "function") updateControlDropdown();
         if (typeof displayPilots === "function") displayPilots();
         saveToStorage();
     }
@@ -77,6 +79,7 @@ function startEditControl(id) {
     editingControlId = id;
     displayControls();
 }
+
 function cancelEditControl() {
     editingControlId = null;
     displayControls();
@@ -84,11 +87,21 @@ function cancelEditControl() {
 
 function saveEditControl(id) {
     const ctrl = controlsList.find((c) => c.id === id);
-    ctrl.type = document.getElementById("edit-control-type").value.trim();
-    ctrl.img = document.getElementById("edit-control-img").value.trim();
+    ctrl.type = document.getElementById("edit-control-type").value?.trim();
+    ctrl.img = document.getElementById("edit-control-img").value?.trim();
     editingControlId = null;
     displayControls();
     if (typeof updateControlDropdown === "function") updateControlDropdown();
     if (typeof displayPilots === "function") displayPilots();
     saveToStorage();
+}
+
+function updateControlDropdown() {
+    const select = document.getElementById("pilot-controls");
+    if (!select) return;
+
+    select.innerHTML = '<md-select-option value=""><div slot="headline">Select controls</div></md-select-option>';
+    controlsList.forEach((ctrl) => {
+        select.innerHTML += `<md-select-option value="${ctrl.id}"><div slot="headline">${ctrl.type}</div></md-select-option>`;
+    });
 }

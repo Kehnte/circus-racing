@@ -1,3 +1,434 @@
+:root {
+    color-scheme: dark;
+
+    --md-sys-color-primary: #ffb3b0;
+    --md-sys-color-on-primary: #680007;
+    --md-sys-color-primary-container: #920e12;
+    --md-sys-color-on-primary-container: #ffdad8;
+
+    --md-sys-color-secondary: #e7bdba;
+    --md-sys-color-on-secondary: #442927;
+    --md-sys-color-secondary-container: #5d3f3c;
+    --md-sys-color-on-secondary-container: #ffdad8;
+
+    --md-sys-color-tertiary: #e6c277;
+    --md-sys-color-on-tertiary: #3f2d00;
+    --md-sys-color-tertiary-container: #594300;
+    --md-sys-color-on-tertiary-container: #ffdea0;
+
+    --md-sys-color-error: #ffb4ab;
+    --md-sys-color-on-error: #690005;
+    --md-sys-color-error-container: #93000a;
+    --md-sys-color-on-error-container: #ffdad6;
+
+    --md-sys-color-surface-dim: #141218;
+    --md-sys-color-surface: #141218;
+    --md-sys-color-surface-bright: #3b383e;
+    --md-sys-color-surface-container-lowest: #0f0d13;
+    --md-sys-color-surface-container-low: #1d1b20;
+    --md-sys-color-surface-container: #211f26;
+    --md-sys-color-surface-container-high: #2b2930;
+    --md-sys-color-surface-container-highest: #36343b;
+
+    --md-sys-color-on-surface: #e6e1e6;
+    --md-sys-color-on-surface-variant: #cac4cf;
+
+    --md-sys-color-outline: #948f99;
+    --md-sys-color-outline-variant: #4a4553;
+
+    --md-sys-color-background: #141218;
+    --md-sys-color-on-background: #e6e1e6;
+    --md-sys-color-inverse-surface: #e6e1e6;
+    --md-sys-color-inverse-on-surface: #322f35;
+    --md-sys-color-inverse-primary: #b4131a;
+    --md-sys-color-scrim: #000000;
+    --md-sys-color-shadow: #000000;
+
+    --md-sys-shape-corner-extra-small: 4px;
+    --md-sys-shape-corner-small: 8px;
+    --md-sys-shape-corner-medium: 12px;
+    --md-sys-shape-corner-large: 16px;
+    --md-sys-shape-corner-extra-large: 28px;
+    --md-sys-shape-corner-full: 9999px;
+
+    --md-sys-elevation-level0: none;
+    --md-sys-elevation-level1: 0px 1px 2px rgba(0,0,0,0.3), 0px 1px 3px 1px rgba(0,0,0,0.15);
+    --md-sys-elevation-level2: 0px 1px 2px rgba(0,0,0,0.3), 0px 2px 6px 2px rgba(0,0,0,0.15);
+    --md-sys-elevation-level3: 0px 1px 3px rgba(0,0,0,0.3), 0px 4px 8px 3px rgba(0,0,0,0.15);
+
+    --md-filled-button-container-color: var(--md-sys-color-primary);
+    --md-filled-button-label-text-color: var(--md-sys-color-on-primary);
+    --md-outlined-button-label-text-color: var(--md-sys-color-primary);
+    --md-outlined-button-outline-color: var(--md-sys-color-outline);
+    --md-text-button-label-text-color: var(--md-sys-color-primary);
+
+    --md-outlined-text-field-input-text-color: var(--md-sys-color-on-surface);
+    --md-outlined-text-field-label-text-color: var(--md-sys-color-on-surface-variant);
+    --md-outlined-text-field-outline-color: var(--md-sys-color-outline);
+    --md-outlined-text-field-focus-outline-color: var(--md-sys-color-primary);
+    --md-outlined-text-field-focus-label-text-color: var(--md-sys-color-primary);
+
+    --md-outlined-select-text-field-input-text-color: var(--md-sys-color-on-surface);
+    --md-outlined-select-text-field-label-text-color: var(--md-sys-color-on-surface-variant);
+    --md-outlined-select-text-field-outline-color: var(--md-sys-color-outline);
+    --md-outlined-select-text-field-focus-outline-color: var(--md-sys-color-primary);
+    --md-outlined-select-text-field-focus-label-text-color: var(--md-sys-color-primary);
+
+    --md-menu-container-color: var(--md-sys-color-surface-container);
+    --md-menu-item-label-text-color: var(--md-sys-color-on-surface);
+
+    --md-divider-color: var(--md-sys-color-outline-variant);
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html,
 body {
-    background: transparent;
+    margin: 0;
+    padding: 0;
+    background-color: var(--md-sys-color-background);
+    color: var(--md-sys-color-on-surface);
+    font-family: "Roboto", sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    min-height: 100vh;
+}
+
+.page-header {
+    background-color: var(--md-sys-color-surface-container-high);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: var(--md-sys-elevation-level2);
+    margin-bottom: 0;
+}
+
+.page-header h1 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--md-sys-color-on-surface);
+    letter-spacing: 0;
+}
+
+.page-content {
+    padding: 16px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    max-width: 90vw;
+    margin: 0 auto;
+}
+
+.m3-card {
+    background-color: var(--md-sys-color-surface-container);
+    border-radius: var(--md-sys-shape-corner-medium);
+    padding: 20px 24px;
+    box-shadow: var(--md-sys-elevation-level1);
+}
+
+.m3-card-title {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--md-sys-color-on-surface);
+    margin: 0 0 16px 0;
+    letter-spacing: 0.15px;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.section-header h2 {
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--md-sys-color-on-surface);
+    margin: 0;
+}
+
+.form-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: flex-end;
+    margin-bottom: 8px;
+}
+
+.form-row md-outlined-text-field,
+.form-row md-outlined-select {
+    min-width: 180px;
+    flex: 1;
+}
+
+.button-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.m3-table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    border-radius: var(--md-sys-shape-corner-small);
+    border: 1px solid var(--md-sys-color-outline-variant);
+}
+
+table.m3-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    color: var(--md-sys-color-on-surface);
+    background-color: var(--md-sys-color-surface-container-low);
+    min-width: 400px;
+}
+
+#race-manager-section .m3-table { min-width: 900px; }
+#pilots-manager-section .m3-table { min-width: 700px; }
+#teams-manager-section .m3-table { min-width: 500px; }
+#ships-manager-section .m3-table { min-width: 400px; }
+#controls-manager-section .m3-table { min-width: 400px; }
+
+table.m3-table td,
+table.m3-table th {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+table.m3-table thead {
+    background-color: var(--md-sys-color-surface-container-high);
+}
+
+table.m3-table th {
+    padding: 10px 10px;
+    text-align: left;
+    font-weight: 500;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--md-sys-color-on-surface-variant);
+    border-bottom: 1px solid var(--md-sys-color-outline-variant);
+    white-space: nowrap;
+}
+
+table.m3-table td {
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--md-sys-color-outline-variant);
+    vertical-align: middle;
+}
+
+table.m3-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+table.m3-table tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+table.m3-table tfoot tr {
+    background-color: var(--md-sys-color-surface-container);
+}
+
+table.m3-table tfoot td {
+    padding: 8px 12px;
+    border-top: 1px solid var(--md-sys-color-outline-variant);
+    border-bottom: none;
+}
+
+table.m3-table img {
+    width: 36px;
+    height: 36px;
+    object-fit: cover;
+    border-radius: var(--md-sys-shape-corner-extra-small);
+}
+
+table.m3-table tfoot md-outlined-text-field,
+table.m3-table tfoot md-outlined-select {
+    --md-outlined-text-field-container-shape: 8px;
+    width: 100%;
+    min-width: 80px;
+}
+
+table.m3-table tr.dnf-row {
+    opacity: 0.5;
+}
+
+table.m3-table tr.dnf-row td {
+    color: var(--md-sys-color-on-surface-variant);
+}
+
+table.m3-table tr.finished-row td {
+    color: var(--md-sys-color-tertiary);
+}
+
+.position-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--md-sys-shape-corner-full);
+    background-color: var(--md-sys-color-surface-container-highest);
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--md-sys-color-on-surface);
+}
+
+.position-badge.pos-first {
+    background-color: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
+}
+
+.team-color-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 6px;
+    vertical-align: middle;
+}
+
+.race-controls-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    padding: 12px 16px;
+    background-color: var(--md-sys-color-surface-container-high);
+    border-radius: var(--md-sys-shape-corner-medium);
+}
+
+.race-controls-bar .spacer {
+    flex: 1;
+}
+
+.pilot-count-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: var(--md-sys-shape-corner-full);
+    background-color: var(--md-sys-color-surface-container-highest);
+    font-size: 13px;
+    color: var(--md-sys-color-on-surface-variant);
+    font-weight: 500;
+}
+
+.m3-divider {
+    border: none;
+    border-top: 1px solid var(--md-sys-color-outline-variant);
+    margin: 8px 0;
+}
+
+input.inline-number {
+    width: 52px;
+    background: var(--md-sys-color-surface-container-highest);
+    border: 1px solid var(--md-sys-color-outline);
+    border-radius: var(--md-sys-shape-corner-extra-small);
+    color: var(--md-sys-color-on-surface);
+    font-size: 14px;
+    padding: 4px 6px;
+    text-align: center;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+input.inline-number:focus {
+    border-color: var(--md-sys-color-primary);
+}
+
+.color-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+input[type="color"] {
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--md-sys-color-outline);
+    border-radius: var(--md-sys-shape-corner-extra-small);
+    background: none;
+    cursor: pointer;
+    padding: 2px;
+}
+
+.team-ext {
+}
+
+.lap-display {
+    font-family: "Roboto Mono", monospace;
+    font-size: 13px;
+}
+
+.lap-display.finished {
+    color: var(--md-sys-color-tertiary);
+    font-weight: 500;
+}
+
+md-outlined-text-field {
+    --md-outlined-text-field-supporting-text-color: transparent;
+    --md-outlined-text-field-supporting-text-size: 0.1px;
+    --md-outlined-text-field-supporting-text-line-height: 0px;
+    --md-outlined-text-field-supporting-text-space: 0px;
+}
+
+.color-palette-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.color-swatches {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    max-width: 220px;
+}
+
+.color-swatch {
+    width: 24px;
+    height: 24px;
+    border-radius: var(--md-sys-shape-corner-full);
+    border: 2px solid transparent;
+    cursor: pointer;
+    padding: 0;
+    transition: transform 0.15s ease, border-color 0.15s ease;
+    outline: none;
+}
+
+.color-swatch:hover {
+    transform: scale(1.2);
+}
+
+.color-swatch.selected {
+    border-color: var(--md-sys-color-on-surface);
+    transform: scale(1.15);
+}
+
+.color-selected-preview {
+    display: none;
+}
+
+md-icon {
+    font-family: "Material Symbols Outlined";
+}
+
+table.m3-table td .action-buttons {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 2px;
+    align-items: center;
 }

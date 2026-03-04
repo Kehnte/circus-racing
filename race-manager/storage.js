@@ -48,7 +48,6 @@ function saveToStorage() {
     }
 }
 
-// Updated to handle Weather and remove Location
 function saveRaceSettings() {
     try {
         const settings = {
@@ -87,42 +86,33 @@ function saveAllToLocal() {
 }
 
 function resetTeams() {
-    if (confirm("Are you sure you want to delete all teams?")) {
-        teams = [];
-        localStorage.removeItem(STORAGE_KEYS.TEAMS);
-        displayTeams();
-        if (typeof updateTeamDropdown === "function") updateTeamDropdown();
-        if (typeof displayPilots === "function") displayPilots();
-    }
+    teams = [];
+    localStorage.removeItem(STORAGE_KEYS.TEAMS);
+    displayTeams();
+    if (typeof updateTeamDropdown === "function") updateTeamDropdown();
+    if (typeof displayPilots === "function") displayPilots();
 }
 
 function resetShips() {
-    if (confirm("Are you sure you want to delete all ships?")) {
-        ships = [];
-        localStorage.removeItem(STORAGE_KEYS.SHIPS);
-        displayShips();
-        if (typeof updateShipDropdown === "function") updateShipDropdown();
-        if (typeof displayPilots === "function") displayPilots();
-    }
+    ships = [];
+    localStorage.removeItem(STORAGE_KEYS.SHIPS);
+    displayShips();
+    if (typeof updateShipDropdown === "function") updateShipDropdown();
+    if (typeof displayPilots === "function") displayPilots();
 }
 
 function resetControls() {
-    if (confirm("Are you sure you want to delete all controls?")) {
-        controlsList = [];
-        localStorage.removeItem(STORAGE_KEYS.CONTROLS);
-        displayControls();
-        if (typeof updateControlDropdown === "function")
-            updateControlDropdown();
-        if (typeof displayPilots === "function") displayPilots();
-    }
+    controlsList = [];
+    localStorage.removeItem(STORAGE_KEYS.CONTROLS);
+    displayControls();
+    if (typeof updateControlDropdown === "function") updateControlDropdown();
+    if (typeof displayPilots === "function") displayPilots();
 }
 
 function resetPilots() {
-    if (confirm("Are you sure you want to delete all pilots?")) {
-        pilots = [];
-        localStorage.removeItem(STORAGE_KEYS.PILOTS);
-        displayPilots();
-    }
+    pilots = [];
+    localStorage.removeItem(STORAGE_KEYS.PILOTS);
+    displayPilots();
 }
 
 document.addEventListener("DOMContentLoaded", () => {

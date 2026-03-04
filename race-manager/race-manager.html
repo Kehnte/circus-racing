@@ -4,273 +4,371 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Circus Racing</title>
-        <link rel="stylesheet" href="race-manager.css" />
+
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap"
+            rel="stylesheet"
+        />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+            rel="stylesheet"
+        />
+        <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/flag-icons/css/flag-icons.min.css"
+        />
+
+        <!-- Material Web via CDN -->
+        <script type="importmap">
+            {
+                "imports": {
+                    "@material/web/": "https://esm.run/@material/web/"
+                }
+            }
+        </script>
+        <script type="module">
+            import "@material/web/all.js";
+            import { styles as typescaleStyles } from "@material/web/typography/md-typescale-styles.js";
+            document.adoptedStyleSheets.push(typescaleStyles.styleSheet);
+        </script>
+
+        <link rel="stylesheet" href="index.css" />
     </head>
 
     <body>
-        <h1>Circus Racing</h1>
 
-        <div id="race-manager-section">
-            <h2>Race</h2>
-            <div id="race-settings">
-                <div>
-                    <label>Race name:</label>
-                    <input type="text" id="setting-race-name" />
-                    <label>Session:</label>
-                    <select id="setting-session">
-                        <option value="Practice">Practice</option>
-                        <option value="Qualifying">Qualifying</option>
-                        <option value="Race">Race</option>
-                    </select>
+        <!-- Page header -->
+        <header class="page-header">
+            <span style="font-size: 28px;">🏁</span>
+            <h1>Circus Racing</h1>
+        </header>
+
+        <div class="page-content">
+
+            <!-- ================================================
+                 RACE SECTION
+                 ================================================ -->
+            <div class="m3-card" id="race-manager-section">
+                <div class="section-header">
+                    <h2 class="m3-card-title" style="margin-bottom:0">Race</h2>
                 </div>
-                <div>
-                    <label>Weather:</label>
-                    <select id="setting-weather">
-                        <option value="Clear">Clear</option>
-                        <option value="Cloudy">Cloudy</option>
-                        <option value="Fog">Fog</option>
-                        <option value="Rain">Rain</option>
-                        <option value="Storm">Storm</option>
-                        <option value="Snow">Snow</option>
-                    </select>
-                    <label>Start type:</label>
-                    <select id="setting-start-type">
-                        <option value="Grid Start">Grid start</option>
-                        <option value="Rolling Start">Rolling start</option>
-                    </select>
-                    <span>Pilots: <span id="pilot-count">0</span></span>
+
+                <!-- Settings row 1 -->
+                <div class="form-row">
+                    <md-outlined-text-field
+                        id="setting-race-name"
+                        label="Race name"
+                        style="flex: 2; min-width: 200px;"
+                    ></md-outlined-text-field>
+
+                    <md-outlined-select id="setting-session" label="Session">
+                        <md-select-option value="Practice"><div slot="headline">Practice</div></md-select-option>
+                        <md-select-option value="Qualifying"><div slot="headline">Qualifying</div></md-select-option>
+                        <md-select-option value="Race"><div slot="headline">Race</div></md-select-option>
+                    </md-outlined-select>
+
+                    <md-outlined-select id="setting-weather" label="Weather">
+                        <md-select-option value="Clear"><div slot="headline">Clear</div></md-select-option>
+                        <md-select-option value="Cloudy"><div slot="headline">Cloudy</div></md-select-option>
+                        <md-select-option value="Fog"><div slot="headline">Fog</div></md-select-option>
+                        <md-select-option value="Rain"><div slot="headline">Rain</div></md-select-option>
+                        <md-select-option value="Storm"><div slot="headline">Storm</div></md-select-option>
+                        <md-select-option value="Snow"><div slot="headline">Snow</div></md-select-option>
+                    </md-outlined-select>
+
+                    <md-outlined-select id="setting-start-type" label="Start type">
+                        <md-select-option value="Grid Start"><div slot="headline">Grid start</div></md-select-option>
+                        <md-select-option value="Rolling Start"><div slot="headline">Rolling start</div></md-select-option>
+                    </md-outlined-select>
+                </div>
+
+                <!-- Controls bar -->
+                <div class="race-controls-bar">
+                    <md-outlined-text-field
+                        id="total-laps"
+                        label="Total laps"
+                        type="number"
+                        value="3"
+                        min="1"
+                        style="width: 110px; flex-shrink: 0;"
+                    ></md-outlined-text-field>
+
+                    <md-outlined-text-field
+                        id="event-duration"
+                        label="Event duration (s)"
+                        type="number"
+                        value="5"
+                        min="1"
+                        max="30"
+                        style="width: 140px; flex-shrink: 0;"
+                    ></md-outlined-text-field>
+
+                    <div class="spacer"></div>
+
+                    <div class="button-group">
+                        <md-filled-button onclick="startRace()" id="btn-start">Start race</md-filled-button>
+                        <md-outlined-button onclick="pauseRace()" id="btn-pause" disabled>Pause race</md-outlined-button>
+                        <md-outlined-button onclick="endRaceManually()" id="btn-finish" disabled>Finish race</md-outlined-button>
+                        <md-text-button onclick="resetRace()">Reset race</md-text-button>
+                        <md-text-button onclick="reloadPilots()">Reload pilots</md-text-button>
+                        <md-text-button onclick="toggleTeamManagement()">Toggle teams</md-text-button>
+                    </div>
+
+                    <div class="pilot-count-chip">
+                        <span>Pilots:</span>
+                        <strong id="pilot-count">0</strong>
+                    </div>
+                </div>
+
+                <!-- Race table -->
+                <div class="m3-table-wrapper" style="margin-top: 16px;">
+                    <table class="m3-table" style="table-layout: fixed;">
+                        <colgroup>
+                            <col style="width: 5%">   <!-- Pos -->
+                            <col style="width: 20%">  <!-- Pilot -->
+                            <col style="width: 10%">  <!-- Team -->
+                            <col style="width: 10%">   <!-- Laps -->
+                            <col style="width: 15%">  <!-- Lap Counter -->
+                            <col style="width: 10%">  <!-- Set Pos -->
+                            <col style="width: 15%">  <!-- Reorder -->
+                            <col style="width: 15%">  <!-- DNF -->
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th>Pos</th>
+                                <th>Pilot</th>
+                                <th class="team-ext">Team</th>
+                                <th>Laps</th>
+                                <th>Lap Counter</th>
+                                <th>Set Pos</th>
+                                <th>Reorder</th>
+                                <th>DNF</th>
+                            </tr>
+                        </thead>
+                        <tbody id="race-list"></tbody>
+                    </table>
                 </div>
             </div>
-            <br />
-            <div class="race-controls">
-                <label>Total Laps: </label>
-                <input type="number" id="total-laps" value="3" min="1" />
-                <label>Event display duration (s): </label>
-                <input type="number" id="event-duration" value="5" min="1" max="30" style="width: 50px" />
-                <button onclick="startRace()" id="btn-start">Start race</button>
-                <button onclick="pauseRace()" id="btn-pause" disabled>
-                    Pause race
-                </button>
-                <button onclick="endRaceManually()" id="btn-finish" disabled>
-                    Finish race
-                </button>
-                <button onclick="resetRace()">Reset race</button>
-                <button onclick="reloadPilots()">Reload pilots</button>
-                <button onclick="toggleTeamManagement()">Toggle teams</button>
+
+            <!-- ================================================
+                 PILOTS SECTION
+                 ================================================ -->
+            <div class="m3-card" id="pilots-manager-section">
+                <div class="section-header">
+                    <h2 class="m3-card-title" style="margin-bottom:0">Pilots</h2>
+                    <md-text-button onclick="resetPilots()">Reset pilots</md-text-button>
+                </div>
+
+                <div class="m3-table-wrapper">
+                    <table class="m3-table" style="table-layout: fixed;">
+                        <colgroup>
+                            <col style="width: 20%">  <!-- Name -->
+                            <col style="width: 15%">  <!-- Nationality -->
+                            <col style="width: 20%">  <!-- Team -->
+                            <col style="width: 15%">  <!-- Ship -->
+                            <col style="width: 15%">  <!-- Controls -->
+                            <col style="width: 15%">  <!-- Actions -->
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Nationality</th>
+                                <th class="team-ext">Team</th>
+                                <th>Ship</th>
+                                <th>Controls</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pilots-list"></tbody>
+                        <tfoot>
+                            <tr>
+                                <td>
+                                    <md-outlined-text-field id="pilot-name" label="Pilot name" style="width:100%;"></md-outlined-text-field>
+                                </td>
+                                <td>
+                                    <md-outlined-text-field id="pilot-country" label="fr" maxlength="2" style="width:100%;"></md-outlined-text-field>
+                                </td>
+                                <td class="team-ext">
+                                    <md-outlined-select id="pilot-team" label="Team" style="width:100%;"></md-outlined-select>
+                                </td>
+                                <td>
+                                    <md-outlined-select id="pilot-ship" label="Ship" style="width:100%;"></md-outlined-select>
+                                </td>
+                                <td>
+                                    <md-outlined-select id="pilot-controls" label="Controls" style="width:100%;"></md-outlined-select>
+                                </td>
+                                <td>
+                                    <md-filled-button onclick="addPilot()">Add pilot</md-filled-button>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
             </div>
-            <br />
-            <table border="1">
-                <thead>
-                    <tr>
-                        <th>Pos</th>
-                        <th>Pilot</th>
-                        <th class="team-ext">Team</th>
-                        <th>Laps</th>
-                        <th>Lap Counter</th>
-                        <th>Set Pos</th>
-                        <th>Reorder</th>
-                        <th>DNF</th>
-                    </tr>
-                </thead>
-                <tbody id="race-list"></tbody>
-            </table>
-        </div>
 
-        <hr />
+            <!-- ================================================
+                 TEAMS SECTION
+                 ================================================ -->
+            <div class="m3-card" id="teams-manager-section">
+                <div class="section-header">
+                    <h2 class="m3-card-title" style="margin-bottom:0">Teams</h2>
+                    <md-text-button onclick="resetTeams()">Reset teams</md-text-button>
+                </div>
 
-        <div id="pilots-manager-section">
-            <h2>
-                Pilots <button onclick="resetPilots()">Reset pilots</button>
-            </h2>
-            <table border="1">
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Nationality</th>
-                        <th class="team-ext">Team</th>
-                        <th>Ship</th>
-                        <th>Controls</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="pilots-list"></tbody>
-                <tfoot>
-                    <tr>
-                        <td>
-                            <input
-                                type="text"
-                                id="pilot-name"
-                                placeholder="Pilot name"
-                            />
-                        </td>
-                        <td>
-                            <input
-                                type="text"
-                                id="pilot-country"
-                                placeholder="fr"
-                                maxlength="2"
-                                style="width: 40px"
-                            />
-                        </td>
-                        <td class="team-ext">
-                            <select id="pilot-team"></select>
-                        </td>
-                        <td><select id="pilot-ship"></select></td>
-                        <td><select id="pilot-controls"></select></td>
-                        <td>
-                            <button type="button" onclick="addPilot()">
-                                Add pilot
-                            </button>
-                        </td>
-                    </tr>
-                </tfoot>
-            </table>
-        </div>
-
-        <hr id="teams-separator" />
-
-        <div id="teams-manager-section">
-            <h2>Teams <button onclick="resetTeams()">Reset teams</button></h2>
-            <table border="1">
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Acronym</th>
-                        <th>Color</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="team-list"></tbody>
-                <tfoot>
-                    <tr>
-                        <td>
-                            <input
-                                type="text"
-                                id="name"
-                                placeholder="Team name"
-                                required
-                            />
-                        </td>
-                        <td>
-                            <input
-                                type="text"
-                                id="acronym"
-                                maxlength="4"
-                                placeholder="ACRO"
-                                required
-                            />
-                        </td>
-                        <td>
-                            <input type="color" id="color" value="#3498db" />
-                        </td>
-                        <td>
-                            <button type="button" onclick="addTeam()">
-                                Add team
-                            </button>
-                        </td>
-                    </tr>
-                </tfoot>
-            </table>
-        </div>
-
-        <hr />
-
-        <div id="ships-manager-section">
-            <h2>Ships <button onclick="resetShips()">Reset ships</button></h2>
-            <table border="1">
-                <thead>
-                    <tr>
-                        <th>Image</th>
-                        <th>Model</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="ships-list"></tbody>
-                <tfoot>
-                    <tr>
-                        <td>
-                            <input
-                                type="url"
-                                id="ship-img"
-                                placeholder="Image URL"
-                            />
-                        </td>
-                        <td>
-                            <input
-                                type="text"
-                                id="ship-model"
-                                placeholder="Model"
-                            />
-                        </td>
-                        <td>
-                            <button type="button" onclick="addShip()">
-                                Add ship
-                            </button>
-                        </td>
-                    </tr>
-                </tfoot>
-            </table>
-        </div>
-
-        <hr />
-
-        <div id="controls-manager-section">
-            <h2>
-                Controls
-                <button onclick="resetControls()">Reset controls</button>
-            </h2>
-            <table border="1">
-                <thead>
-                    <tr>
-                        <th>Image</th>
-                        <th>Control Type</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="controls-list"></tbody>
-                <tfoot>
-                    <tr>
-                        <td>
-                            <input
-                                type="url"
-                                id="control-img"
-                                placeholder="Image URL"
-                            />
-                        </td>
-                        <td>
-                            <input
-                                type="text"
-                                id="control-type"
-                                placeholder="Control Type"
-                            />
-                        </td>
-                        <td>
-                            <button type="button" onclick="addControl()">
-                                Add control
-                            </button>
-                        </td>
-                    </tr>
-                </tfoot>
-            </table>
-        </div>
-
-        <hr />
-
-        <div id="data-manager-section">
-            <h2>Data</h2>
-            <div>
-                <button onclick="exportData()">Export all data (JSON)</button>
-                <button onclick="importData()">Import data (JSON)</button>
-                <button onclick="resetAllData()">Reset all data</button>
+                <div class="m3-table-wrapper">
+                    <table class="m3-table">
+                        <thead>
+                            <tr>
+                                <th class="col-grow">Name</th>
+                                <th class="col-shrink">Acronym</th>
+                                <th class="col-shrink">Color</th>
+                                <th class="col-shrink">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="team-list"></tbody>
+                        <tfoot>
+                            <tr>
+                                <td class="col-grow">
+                                    <md-outlined-text-field id="name" label="Team name" style="width:100%;"></md-outlined-text-field>
+                                </td>
+                                <td class="col-shrink">
+                                    <md-outlined-text-field id="acronym" label="ACRO" maxlength="4" style="width:100%;"></md-outlined-text-field>
+                                </td>
+                                <td>
+                                    <div class="color-palette-wrapper">
+                                        <div class="color-swatches" id="color-swatches">
+                                            <button type="button" class="color-swatch" style="background-color:#E57373" data-color="#E57373" title="Red 300"></button>
+                                            <button type="button" class="color-swatch" style="background-color:#F06292" data-color="#F06292" title="Pink 300"></button>
+                                            <button type="button" class="color-swatch" style="background-color:#BA68C8" data-color="#BA68C8" title="Purple 300"></button>
+                                            <button type="button" class="color-swatch" style="background-color:#9575CD" data-color="#9575CD" title="Deep Purple 300"></button>
+                                            <button type="button" class="color-swatch" style="background-color:#7986CB" data-color="#7986CB" title="Indigo 300"></button>
+                                            <button type="button" class="color-swatch" style="background-color:#64B5F6" data-color="#64B5F6" title="Blue 300"></button>
+                                            <button type="button" class="color-swatch" style="background-color:#4FC3F7" data-color="#4FC3F7" title="Light Blue 300"></button>
+                                            <button type="button" class="color-swatch" style="background-color:#4DD0E1" data-color="#4DD0E1" title="Cyan 300"></button>
+                                            <button type="button" class="color-swatch" style="background-color:#4DB6AC" data-color="#4DB6AC" title="Teal 300"></button>
+                                            <button type="button" class="color-swatch" style="background-color:#81C784" data-color="#81C784" title="Green 300"></button>
+                                            <button type="button" class="color-swatch" style="background-color:#AED581" data-color="#AED581" title="Light Green 300"></button>
+                                            <button type="button" class="color-swatch" style="background-color:#DCE775" data-color="#DCE775" title="Lime 300"></button>
+                                            <button type="button" class="color-swatch" style="background-color:#FFF176" data-color="#FFF176" title="Yellow 300"></button>
+                                            <button type="button" class="color-swatch" style="background-color:#FFD54F" data-color="#FFD54F" title="Amber 300"></button>
+                                            <button type="button" class="color-swatch" style="background-color:#FFB74D" data-color="#FFB74D" title="Orange 300"></button>
+                                            <button type="button" class="color-swatch" style="background-color:#FF8A65" data-color="#FF8A65" title="Deep Orange 300"></button>
+                                            <button type="button" class="color-swatch" style="background-color:#A1887F" data-color="#A1887F" title="Brown 300"></button>
+                                            <button type="button" class="color-swatch" style="background-color:#E0E0E0" data-color="#E0E0E0" title="Grey 300"></button>
+                                            <button type="button" class="color-swatch" style="background-color:#90A4AE" data-color="#90A4AE" title="Blue Grey 300"></button>
+                                        </div>
+                                        <div class="color-selected-preview">
+                                            <span class="color-selected-dot" id="color-selected-dot" style="background-color:#E57373"></span>
+                                            <span class="color-selected-hex" id="color-selected-hex">#E57373</span>
+                                        </div>
+                                        <input type="hidden" id="color" value="#E57373" />
+                                    </div>
+                                </td>
+                                <td>
+                                    <md-filled-button onclick="addTeam()">Add team</md-filled-button>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
             </div>
-            <input
-                type="file"
-                id="import-file-input"
-                accept=".json"
-                style="display: none"
-                onchange="handleFileImport(event)"
-            />
-        </div>
+
+            <!-- ================================================
+                 SHIPS SECTION
+                 ================================================ -->
+            <div class="m3-card" id="ships-manager-section">
+                <div class="section-header">
+                    <h2 class="m3-card-title" style="margin-bottom:0">Ships</h2>
+                    <md-text-button onclick="resetShips()">Reset ships</md-text-button>
+                </div>
+
+                <div class="m3-table-wrapper">
+                    <table class="m3-table">
+                        <thead>
+                            <tr>
+                                <th class="col-shrink">Image</th>
+                                <th class="col-grow">Model</th>
+                                <th class="col-shrink">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ships-list"></tbody>
+                        <tfoot>
+                            <tr>
+                                <td class="col-shrink">
+                                    <md-outlined-text-field id="ship-img" label="Image URL" style="width:100%;"></md-outlined-text-field>
+                                </td>
+                                <td class="col-grow">
+                                    <md-outlined-text-field id="ship-model" label="Model" style="width:100%;"></md-outlined-text-field>
+                                </td>
+                                <td class="col-shrink">
+                                    <md-filled-button onclick="addShip()">Add ship</md-filled-button>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ================================================
+                 CONTROLS SECTION
+                 ================================================ -->
+            <div class="m3-card" id="controls-manager-section">
+                <div class="section-header">
+                    <h2 class="m3-card-title" style="margin-bottom:0">Controls</h2>
+                    <md-text-button onclick="resetControls()">Reset controls</md-text-button>
+                </div>
+
+                <div class="m3-table-wrapper">
+                    <table class="m3-table">
+                        <thead>
+                            <tr>
+                                <th class="col-shrink">Image</th>
+                                <th class="col-grow">Control Type</th>
+                                <th class="col-shrink">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="controls-list"></tbody>
+                        <tfoot>
+                            <tr>
+                                <td class="col-shrink">
+                                    <md-outlined-text-field id="control-img" label="Image URL" style="width:100%;"></md-outlined-text-field>
+                                </td>
+                                <td class="col-grow">
+                                    <md-outlined-text-field id="control-type" label="Control type" style="width:100%;"></md-outlined-text-field>
+                                </td>
+                                <td class="col-shrink">
+                                    <md-filled-button onclick="addControl()">Add control</md-filled-button>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ================================================
+                 DATA SECTION
+                 ================================================ -->
+            <div class="m3-card" id="data-manager-section">
+                <div class="section-header">
+                    <h2 class="m3-card-title" style="margin-bottom:0">Data</h2>
+                </div>
+                <div class="button-group">
+                    <md-filled-button onclick="exportData()">Export all data (JSON)</md-filled-button>
+                    <md-outlined-button onclick="importData()">Import data (JSON)</md-outlined-button>
+                    <md-text-button onclick="resetAllData()" style="--md-text-button-label-text-color: var(--md-sys-color-error);">Reset all data</md-text-button>
+                </div>
+                <input
+                    type="file"
+                    id="import-file-input"
+                    accept=".json"
+                    style="display: none"
+                    onchange="handleFileImport(event)"
+                />
+            </div>
+
+        </div><!-- /page-content -->
 
         <script src="/socket.io/socket.io.js"></script>
         <script src="storage.js"></script>
@@ -281,5 +379,31 @@
         <script src="race.js"></script>
         <script src="shortcuts.js"></script>
         <script src="data-manager.js"></script>
+
+        <script>
+            const _getElementById = document.getElementById.bind(document);
+            document.getElementById = function(id) {
+                const el = _getElementById(id);
+                if (!el) return el;
+                return el;
+            };
+        </script>
+        <script>
+            document.addEventListener("DOMContentLoaded", () => {
+                const swatches = document.querySelectorAll(".color-swatch");
+                if (swatches.length > 0) swatches[0].classList.add("selected");
+
+                swatches.forEach((swatch) => {
+                    swatch.addEventListener("click", () => {
+                        swatches.forEach((s) => s.classList.remove("selected"));
+                        swatch.classList.add("selected");
+                        const color = swatch.dataset.color;
+                        document.getElementById("color").value = color;
+                        document.getElementById("color-selected-dot").style.backgroundColor = color;
+                        document.getElementById("color-selected-hex").textContent = color;
+                    });
+                });
+            });
+        </script>
     </body>
 </html>

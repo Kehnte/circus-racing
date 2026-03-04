@@ -1,16 +1,30 @@
-// src/pilots.js
+// pilots.js
 
 let pilots = [];
 let editingPilotId = null;
+
+// Helper: get value from md- or native element
+function getVal(id) {
+    const el = document.getElementById(id);
+    if (!el) return "";
+    return (el.value ?? "").toString().trim();
+}
+
+// Helper: set value on md- or native element
+function setVal(id, value) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.value = value;
+}
 
 // Update the dropdown for selecting a team
 function updateTeamDropdown() {
     const select = document.getElementById("pilot-team");
     if (!select) return;
 
-    select.innerHTML = '<option value="">Select a team</option>';
+    select.innerHTML = '<md-select-option value=""><div slot="headline">Select a team</div></md-select-option>';
     teams.forEach((team) => {
-        select.innerHTML += `<option value="${team.id}">${team.name}</option>`;
+        select.innerHTML += `<md-select-option value="${team.id}"><div slot="headline">${team.name}</div></md-select-option>`;
     });
 }
 
@@ -19,9 +33,9 @@ function updateShipDropdown() {
     const select = document.getElementById("pilot-ship");
     if (!select) return;
 
-    select.innerHTML = '<option value="">Select a ship</option>';
+    select.innerHTML = '<md-select-option value=""><div slot="headline">Select a ship</div></md-select-option>';
     ships.forEach((ship) => {
-        select.innerHTML += `<option value="${ship.id}">${ship.model}</option>`;
+        select.innerHTML += `<md-select-option value="${ship.id}"><div slot="headline">${ship.model}</div></md-select-option>`;
     });
 }
 
@@ -30,22 +44,19 @@ function updateControlDropdown() {
     const select = document.getElementById("pilot-controls");
     if (!select) return;
 
-    select.innerHTML = '<option value="">Select controls</option>';
+    select.innerHTML = '<md-select-option value=""><div slot="headline">Select controls</div></md-select-option>';
     controlsList.forEach((ctrl) => {
-        select.innerHTML += `<option value="${ctrl.id}">${ctrl.type}</option>`;
+        select.innerHTML += `<md-select-option value="${ctrl.id}"><div slot="headline">${ctrl.type}</div></md-select-option>`;
     });
 }
 
 // Add a new pilot
 function addPilot() {
-    const name = document.getElementById("pilot-name").value.trim();
-    const country = document
-        .getElementById("pilot-country")
-        .value.trim()
-        .toLowerCase();
-    const teamId = document.getElementById("pilot-team").value;
-    const shipId = document.getElementById("pilot-ship").value;
-    const controlId = document.getElementById("pilot-controls").value;
+    const name = getVal("pilot-name");
+    const country = getVal("pilot-country").toLowerCase();
+    const teamId = getVal("pilot-team");
+    const shipId = getVal("pilot-ship");
+    const controlId = getVal("pilot-controls");
 
     const isTeamValid = isTeamManagementActive ? teamId : true;
 
@@ -96,65 +107,58 @@ function createPilotDisplayRow(pilot) {
       <tr>
         <td>${pilot.name}</td>
         <td><span class="fi fi-${safeCountry} fis"></span> (${safeCountry.toUpperCase()})</td>
-        <td class="team-ext" style="display: ${
-            isTeamManagementActive ? "" : "none"
-        }">
+        <td style="display: ${isTeamManagementActive ? "" : "none"}">
           ${team ? team.name : "---"}
         </td>
         <td>${ship ? ship.model : "No ship"}</td>
         <td>${ctrl ? ctrl.type : "Unknown"}</td>
         <td>
-          <button onclick="startEditPilot(${pilot.id})">Edit</button>
-          <button onclick="deletePilot(${pilot.id})">Delete</button>
+          <div class="action-buttons">
+            <md-icon-button onclick="startEditPilot(${pilot.id})" title="Edit">
+              <md-icon>edit</md-icon>
+            </md-icon-button>
+            <md-icon-button onclick="deletePilot(${pilot.id})" title="Delete" style="--md-icon-button-icon-color: var(--md-sys-color-error);">
+              <md-icon>delete</md-icon>
+            </md-icon-button>
+          </div>
         </td>
       </tr>`;
 }
 
 // Create an edit row for a pilot
 function createPilotEditRow(pilot) {
+    const safeCountry = pilot.country || "un";
+
     let teamOptions = teams
-        .map(
-            (t) =>
-                `<option value="${t.id}" ${
-                    t.id === pilot.teamId ? "selected" : ""
-                }>${t.name}</option>`,
-        )
+        .map((t) => `<md-select-option value="${t.id}" ${t.id === pilot.teamId ? "selected" : ""}><div slot="headline">${t.name}</div></md-select-option>`)
         .join("");
 
     let shipOptions = ships
-        .map(
-            (s) =>
-                `<option value="${s.id}" ${
-                    s.id === pilot.shipId ? "selected" : ""
-                }>${s.model}</option>`,
-        )
+        .map((s) => `<md-select-option value="${s.id}" ${s.id === pilot.shipId ? "selected" : ""}><div slot="headline">${s.model}</div></md-select-option>`)
         .join("");
 
     let controlOptions = controlsList
-        .map(
-            (c) =>
-                `<option value="${c.id}" ${
-                    c.id === pilot.controlId ? "selected" : ""
-                }>${c.type}</option>`,
-        )
+        .map((c) => `<md-select-option value="${c.id}" ${c.id === pilot.controlId ? "selected" : ""}><div slot="headline">${c.type}</div></md-select-option>`)
         .join("");
-
-    const safeCountry = pilot.country || "un";
 
     return `
     <tr>
-      <td><input type="text" id="edit-pilot-name" value="${pilot.name}"></td>
-      <td><input type="text" id="edit-pilot-country" value="${safeCountry}" maxlength="2" style="width: 40px"></td>
-      <td class="team-ext" style="display: ${
-          isTeamManagementActive ? "" : "none"
-      }">
-        <select id="edit-pilot-team">${teamOptions}</select>
+      <td><md-outlined-text-field id="edit-pilot-name" value="${pilot.name}" style="width:100%;"></md-outlined-text-field></td>
+      <td><md-outlined-text-field id="edit-pilot-country" value="${safeCountry}" maxlength="2" style="width:100%;"></md-outlined-text-field></td>
+      <td style="display: ${isTeamManagementActive ? "" : "none"}">
+        <md-outlined-select id="edit-pilot-team" style="width:100%;">${teamOptions}</md-outlined-select>
       </td>
-      <td><select id="edit-pilot-ship">${shipOptions}</select></td>
-      <td><select id="edit-pilot-controls">${controlOptions}</select></td>
+      <td><md-outlined-select id="edit-pilot-ship" style="width:100%;">${shipOptions}</md-outlined-select></td>
+      <td><md-outlined-select id="edit-pilot-controls" style="width:100%;">${controlOptions}</md-outlined-select></td>
       <td>
-        <button onclick="saveEditPilot(${pilot.id})">Save</button>
-        <button onclick="cancelEditPilot()">Cancel</button>
+        <div class="action-buttons">
+          <md-icon-button onclick="saveEditPilot(${pilot.id})" title="Save">
+            <md-icon>check</md-icon>
+          </md-icon-button>
+          <md-icon-button onclick="cancelEditPilot()" title="Cancel">
+            <md-icon>close</md-icon>
+          </md-icon-button>
+        </div>
       </td>
     </tr>`;
 }
@@ -162,12 +166,7 @@ function createPilotEditRow(pilot) {
 // Delete a pilot
 function deletePilot(idToDelete) {
     const pilotToDelete = pilots.find((p) => p.id === idToDelete);
-    if (
-        pilotToDelete &&
-        confirm(
-            `Are you sure you want to delete the pilot ${pilotToDelete.name}?`,
-        )
-    ) {
+    if (pilotToDelete) {
         pilots = pilots.filter((p) => p.id !== idToDelete);
         displayPilots();
         saveToStorage();
@@ -189,14 +188,11 @@ function cancelEditPilot() {
 // Save changes made to an edited pilot
 function saveEditPilot(id) {
     const pilot = pilots.find((p) => p.id === id);
-    const name = document.getElementById("edit-pilot-name").value.trim();
-    const country = document
-        .getElementById("edit-pilot-country")
-        .value.trim()
-        .toLowerCase();
-    const teamId = document.getElementById("edit-pilot-team").value;
-    const shipId = document.getElementById("edit-pilot-ship").value;
-    const controlId = document.getElementById("edit-pilot-controls").value;
+    const name = getVal("edit-pilot-name");
+    const country = getVal("edit-pilot-country").toLowerCase();
+    const teamId = getVal("edit-pilot-team");
+    const shipId = getVal("edit-pilot-ship");
+    const controlId = getVal("edit-pilot-controls");
 
     if (!name || (isTeamManagementActive && !teamId) || !shipId || !controlId) {
         alert("Please fill in all fields");
@@ -216,11 +212,11 @@ function saveEditPilot(id) {
 
 // Clear the form fields
 function clearPilotForm() {
-    document.getElementById("pilot-name").value = "";
-    document.getElementById("pilot-country").value = "";
-    document.getElementById("pilot-team").value = "";
-    document.getElementById("pilot-ship").value = "";
-    document.getElementById("pilot-controls").value = "";
+    setVal("pilot-name", "");
+    setVal("pilot-country", "");
+    setVal("pilot-team", "");
+    setVal("pilot-ship", "");
+    setVal("pilot-controls", "");
 }
 
 // Event listener to update dropdowns when the DOM content is loaded

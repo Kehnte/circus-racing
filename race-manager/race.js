@@ -1,6 +1,5 @@
 // race.js
 
-// Real-time server connection
 const socket = io();
 
 let raceList = [];
@@ -8,22 +7,18 @@ let previousRaceList = [];
 let isTeamManagementActive = true;
 let raceStatus = "standby";
 
-// Toggle team management display
 function toggleTeamManagement() {
     isTeamManagementActive = !isTeamManagementActive;
     const teamSection = document.getElementById("teams-manager-section");
     const teamSep = document.getElementById("teams-separator");
 
-    if (teamSection)
-        teamSection.style.display = isTeamManagementActive ? "block" : "none";
-    if (teamSep)
-        teamSep.style.display = isTeamManagementActive ? "block" : "none";
+    if (teamSection) teamSection.style.display = isTeamManagementActive ? "block" : "none";
+    if (teamSep) teamSep.style.display = isTeamManagementActive ? "block" : "none";
 
     if (typeof saveAllToLocal === "function") saveAllToLocal();
     displayRace();
 }
 
-// Start race
 function startRace() {
     if (raceList.length === 0) {
         alert("Please load pilots first");
@@ -41,7 +36,6 @@ function startRace() {
     displayRace();
 }
 
-// Pause race
 function pauseRace() {
     raceStatus = "paused";
     updateControls();
@@ -49,36 +43,28 @@ function pauseRace() {
     displayRace();
 }
 
-// End race manually
 function endRaceManually() {
-    if (confirm("End the race and lock the current standings?")) {
-        raceStatus = "finished";
-        updateControls();
-        if (typeof saveAllToLocal === "function") saveAllToLocal();
-        displayRace();
-    }
+    raceStatus = "finished";
+    updateControls();
+    if (typeof saveAllToLocal === "function") saveAllToLocal();
+    displayRace();
 }
 
-// Reset race laps
 function resetRace() {
-    if (confirm("Reset laps for the current race?")) {
-        raceList.forEach((p) => {
-            p.laps = 0;
-            p.finished = false;
-            p.dnf = false;
-        });
-        previousRaceList = [];
-        raceStatus = "standby";
-        recalculatePositions();
-        updateControls();
-        if (typeof saveAllToLocal === "function") saveAllToLocal();
-        displayRace();
-    }
+    raceList.forEach((p) => {
+        p.laps = 0;
+        p.finished = false;
+        p.dnf = false;
+    });
+    previousRaceList = [];
+    raceStatus = "standby";
+    recalculatePositions();
+    updateControls();
+    if (typeof saveAllToLocal === "function") saveAllToLocal();
+    displayRace();
 }
 
-// Reload pilots
 function reloadPilots() {
-    if (raceList.length > 0 && !confirm("Overwrite current race list?")) return;
 
     raceList = pilots.map((p, index) => ({
         ...p,
@@ -95,7 +81,6 @@ function reloadPilots() {
     displayRace();
 }
 
-// Change pilot laps
 function changeLap(index, delta) {
     if (raceStatus !== "running") return;
 
@@ -114,7 +99,6 @@ function changeLap(index, delta) {
     }
 }
 
-// Reorder pilot
 function movePilot(index, delta) {
     const newPos = index + delta;
     if (newPos < 0 || newPos >= raceList.length) return;
@@ -128,7 +112,6 @@ function movePilot(index, delta) {
     displayRace();
 }
 
-// Jump to position
 function jumpToPosition(index, newPosValue) {
     const newPos = parseInt(newPosValue);
     if (isNaN(newPos) || newPos < 1 || newPos > raceList.length) {
@@ -143,7 +126,6 @@ function jumpToPosition(index, newPosValue) {
     displayRace();
 }
 
-// Toggle DNF
 function toggleDNF(index) {
     raceList[index].dnf = !raceList[index].dnf;
     if (raceList[index].dnf) raceList[index].finished = false;
@@ -154,7 +136,6 @@ function toggleDNF(index) {
     displayRace();
 }
 
-// Recalculate standings
 function recalculatePositions() {
     raceList.sort((a, b) => {
         if (a.dnf !== b.dnf) return a.dnf ? 1 : -1;
@@ -168,7 +149,6 @@ function recalculatePositions() {
     });
 }
 
-// Detect state transitions and emit race events
 function detectAndEmitEvents() {
     if (previousRaceList.length === 0) return;
 
@@ -176,13 +156,8 @@ function detectAndEmitEvents() {
         const previous = previousRaceList.find((p) => p.id === pilot.id);
         if (!previous) return;
 
-        const team = typeof teams !== "undefined"
-            ? teams.find((t) => t.id === pilot.teamId)
-            : null;
-
-        const ship = typeof ships !== "undefined"
-            ? ships.find((s) => s.id === pilot.shipId)
-            : null;
+        const team = typeof teams !== "undefined" ? teams.find((t) => t.id === pilot.teamId) : null;
+        const ship = typeof ships !== "undefined" ? ships.find((s) => s.id === pilot.shipId) : null;
 
         const durationInput = document.getElementById("event-duration");
         const displayDuration = durationInput ? parseInt(durationInput.value) || 5 : 5;
@@ -197,19 +172,16 @@ function detectAndEmitEvents() {
             displayDuration: displayDuration,
         };
 
-        // Transition: DNF
         if (!previous.dnf && pilot.dnf) {
             socket.emit("race-event", { ...eventPayload, type: "incident" });
         }
 
-        // Transition: Finished
         if (!previous.finished && pilot.finished) {
             socket.emit("race-event", { ...eventPayload, type: "finished" });
         }
     });
 }
 
-// Update UI and sync server
 function displayRace() {
     const tableBody = document.getElementById("race-list");
     const pilotCountEl = document.getElementById("pilot-count");
@@ -218,36 +190,67 @@ function displayRace() {
     tableBody.innerHTML = "";
     if (pilotCountEl) pilotCountEl.textContent = raceList.length;
 
+    const isRunning = raceStatus === "running";
+
     raceList.forEach((pilot, index) => {
-        const team = typeof teams !== "undefined"
-            ? teams.find((t) => t.id === pilot.teamId)
-            : null;
-        const isRunning = raceStatus === "running";
-        const lapDisplay = pilot.finished ? "Finished" : pilot.laps;
+        const team = typeof teams !== "undefined" ? teams.find((t) => t.id === pilot.teamId) : null;
+        const lapDisplay = pilot.finished
+            ? `<span class="lap-display finished">Finished</span>`
+            : `<span class="lap-display">${pilot.laps}</span>`;
+
+        const posBadgeClass = index === 0 ? "position-badge pos-first" : "position-badge";
+        const teamColor = team ? team.color : "inherit";
+        const teamAcronym = team ? team.acronym : "-";
 
         const row = `
-      <tr class="${pilot.dnf ? "dnf-row" : ""} ${pilot.finished ? "finished-row" : ""}">
-        <td><strong>${pilot.position}</strong></td>
-        <td>${pilot.name}</td>
-        <td class="team-ext" style="color: ${team ? team.color : "inherit"}">
-          ${team ? team.acronym : "-"}
-        </td>
-        <td>${lapDisplay}</td>
-        <td>
-          <button onclick="changeLap(${index}, -1)" ${!isRunning ? "disabled" : ""}>-</button>
-          <button onclick="changeLap(${index}, 1)" ${!isRunning || pilot.finished ? "disabled" : ""}>+</button>
-        </td>
-        <td>
-          <input type="number" value="${pilot.position}" onchange="jumpToPosition(${index}, this.value)" style="width: 40px">
-        </td>
-        <td>
-          <button onclick="movePilot(${index}, -1)" ${index === 0 ? "disabled" : ""}>↑</button>
-          <button onclick="movePilot(${index}, 1)" ${index === raceList.length - 1 ? "disabled" : ""}>↓</button>
-        </td>
-        <td>
-          <button onclick="toggleDNF(${index})">${pilot.dnf ? "Reset" : "DNF"}</button>
-        </td>
-      </tr>`;
+        <tr class="${pilot.dnf ? "dnf-row" : ""} ${pilot.finished ? "finished-row" : ""}">
+            <td><span class="${posBadgeClass}">${pilot.position}</span></td>
+            <td>${pilot.name}</td>
+            <td style="color: ${teamColor}; display: ${isTeamManagementActive ? "" : "none"}">
+                ${teamAcronym}
+            </td>
+            <td>${lapDisplay}</td>
+            <td>
+                <div class="action-buttons">
+                    <md-icon-button onclick="changeLap(${index}, -1)" ${!isRunning ? "disabled" : ""} title="Remove lap">
+                        <md-icon>remove</md-icon>
+                    </md-icon-button>
+                    <md-icon-button onclick="changeLap(${index}, 1)" ${!isRunning || pilot.finished ? "disabled" : ""} title="Add lap">
+                        <md-icon>add</md-icon>
+                    </md-icon-button>
+                </div>
+            </td>
+            <td>
+                <input
+                    class="inline-number"
+                    type="number"
+                    value="${pilot.position}"
+                    min="1"
+                    max="${raceList.length}"
+                    onchange="jumpToPosition(${index}, this.value)"
+                />
+            </td>
+            <td>
+                <div class="action-buttons">
+                    <md-icon-button onclick="movePilot(${index}, -1)" ${index === 0 ? "disabled" : ""} title="Move up">
+                        <md-icon>arrow_upward</md-icon>
+                    </md-icon-button>
+                    <md-icon-button onclick="movePilot(${index}, 1)" ${index === raceList.length - 1 ? "disabled" : ""} title="Move down">
+                        <md-icon>arrow_downward</md-icon>
+                    </md-icon-button>
+                </div>
+            </td>
+            <td>
+                <md-icon-button
+                    onclick="toggleDNF(${index})"
+                    title="${pilot.dnf ? "Reset DNF" : "DNF"}"
+                    style="${pilot.dnf ? "--md-icon-button-icon-color: var(--md-sys-color-tertiary);" : "--md-icon-button-icon-color: var(--md-sys-color-error);"}"
+                >
+                    <md-icon>${pilot.dnf ? "restart_alt" : "cancel"}</md-icon>
+                </md-icon-button>
+            </td>
+        </tr>`;
+
         tableBody.insertAdjacentHTML("beforeend", row);
     });
 
@@ -255,13 +258,9 @@ function displayRace() {
         el.style.display = isTeamManagementActive ? "" : "none";
     });
 
-    // Detect transitions before updating the snapshot
     detectAndEmitEvents();
-
-    // Update snapshot
     previousRaceList = raceList.map((p) => ({ ...p }));
 
-    // Sync full race data to server
     socket.emit("race-update", {
         raceList: raceList,
         teams: typeof teams !== "undefined" ? teams : [],
@@ -275,7 +274,6 @@ function displayRace() {
     });
 }
 
-// Check race end conditions
 function checkRaceEnd() {
     const stillRacing = raceList.some((p) => !p.finished && !p.dnf);
 
@@ -285,7 +283,6 @@ function checkRaceEnd() {
     }
 }
 
-// Update control buttons
 function updateControls() {
     const btnStart = document.getElementById("btn-start");
     const btnPause = document.getElementById("btn-pause");
