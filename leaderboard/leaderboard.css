@@ -35,7 +35,7 @@ body {
 /* Grid */
 .leaderboard-grid {
     display: grid;
-    grid-template-columns: 30px 395px 30px;
+    grid-template-columns: 30px auto 30px;
     gap: 2px;
     width: fit-content;
 
@@ -151,13 +151,13 @@ body {
     grid-column: 2;
     display: flex;
     height: 30px;
-    width: 100%;
 }
 
 .pilot-rank,
 .pilot-laps {
     width: 30px;
     height: 30px;
+    flex-shrink: 0;
     background-color: #2b2b2b;
     font-weight: 700;
     font-size: 14px;
@@ -168,11 +168,14 @@ body {
 
 .team-color {
     width: 3px;
+    flex-shrink: 0;
     height: 100%;
 }
 
 .pilot-infos {
-    flex: 1;
+    width: 155px;
+    flex-shrink: 0;
+    overflow: hidden;
     display: flex;
     align-items: center;
     padding: 0 10px;
@@ -180,6 +183,7 @@ body {
     background-color: #212121;
 }
 .pilot-country {
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     font-size: 14px;
@@ -187,10 +191,14 @@ body {
 .pilot-name {
     font-size: 14px;
     font-weight: 400;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .pilot-chrono {
     width: 95px;
+    flex-shrink: 0;
     padding: 0 10px;
     background-color: #212121;
     font-weight: 400;
@@ -200,6 +208,7 @@ body {
 /* Status Icons */
 .icon-cell {
     width: 30px;
+    flex-shrink: 0;
     height: 30px;
 }
 .status-fastest {

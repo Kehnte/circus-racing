@@ -137,7 +137,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (typeof updateShipDropdown === "function") updateShipDropdown();
     if (typeof updateControlDropdown === "function") updateControlDropdown();
 
-    // Updated ID list for event listeners
     [
         "setting-race-name",
         "setting-session",
@@ -146,6 +145,9 @@ document.addEventListener("DOMContentLoaded", () => {
         "total-laps",
     ].forEach((id) => {
         const el = document.getElementById(id);
-        if (el) el.addEventListener("change", saveRaceSettings);
+        if (el) el.addEventListener("change", () => {
+            saveRaceSettings();
+            if (typeof displayRace === "function") displayRace();
+        });
     });
 });
