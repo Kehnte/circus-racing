@@ -77,6 +77,10 @@
     --md-menu-container-color: var(--md-sys-color-surface-container);
     --md-menu-item-label-text-color: var(--md-sys-color-on-surface);
 
+    --md-switch-selected-track-color: var(--md-sys-color-primary);
+    --md-switch-selected-handle-color: var(--md-sys-color-on-primary);
+    --md-switch-unselected-track-color: var(--md-sys-color-outline);
+
     --md-divider-color: var(--md-sys-color-outline-variant);
 }
 
@@ -105,7 +109,6 @@ body {
     align-items: center;
     gap: 12px;
     box-shadow: var(--md-sys-elevation-level2);
-    margin-bottom: 0;
 }
 
 .page-header h1 {
@@ -113,7 +116,6 @@ body {
     font-size: 22px;
     font-weight: 500;
     color: var(--md-sys-color-on-surface);
-    letter-spacing: 0;
 }
 
 .page-content {
@@ -272,6 +274,21 @@ table.m3-table tr.finished-row td {
     color: var(--md-sys-color-tertiary);
 }
 
+/* Chrono cell — monospace, subtle color */
+td.chrono-cell {
+    font-family: "Roboto Mono", monospace;
+    font-size: 13px;
+    color: var(--md-sys-color-on-surface-variant);
+    white-space: nowrap;
+}
+
+/* Hide chrono column when timing is off */
+table.m3-table.chrono-hidden col.chrono-col,
+table.m3-table.chrono-hidden th.chrono-ext,
+table.m3-table.chrono-hidden td.chrono-cell {
+    display: none;
+}
+
 .position-badge {
     display: inline-flex;
     align-items: center;
@@ -290,15 +307,6 @@ table.m3-table tr.finished-row td {
     color: var(--md-sys-color-on-primary-container);
 }
 
-.team-color-dot {
-    display: inline-block;
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    margin-right: 6px;
-    vertical-align: middle;
-}
-
 .race-controls-bar {
     display: flex;
     flex-wrap: wrap;
@@ -313,6 +321,19 @@ table.m3-table tr.finished-row td {
     flex: 1;
 }
 
+/* Timing toggle label */
+.timing-toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--md-sys-color-on-surface-variant);
+    padding: 0 4px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
 .pilot-count-chip {
     display: inline-flex;
     align-items: center;
@@ -323,12 +344,6 @@ table.m3-table tr.finished-row td {
     font-size: 13px;
     color: var(--md-sys-color-on-surface-variant);
     font-weight: 500;
-}
-
-.m3-divider {
-    border: none;
-    border-top: 1px solid var(--md-sys-color-outline-variant);
-    margin: 8px 0;
 }
 
 input.inline-number {
@@ -346,25 +361,6 @@ input.inline-number {
 
 input.inline-number:focus {
     border-color: var(--md-sys-color-primary);
-}
-
-.color-input-wrapper {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-input[type="color"] {
-    width: 40px;
-    height: 40px;
-    border: 1px solid var(--md-sys-color-outline);
-    border-radius: var(--md-sys-shape-corner-extra-small);
-    background: none;
-    cursor: pointer;
-    padding: 2px;
-}
-
-.team-ext {
 }
 
 .lap-display {
@@ -433,6 +429,7 @@ table.m3-table td .action-buttons {
     align-items: center;
 }
 
+/* Hide teams columns */
 table.m3-table.teams-hidden col.team-col,
 table.m3-table.teams-hidden th.team-ext,
 table.m3-table.teams-hidden td.team-ext {

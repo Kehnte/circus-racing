@@ -7,6 +7,16 @@ let eventQueue = [];
 let isDisplaying = false;
 let displayTimer = null;
 
+// Current settings received from race-update broadcasts
+let currentTeamDisplayMode = "color-bar";
+let currentTimingEnabled = true;
+
+// Listen for race state to keep team/timing settings in sync
+socket.on("race-data", (data) => {
+    if (data.teamDisplayMode !== undefined) currentTeamDisplayMode = data.teamDisplayMode;
+    if (data.timingEnabled !== undefined) currentTimingEnabled = data.timingEnabled;
+});
+
 // Listen for race events from the server
 socket.on("race-event", (event) => {
     eventQueue.push(event);
@@ -36,20 +46,21 @@ function showEvent(event) {
     const row = document.querySelector(".event-row");
     if (!row) return;
 
-    // Update pilot info
+    // Pilot name
     const pilotNameEl = document.querySelector(".pilot-name");
-    const pilotCountryEl = document.querySelector(".pilot-country");
-    const pilotTeamEl = document.querySelector(".pilot-team");
-
     if (pilotNameEl) pilotNameEl.textContent = event.pilotName || "";
 
+    // Pilot country
+    const pilotCountryEl = document.querySelector(".pilot-country");
     if (pilotCountryEl) {
         const safeCountry = event.pilotCountry ? event.pilotCountry.toLowerCase() : "un";
         pilotCountryEl.innerHTML = `<span class="fi fi-${safeCountry} fis"></span>`;
     }
 
+    // Pilot team — respect teamDisplayMode
+    const pilotTeamEl = document.querySelector(".pilot-team");
     if (pilotTeamEl) {
-        if (event.teamName) {
+        if (event.teamName && currentTeamDisplayMode !== "hidden") {
             pilotTeamEl.textContent = event.teamName;
             pilotTeamEl.style.color = event.teamColor || "#ffd54f";
             pilotTeamEl.style.display = "";
@@ -58,15 +69,25 @@ function showEvent(event) {
         }
     }
 
+    // Ship model
     const shipModelEl = document.querySelector(".ship-model");
-    if (shipModelEl) {
-        shipModelEl.textContent = event.shipModel || "";
+    if (shipModelEl) shipModelEl.textContent = event.shipModel || "";
+
+    // Chrono frame — always present, shows time, DNF, or "—"
+    const chronoEl = document.querySelector(".event-chrono");
+    if (chronoEl) {
+        if (event.type === "incident") {
+            chronoEl.textContent = "DNF";
+        } else if (currentTimingEnabled && event.time) {
+            chronoEl.textContent = event.time;
+        } else {
+            chronoEl.textContent = "—";
+        }
     }
 
-    // Update status, icon, label, result
-    setEventStatus(event.type, event.time || "");
+    // Update status, icon, label
+    setEventStatus(event.type);
 
-    // Show the row
     row.style.display = "";
 }
 
@@ -76,12 +97,11 @@ function hideEventRow() {
     if (row) row.style.display = "none";
 }
 
-// Update icon, label and result based on event type
-function setEventStatus(type, timeValue = "") {
+// Update icon and label based on event type
+function setEventStatus(type) {
     const row = document.querySelector(".event-row");
     const iconContainer = document.querySelector(".event-icon");
     const label = document.querySelector(".event-label");
-    const result = document.querySelector(".event-result");
 
     if (!row) return;
 
@@ -94,20 +114,17 @@ function setEventStatus(type, timeValue = "") {
     switch (type) {
         case "fastest-lap":
             label.textContent = "Fastest lap";
-            result.textContent = timeValue || "00:00.000";
             break;
         case "incident":
             label.textContent = "Incident";
-            result.textContent = "DNF";
             break;
         case "finished":
             label.textContent = "Finished";
-            result.textContent = timeValue || "";
             break;
     }
 }
 
-// Hide on load — shown only when an event arrives
+// Hide on load
 document.addEventListener("DOMContentLoaded", () => {
     hideEventRow();
 });

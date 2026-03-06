@@ -167,16 +167,13 @@ body {
     background-color: #c62828;
 }
 
-/* ── Team display modes ── */
-
-/* color-bar: 3px wide vertical stripe */
+/* Team display modes */
 .team-color {
     width: 3px;
     flex-shrink: 0;
     height: 100%;
 }
 
-/* acronym: 70px wide block, dark bg, coloured text */
 .team-acronym {
     width: 70px;
     height: 30px;
@@ -196,9 +193,8 @@ body {
     text-overflow: ellipsis;
 }
 
-/* ── Pilot infos ── */
+/* Pilot infos */
 .pilot-infos {
-    /* width is intentionally not fixed — flex: 1 lets it fill remaining space */
     flex: 1;
     min-width: 0;
     overflow: hidden;
@@ -222,16 +218,28 @@ body {
     text-overflow: ellipsis;
 }
 
+/* Chrono */
 .pilot-chrono {
     width: 95px;
+    height: 30px;
     flex-shrink: 0;
-    padding: 0 10px;
     background-color: #212121;
+    font-family: "Roboto Mono", monospace;
     font-weight: 400;
     font-size: 14px;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-end;
+    padding-right: 10px;
+    white-space: nowrap;
+    color: #fafafa;
+    text-transform: uppercase;
+}
+
+/* DNF chrono */
+.pilot-chrono.chrono-dnf {
+    color: #616161;
+    font-style: italic;
 }
 
 /* Status Icons */

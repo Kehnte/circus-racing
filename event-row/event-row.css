@@ -96,13 +96,15 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 17px;
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
 }
 
 /* Pilot name */
 .pilot-name {
     width: 100%;
-    font-size: 24px;
+    font-size: 20px;
     font-weight: 500;
     text-transform: uppercase;
     line-height: 0.85;
@@ -150,18 +152,23 @@ body {
     text-overflow: ellipsis;
 }
 
-/* Event result */
-.event-result {
-    width: 150px;
+/* Chrono frame */
+.event-chrono {
+    width: 140px;
     flex-shrink: 0;
     background-color: #2b2b2b;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-end;
     padding: 0 20px;
     font-family: "Roboto Mono", monospace;
-    font-size: 20px;
     font-weight: 400;
+    font-size: 20px;
+    color: #fafafa;
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* Statuses */
@@ -171,11 +178,6 @@ body {
 
 .event-row[data-status="incident"] .event-icon {
     background-color: #ffc107;
-}
-
-.event-row[data-status="incident"] .event-result {
-    font-family: inherit;
-    text-transform: uppercase;
 }
 
 .event-row[data-status="finished"] .event-icon {
