@@ -6,6 +6,7 @@ function updateLeaderboard(data) {
     const raceList = data.raceList || [];
     const teams = data.teams || [];
     const settings = data.settings || {};
+    const teamDisplayMode = data.teamDisplayMode || "color-bar";
 
     // Update header info
     document.getElementById("lb-location").textContent = settings.raceName || "UNKNOWN RACE";
@@ -37,6 +38,7 @@ function updateLeaderboard(data) {
     raceList.forEach((pilot, index) => {
         const team = teams.find((t) => t.id === pilot.teamId);
         const teamColor = team ? team.color : "#ffffff";
+        const teamAcronym = team ? team.acronym : "";
         const rankClass = index === 0 ? "rank-first" : "";
         const dnfClass = pilot.dnf ? "dnf-row" : "";
 
@@ -50,11 +52,20 @@ function updateLeaderboard(data) {
         const chronoDisplay = pilot.dnf ? "DNF" : "00:00.000";
         const displayLaps = totalLaps > 0 ? Math.min(pilot.laps, totalLaps) : pilot.laps;
 
+        // Build the team cell based on display mode
+        let teamCell = "";
+        if (teamDisplayMode === "color-bar") {
+            teamCell = `<div class="team-color" style="background-color: ${teamColor}"></div>`;
+        } else if (teamDisplayMode === "acronym") {
+            teamCell = `<div class="team-acronym" style="color: ${teamColor}">${teamAcronym}</div>`;
+        }
+        // "hidden" → no team cell
+
         const pilotRow = `
             <div class="empty-cell"></div>
-            <div class="pilot-row ${dnfClass}">
+            <div class="pilot-row ${dnfClass} team-mode-${teamDisplayMode}">
                 <div class="pilot-rank ${rankClass}">${pilot.position}</div>
-                <div class="team-color" style="background-color: ${teamColor}"></div>
+                ${teamCell}
                 <div class="pilot-infos">
                     <div class="pilot-country">${flagHTML}</div>
                     <div class="pilot-name">${pilot.name}</div>

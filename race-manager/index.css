@@ -432,3 +432,9 @@ table.m3-table td .action-buttons {
     gap: 2px;
     align-items: center;
 }
+
+table.m3-table.teams-hidden col.team-col,
+table.m3-table.teams-hidden th.team-ext,
+table.m3-table.teams-hidden td.team-ext {
+    display: none;
+}

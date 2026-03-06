@@ -6,21 +6,26 @@ const socket = io();
 let raceList = [];
 // Snapshot of raceList from the previous render cycle, used to detect lap/DNF changes
 let previousRaceList = [];
-// Whether team management features (columns, dropdowns) are visible
-let isTeamManagementActive = true;
+// Team display mode: "hidden" | "color-bar" | "acronym"
+let teamDisplayMode = "color-bar";
 // Race lifecycle state: "standby" | "running" | "paused" | "finished"
 let raceStatus = "standby";
 
-// Toggle team management on/off, show/hide related UI sections and re-render
-function toggleTeamManagement() {
-    isTeamManagementActive = !isTeamManagementActive;
-    const teamSection = document.getElementById("teams-manager-section");
-    const teamSep = document.getElementById("teams-separator");
+// isTeamManagementActive kept as a derived getter for backward compat with pilots.js
+Object.defineProperty(window, "isTeamManagementActive", {
+    get: () => teamDisplayMode !== "hidden",
+    configurable: true,
+});
 
-    if (teamSection) teamSection.style.display = isTeamManagementActive ? "block" : "none";
-    if (teamSep) teamSep.style.display = isTeamManagementActive ? "block" : "none";
+// Called when the team display select changes
+function onTeamDisplayModeChange(value) {
+    teamDisplayMode = value;
+
+    const teamSection = document.getElementById("teams-manager-section");
+    if (teamSection) teamSection.style.display = teamDisplayMode !== "hidden" ? "block" : "none";
 
     if (typeof saveAllToLocal === "function") saveAllToLocal();
+    if (typeof displayPilots === "function") displayPilots();
     displayRace();
 }
 
@@ -211,6 +216,7 @@ function displayRace() {
     if (pilotCountEl) pilotCountEl.textContent = raceList.length;
 
     const isRunning = raceStatus === "running";
+    const showTeams = teamDisplayMode !== "hidden";
 
     raceList.forEach((pilot, index) => {
         const team = typeof teams !== "undefined" ? teams.find((t) => t.id === pilot.teamId) : null;
@@ -228,7 +234,7 @@ function displayRace() {
         <tr class="${pilot.dnf ? "dnf-row" : ""} ${pilot.finished ? "finished-row" : ""}">
             <td><span class="${posBadgeClass}">${pilot.position}</span></td>
             <td>${pilot.name}</td>
-            <td style="color: ${teamColor}; display: ${isTeamManagementActive ? "" : "none"}">
+            <td style="color: ${teamColor}; display: ${showTeams ? "" : "none"}">
                 ${teamAcronym}
             </td>
             <td>${lapDisplay}</td>
@@ -276,9 +282,9 @@ function displayRace() {
         tableBody.insertAdjacentHTML("beforeend", row);
     });
 
-    // Show/hide all team-related columns across the page
-    document.querySelectorAll(".team-ext").forEach((el) => {
-        el.style.display = isTeamManagementActive ? "" : "none";
+    // Show/hide team columns across all managed tables via a CSS class on each table
+    document.querySelectorAll("table.m3-table").forEach((table) => {
+        table.classList.toggle("teams-hidden", !showTeams);
     });
 
     detectAndEmitEvents();
@@ -289,6 +295,7 @@ function displayRace() {
     socket.emit("race-update", {
         raceList: raceList,
         teams: typeof teams !== "undefined" ? teams : [],
+        teamDisplayMode: teamDisplayMode,
         settings: {
             raceName: document.getElementById("setting-race-name")?.value || "",
             session: document.getElementById("setting-session")?.value || "",

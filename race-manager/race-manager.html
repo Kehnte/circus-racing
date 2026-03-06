@@ -105,6 +105,16 @@
                         style="width: 140px; flex-shrink: 0;"
                     ></md-outlined-text-field>
 
+                    <md-outlined-select
+                        id="setting-team-display"
+                        label="Teams"
+                        style="width: 160px; flex-shrink: 0;"
+                    >
+                        <md-select-option value="color-bar"><div slot="headline">Color bar</div></md-select-option>
+                        <md-select-option value="acronym"><div slot="headline">Acronym</div></md-select-option>
+                        <md-select-option value="hidden"><div slot="headline">Hidden</div></md-select-option>
+                    </md-outlined-select>
+
                     <div class="spacer"></div>
 
                     <div class="button-group">
@@ -113,7 +123,6 @@
                         <md-outlined-button onclick="endRaceManually()" id="btn-finish" disabled>Finish race</md-outlined-button>
                         <md-text-button onclick="resetRace()">Reset race</md-text-button>
                         <md-text-button onclick="reloadPilots()">Reload pilots</md-text-button>
-                        <md-text-button onclick="toggleTeamManagement()">Toggle teams</md-text-button>
                     </div>
 
                     <div class="pilot-count-chip">
@@ -126,14 +135,14 @@
                 <div class="m3-table-wrapper" style="margin-top: 16px;">
                     <table class="m3-table" style="table-layout: fixed;">
                         <colgroup>
-                            <col style="width: 5%">   <!-- Pos -->
-                            <col style="width: 20%">  <!-- Pilot -->
-                            <col style="width: 10%">  <!-- Team -->
-                            <col style="width: 10%">   <!-- Laps -->
-                            <col style="width: 15%">  <!-- Lap Counter -->
-                            <col style="width: 10%">  <!-- Set Pos -->
-                            <col style="width: 15%">  <!-- Reorder -->
-                            <col style="width: 15%">  <!-- DNF -->
+                            <col style="width: 5%">                     <!-- Pos -->
+                            <col style="width: 20%">                    <!-- Pilot -->
+                            <col class="team-col" style="width: 10%">   <!-- Team -->
+                            <col style="width: 10%">                    <!-- Laps -->
+                            <col style="width: 15%">                    <!-- Lap Counter -->
+                            <col style="width: 10%">                    <!-- Set Pos -->
+                            <col style="width: 15%">                    <!-- Reorder -->
+                            <col style="width: 15%">                    <!-- DNF -->
                         </colgroup>
                         <thead>
                             <tr>
@@ -164,12 +173,12 @@
                 <div class="m3-table-wrapper">
                     <table class="m3-table" style="table-layout: fixed;">
                         <colgroup>
-                            <col style="width: 20%">  <!-- Name -->
-                            <col style="width: 15%">  <!-- Nationality -->
-                            <col style="width: 20%">  <!-- Team -->
-                            <col style="width: 15%">  <!-- Ship -->
-                            <col style="width: 15%">  <!-- Controls -->
-                            <col style="width: 15%">  <!-- Actions -->
+                            <col style="width: 20%">                    <!-- Name -->
+                            <col style="width: 15%">                    <!-- Nationality -->
+                            <col class="team-col" style="width: 20%">  <!-- Team -->
+                            <col style="width: 15%">                    <!-- Ship -->
+                            <col style="width: 15%">                    <!-- Controls -->
+                            <col style="width: 15%">                    <!-- Actions -->
                         </colgroup>
                         <thead>
                             <tr>
@@ -390,6 +399,7 @@
         </script>
         <script>
             document.addEventListener("DOMContentLoaded", () => {
+                // Color swatches for the add-team form
                 const swatches = document.querySelectorAll(".color-swatch");
                 if (swatches.length > 0) swatches[0].classList.add("selected");
 
@@ -403,6 +413,24 @@
                         document.getElementById("color-selected-hex").textContent = color;
                     });
                 });
+
+                // Team display mode select — wire up after MD components are ready
+                // MD components fire "change" asynchronously, so use a small delay on init
+                const teamDisplaySelect = document.getElementById("setting-team-display");
+                if (teamDisplaySelect) {
+                    // Set initial value from the in-memory variable (already restored by storage.js DOMContentLoaded)
+                    setTimeout(() => {
+                        if (typeof teamDisplayMode !== "undefined") {
+                            teamDisplaySelect.value = teamDisplayMode;
+                        }
+                    }, 100);
+
+                    teamDisplaySelect.addEventListener("change", () => {
+                        if (typeof onTeamDisplayModeChange === "function") {
+                            onTeamDisplayModeChange(teamDisplaySelect.value);
+                        }
+                    });
+                }
             });
         </script>
     </body>

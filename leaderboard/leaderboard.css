@@ -151,6 +151,7 @@ body {
     grid-column: 2;
     display: flex;
     height: 30px;
+    background-color: #212121;
 }
 
 .pilot-rank,
@@ -166,15 +167,40 @@ body {
     background-color: #c62828;
 }
 
+/* ── Team display modes ── */
+
+/* color-bar: 3px wide vertical stripe */
 .team-color {
     width: 3px;
     flex-shrink: 0;
     height: 100%;
 }
 
-.pilot-infos {
-    width: 155px;
+/* acronym: 70px wide block, dark bg, coloured text */
+.team-acronym {
+    width: 70px;
+    height: 30px;
     flex-shrink: 0;
+    background-color: #212121;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 0 10px;
+    font-family: "Zalando Sans SemiExpanded", sans-serif;
+    font-style: italic;
+    font-size: 14px;
+    font-weight: 500;
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── Pilot infos ── */
+.pilot-infos {
+    /* width is intentionally not fixed — flex: 1 lets it fill remaining space */
+    flex: 1;
+    min-width: 0;
     overflow: hidden;
     display: flex;
     align-items: center;
@@ -203,6 +229,9 @@ body {
     background-color: #212121;
     font-weight: 400;
     font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 /* Status Icons */

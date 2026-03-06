@@ -8,7 +8,7 @@ const STORAGE_KEYS = {
     PILOTS: "circusRacing_pilots",
     RACE_LIST: "circusRacing_raceList",
     SETTINGS: "circusRacing_settings",
-    TEAM_MGMT: "circusRacing_teamMgmt",
+    TEAM_DISPLAY_MODE: "circusRacing_teamDisplayMode",
 };
 
 // Hydrate all in-memory arrays and flags from LocalStorage on page load
@@ -26,13 +26,17 @@ function loadFromStorage() {
         const savedPilots = localStorage.getItem(STORAGE_KEYS.PILOTS);
         if (savedPilots) pilots = JSON.parse(savedPilots);
 
-        // Restore the team management toggle state (stored as the string "true"/"false")
-        const savedTeamMgmt = localStorage.getItem(STORAGE_KEYS.TEAM_MGMT);
-        if (
-            savedTeamMgmt !== null &&
-            typeof isTeamManagementActive !== "undefined"
-        ) {
-            isTeamManagementActive = savedTeamMgmt !== "false";
+        // Restore team display mode
+        const savedTeamDisplayMode = localStorage.getItem(STORAGE_KEYS.TEAM_DISPLAY_MODE);
+        if (savedTeamDisplayMode && typeof teamDisplayMode !== "undefined") {
+            teamDisplayMode = savedTeamDisplayMode;
+        }
+
+        // Backward compat: migrate old boolean teamMgmt key
+        const legacyTeamMgmt = localStorage.getItem("circusRacing_teamMgmt");
+        if (legacyTeamMgmt !== null && !savedTeamDisplayMode) {
+            teamDisplayMode = legacyTeamMgmt === "false" ? "hidden" : "color-bar";
+            localStorage.removeItem("circusRacing_teamMgmt");
         }
     } catch (error) {
         console.error("Error loading from LocalStorage:", error);
@@ -54,7 +58,7 @@ function saveToStorage() {
     }
 }
 
-// Read the race settings form and persist it alongside the team management flag
+// Read the race settings form and persist it alongside the team display mode
 function saveRaceSettings() {
     try {
         const settings = {
@@ -66,11 +70,8 @@ function saveRaceSettings() {
             totalLaps: document.getElementById("total-laps")?.value ?? "",
         };
         localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
-        if (typeof isTeamManagementActive !== "undefined") {
-            localStorage.setItem(
-                STORAGE_KEYS.TEAM_MGMT,
-                String(isTeamManagementActive),
-            );
+        if (typeof teamDisplayMode !== "undefined") {
+            localStorage.setItem(STORAGE_KEYS.TEAM_DISPLAY_MODE, teamDisplayMode);
         }
     } catch (error) {
         console.error("Error saving race settings:", error);
@@ -130,6 +131,21 @@ function resetPilots() {
 document.addEventListener("DOMContentLoaded", () => {
     // Restore all saved data before rendering any tables
     loadFromStorage();
+
+    // Apply restored teamDisplayMode to the select element
+    const teamSelect = document.getElementById("setting-team-display");
+    if (teamSelect && typeof teamDisplayMode !== "undefined") {
+        teamSelect.value = teamDisplayMode;
+    }
+
+    // Apply teams section visibility and table class on load
+    const teamSection = document.getElementById("teams-manager-section");
+    if (teamSection && typeof teamDisplayMode !== "undefined") {
+        teamSection.style.display = teamDisplayMode !== "hidden" ? "block" : "none";
+    }
+    document.querySelectorAll("table.m3-table").forEach((table) => {
+        table.classList.toggle("teams-hidden", teamDisplayMode === "hidden");
+    });
 
     if (typeof displayTeams === "function") displayTeams();
     if (typeof displayShips === "function") displayShips();
