@@ -220,7 +220,7 @@ body {
 
 /* Chrono */
 .pilot-chrono {
-    width: 95px;
+    width: 105px;
     height: 30px;
     flex-shrink: 0;
     background-color: #212121;

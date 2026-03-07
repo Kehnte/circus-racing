@@ -2,46 +2,38 @@
 
 const socket = io();
 
-// Current race pilot list (ordered by position)
 let raceList = [];
-// Snapshot of raceList from the previous render cycle, used to detect lap/DNF changes
 let previousRaceList = [];
-// Team display mode: "hidden" | "color-bar" | "acronym"
 let teamDisplayMode = "color-bar";
-// Race lifecycle state: "standby" | "running" | "paused" | "finished"
 let raceStatus = "standby";
-// Timing enabled
 let timingEnabled = true;
-// Chrono display mode: "gap" | "leader" | "best-lap" | "last-lap"
 let chronoDisplayMode = "leader";
 
-// Global race start timestamp (ms) — null until startRace()
 let globalRaceStartTime = null;
-// Timestamp when the race was paused — used to compute pause delta
 let pauseStartTime = null;
-// Total accumulated pause duration (ms) across all pauses in the current race
 let totalPauseDuration = 0;
-// Best lap globally across all pilots (ms) — null if no lap completed yet
 let globalFastestLap = null;
-// ID of the pilot currently holding the fastest lap
 let globalFastestLapPilotId = null;
 
-// isTeamManagementActive kept as a derived getter for backward compat with pilots.js
+// backward compat with pilots.js
 Object.defineProperty(window, "isTeamManagementActive", {
     get: () => teamDisplayMode !== "hidden",
     configurable: true,
 });
 
-// Timing helpers
+// -- Timing helpers -----------------------------------------------------------
 
-// Return current race clock in ms (wall time minus all pause durations)
-function raceNow() {
-    if (globalRaceStartTime === null) return 0;
+// Returns elapsed race time in ms, excluding pauses
+function getPilotElapsed(pilot) {
+    if (!timingEnabled) return null;
+    if (pilot.raceStartTime === null || pilot.raceStartTime === undefined) return null;
+    if (pilot.frozenTime !== null && pilot.frozenTime !== undefined) return pilot.frozenTime;
+    if (pilot.totalTime !== null && pilot.totalTime !== undefined) return pilot.totalTime;
     const pauseOffset = pauseStartTime ? (Date.now() - pauseStartTime) : 0;
-    return Date.now() - globalRaceStartTime - totalPauseDuration - pauseOffset;
+    return Date.now() - pilot.raceStartTime - totalPauseDuration - pauseOffset;
 }
 
-// Format ms to M:SS.mmm
+// Formats ms to M:SS.mmm
 function formatTime(ms) {
     if (ms === null || ms === undefined || isNaN(ms)) return "—";
     const totalSeconds = Math.floor(ms / 1000);
@@ -51,24 +43,13 @@ function formatTime(ms) {
     return `${minutes}:${String(seconds).padStart(2, "0")}.${String(millis).padStart(3, "0")}`;
 }
 
-// Format ms delta to +M:SS.mmm
+// Formats ms delta to +M:SS.mmm
 function formatDelta(ms) {
     if (ms === null || ms === undefined || isNaN(ms)) return "—";
     return `+${formatTime(ms)}`;
 }
 
-// Compute the elapsed ms for a pilot from their personal raceStartTime
-function getPilotElapsed(pilot) {
-    if (!timingEnabled) return null;
-    if (pilot.raceStartTime === null || pilot.raceStartTime === undefined) return null;
-    if (pilot.frozenTime !== null && pilot.frozenTime !== undefined) return pilot.frozenTime;
-    if (pilot.totalTime !== null && pilot.totalTime !== undefined) return pilot.totalTime;
-    // Adjust for pauses: pilot start time is in wall-clock ms, so we subtract global race start offset
-    const pauseOffset = pauseStartTime ? (Date.now() - pauseStartTime) : 0;
-    return Date.now() - pilot.raceStartTime - totalPauseDuration - pauseOffset;
-}
-
-// Settings callbacks
+// -- Settings callbacks -------------------------------------------------------
 
 function onTeamDisplayModeChange(value) {
     teamDisplayMode = value;
@@ -91,7 +72,7 @@ function onChronoDisplayModeChange(value) {
     displayRace();
 }
 
-// Race lifecycle
+// -- Race lifecycle -----------------------------------------------------------
 
 function startRace() {
     if (raceList.length === 0) {
@@ -121,12 +102,10 @@ function startRace() {
 
         raceList.forEach((p) => {
             if (isRolling) {
-                // Rolling: pilot stays at lap 0 until they cross the start line
                 p.raceStartTime = null;
                 p.lastSplitTimestamp = null;
                 p.laps = 0;
             } else {
-                // Grid: everyone starts at lap 1 simultaneously
                 p.raceStartTime = globalRaceStartTime;
                 p.lastSplitTimestamp = globalRaceStartTime;
                 p.laps = 1;
@@ -154,7 +133,6 @@ function pauseRace() {
 
 function endRaceManually() {
     raceStatus = "finished";
-    // Freeze any pilot still running
     if (timingEnabled) {
         raceList.forEach((p) => {
             if (p.raceStartTime !== null && p.totalTime === null && !p.dnf) {
@@ -208,7 +186,6 @@ function reloadPilots() {
         totalTime: null,
         frozenTime: null,
     }));
-
     previousRaceList = [];
     globalRaceStartTime = null;
     pauseStartTime = null;
@@ -221,48 +198,40 @@ function reloadPilots() {
     displayRace();
 }
 
-// Lap management
+// -- Lap management ----------------------------------------------------------
 
 function changeLap(index, delta) {
     if (raceStatus !== "running") return;
 
     const pilot = raceList[index];
     const totalLaps = parseInt(document.getElementById("total-laps").value) || 3;
-    const startType = document.getElementById("setting-start-type")?.value || "Grid Start";
-    const isRolling = startType === "Rolling Start";
-    let newLaps = pilot.laps + delta;
+    const isRolling = (document.getElementById("setting-start-type")?.value || "Grid Start") === "Rolling Start";
+    const newLaps = pilot.laps + delta;
 
     if (newLaps < 0) return;
     if (newLaps >= 1 && !pilot.dnf) {
 
-        // Rolling start: pilot crossing start line for the first time (0 → 1)
+        // Rolling: pilot crosses start line (0 → 1)
         if (isRolling && pilot.laps === 0 && delta === 1 && timingEnabled) {
             pilot.raceStartTime = Date.now();
             pilot.lastSplitTimestamp = Date.now();
         }
 
-        // Recording a new lap split (not the first lap in rolling, not going backwards)
+        // Record split on lap completion
         if (delta === 1 && pilot.laps >= 1 && timingEnabled && pilot.raceStartTime !== null) {
             const now = Date.now();
-            const split = now - pilot.lastSplitTimestamp - (raceStatus === "paused" ? (Date.now() - pauseStartTime) : 0);
-            // Correct split: time since last split, accounting for pauses
-            const correctedSplit = now - pilot.lastSplitTimestamp;
-            pilot.lapTimes.push(correctedSplit);
+            const split = now - pilot.lastSplitTimestamp;
+            pilot.lapTimes.push(split);
             pilot.lastSplitTimestamp = now;
-
-            // Check for new fastest lap
-            if (timingEnabled) {
-                checkFastestLap(pilot, correctedSplit);
-            }
+            checkFastestLap(pilot, split);
         }
 
-        // Removing a lap: pop last split and restore lastSplitTimestamp
+        // Remove last split on lap decrement
         if (delta === -1 && timingEnabled && pilot.lapTimes && pilot.lapTimes.length > 0) {
-            const removedSplit = pilot.lapTimes.pop();
+            const removed = pilot.lapTimes.pop();
             if (pilot.lastSplitTimestamp !== null) {
-                pilot.lastSplitTimestamp = pilot.lastSplitTimestamp - removedSplit;
+                pilot.lastSplitTimestamp -= removed;
             }
-            // Recompute fastest lap globally in case this was the record
             recomputeGlobalFastestLap();
         }
 
@@ -280,7 +249,7 @@ function changeLap(index, delta) {
     }
 }
 
-// Check if a new split beats the global fastest lap and emit event if so
+// Emits fastest-lap event if split beats the current global record
 function checkFastestLap(pilot, splitMs) {
     if (globalFastestLap === null || splitMs < globalFastestLap) {
         globalFastestLap = splitMs;
@@ -288,8 +257,7 @@ function checkFastestLap(pilot, splitMs) {
 
         const team = typeof teams !== "undefined" ? teams.find((t) => t.id === pilot.teamId) : null;
         const ship = typeof ships !== "undefined" ? ships.find((s) => s.id === pilot.shipId) : null;
-        const durationInput = document.getElementById("event-duration");
-        const displayDuration = durationInput ? parseInt(durationInput.value) || 5 : 5;
+        const displayDuration = parseInt(document.getElementById("event-duration")?.value) || 5;
 
         socket.emit("race-event", {
             type: "fastest-lap",
@@ -300,12 +268,12 @@ function checkFastestLap(pilot, splitMs) {
             teamColor: team ? team.color : null,
             shipModel: ship ? ship.model : null,
             time: formatTime(splitMs),
-            displayDuration: displayDuration,
+            displayDuration,
         });
     }
 }
 
-// Recompute globalFastestLap from scratch after a lap is removed
+// Recomputes globalFastestLap after a lap is removed
 function recomputeGlobalFastestLap() {
     globalFastestLap = null;
     globalFastestLapPilotId = null;
@@ -320,7 +288,7 @@ function recomputeGlobalFastestLap() {
     });
 }
 
-// Position & reorder
+// -- Position & reorder ------------------------------------------------------
 
 function movePilot(index, delta) {
     const newPos = index + delta;
@@ -349,17 +317,14 @@ function jumpToPosition(index, newPosValue) {
 function toggleDNF(index) {
     const pilot = raceList[index];
     pilot.dnf = !pilot.dnf;
-
     if (pilot.dnf) {
         pilot.finished = false;
         if (timingEnabled && pilot.raceStartTime !== null && pilot.frozenTime === null) {
             pilot.frozenTime = getPilotElapsed(pilot);
         }
     } else {
-        // Un-DNF: unfreeze
         pilot.frozenTime = null;
     }
-
     recalculatePositions();
     checkRaceEnd();
     if (typeof saveAllToLocal === "function") saveAllToLocal();
@@ -373,14 +338,11 @@ function recalculatePositions() {
         if (a.laps !== b.laps) return b.laps - a.laps;
         return 0;
     });
-    raceList.forEach((p, idx) => {
-        p.position = idx + 1;
-    });
+    raceList.forEach((p, idx) => { p.position = idx + 1; });
 }
 
-// Chrono display helpers
+// -- Chrono display ----------------------------------------------------------
 
-// Build the chrono string for a pilot based on current chronoDisplayMode
 function getChronoDisplay(pilot, index) {
     if (!timingEnabled) return "";
 
@@ -405,20 +367,18 @@ function getChronoDisplay(pilot, index) {
             if (prevElapsed === null || myElapsed === null) return "—";
             return formatDelta(myElapsed - prevElapsed);
         }
-        case "best-lap": {
+        case "best-lap":
             if (!pilot.lapTimes || pilot.lapTimes.length === 0) return "—";
             return formatTime(Math.min(...pilot.lapTimes));
-        }
-        case "last-lap": {
+        case "last-lap":
             if (!pilot.lapTimes || pilot.lapTimes.length === 0) return "—";
             return formatTime(pilot.lapTimes[pilot.lapTimes.length - 1]);
-        }
         default:
             return "—";
     }
 }
 
-// Event detection
+// -- Event detection ---------------------------------------------------------
 
 function detectAndEmitEvents() {
     if (previousRaceList.length === 0) return;
@@ -429,30 +389,28 @@ function detectAndEmitEvents() {
 
         const team = typeof teams !== "undefined" ? teams.find((t) => t.id === pilot.teamId) : null;
         const ship = typeof ships !== "undefined" ? ships.find((s) => s.id === pilot.shipId) : null;
-        const durationInput = document.getElementById("event-duration");
-        const displayDuration = durationInput ? parseInt(durationInput.value) || 5 : 5;
+        const displayDuration = parseInt(document.getElementById("event-duration")?.value) || 5;
 
-        const eventPayload = {
+        const payload = {
             pilotId: pilot.id,
             pilotName: pilot.name,
             pilotCountry: pilot.country || "un",
             teamName: team ? team.name : null,
             teamColor: team ? team.color : null,
             shipModel: ship ? ship.model : null,
-            displayDuration: displayDuration,
+            displayDuration,
         };
 
         if (!previous.dnf && pilot.dnf) {
-            socket.emit("race-event", { ...eventPayload, type: "incident" });
+            socket.emit("race-event", { ...payload, type: "incident" });
         }
-
         if (!previous.finished && pilot.finished) {
-            socket.emit("race-event", { ...eventPayload, type: "finished" });
+            socket.emit("race-event", { ...payload, type: "finished" });
         }
     });
 }
 
-// Render
+// -- Render ------------------------------------------------------------------
 
 function displayRace() {
     const tableBody = document.getElementById("race-list");
@@ -467,69 +425,47 @@ function displayRace() {
 
     raceList.forEach((pilot, index) => {
         const team = typeof teams !== "undefined" ? teams.find((t) => t.id === pilot.teamId) : null;
-
         const lapDisplay = pilot.finished
             ? `<span class="lap-display finished">Finished</span>`
             : `<span class="lap-display">${pilot.laps}</span>`;
-
         const posBadgeClass = index === 0 ? "position-badge pos-first" : "position-badge";
         const teamColor = team ? team.color : "inherit";
         const teamAcronym = team ? team.acronym : "-";
-
-        // Chrono column
-        const chronoDisplay = timingEnabled ? getChronoDisplay(pilot, index) : "";
         const chronoCell = timingEnabled
-            ? `<td class="chrono-cell" style="${pilot.dnf ? "opacity:0.5;" : ""}">${pilot.dnf ? "DNF" : chronoDisplay}</td>`
+            ? `<td class="chrono-cell" style="${pilot.dnf ? "opacity:0.5;" : ""}">${pilot.dnf ? "DNF" : getChronoDisplay(pilot, index)}</td>`
             : "";
 
-        const chronoHeader = timingEnabled ? "" : ""; // handled via CSS class on table
+        const dnfTitle = pilot.dnf ? "Reset DNF" : "DNF";
+        const dnfIcon = pilot.dnf ? "restart_alt" : "cancel";
+        const dnfStyle = pilot.dnf
+            ? "--md-icon-button-icon-color: var(--md-sys-color-tertiary);"
+            : "--md-icon-button-icon-color: var(--md-sys-color-error);";
 
         const row = `
         <tr class="${pilot.dnf ? "dnf-row" : ""} ${pilot.finished ? "finished-row" : ""}">
             <td><span class="${posBadgeClass}">${pilot.position}</span></td>
             <td>${pilot.name}</td>
-            <td style="color: ${teamColor}; display: ${showTeams ? "" : "none"}">
-                ${teamAcronym}
-            </td>
+            <td style="color: ${teamColor}; display: ${showTeams ? "" : "none"}">${teamAcronym}</td>
             <td>${lapDisplay}</td>
             ${chronoCell}
             <td>
                 <div class="action-buttons">
-                    <md-icon-button onclick="changeLap(${index}, -1)" ${!isRunning ? "disabled" : ""} title="Remove lap">
-                        <md-icon>remove</md-icon>
-                    </md-icon-button>
-                    <md-icon-button onclick="changeLap(${index}, 1)" ${!isRunning || pilot.finished ? "disabled" : ""} title="Add lap">
-                        <md-icon>add</md-icon>
-                    </md-icon-button>
+                    <md-icon-button onclick="changeLap(${index}, -1)" ${!isRunning ? "disabled" : ""} title="Remove lap"><md-icon>remove</md-icon></md-icon-button>
+                    <md-icon-button onclick="changeLap(${index}, 1)" ${!isRunning || pilot.finished ? "disabled" : ""} title="Add lap"><md-icon>add</md-icon></md-icon-button>
                 </div>
             </td>
             <td>
-                <input
-                    class="inline-number"
-                    type="number"
-                    value="${pilot.position}"
-                    min="1"
-                    max="${raceList.length}"
-                    onchange="jumpToPosition(${index}, this.value)"
-                />
+                <input class="inline-number" type="number" value="${pilot.position}" min="1" max="${raceList.length}" onchange="jumpToPosition(${index}, this.value)" />
             </td>
             <td>
                 <div class="action-buttons">
-                    <md-icon-button onclick="movePilot(${index}, -1)" ${index === 0 ? "disabled" : ""} title="Move up">
-                        <md-icon>arrow_upward</md-icon>
-                    </md-icon-button>
-                    <md-icon-button onclick="movePilot(${index}, 1)" ${index === raceList.length - 1 ? "disabled" : ""} title="Move down">
-                        <md-icon>arrow_downward</md-icon>
-                    </md-icon-button>
+                    <md-icon-button onclick="movePilot(${index}, -1)" ${index === 0 ? "disabled" : ""} title="Move up"><md-icon>arrow_upward</md-icon></md-icon-button>
+                    <md-icon-button onclick="movePilot(${index}, 1)" ${index === raceList.length - 1 ? "disabled" : ""} title="Move down"><md-icon>arrow_downward</md-icon></md-icon-button>
                 </div>
             </td>
             <td>
-                <md-icon-button
-                    onclick="toggleDNF(${index})"
-                    title="${pilot.dnf ? "Reset DNF" : "DNF"}"
-                    style="${pilot.dnf ? "--md-icon-button-icon-color: var(--md-sys-color-tertiary);" : "--md-icon-button-icon-color: var(--md-sys-color-error);"}"
-                >
-                    <md-icon>${pilot.dnf ? "restart_alt" : "cancel"}</md-icon>
+                <md-icon-button onclick="toggleDNF(${index})" title="${dnfTitle}" style="${dnfStyle}">
+                    <md-icon>${dnfIcon}</md-icon>
                 </md-icon-button>
             </td>
         </tr>`;
@@ -537,36 +473,28 @@ function displayRace() {
         tableBody.insertAdjacentHTML("beforeend", row);
     });
 
-    // Show/hide team columns
-    document.querySelectorAll("table.m3-table").forEach((table) => {
-        table.classList.toggle("teams-hidden", !showTeams);
-    });
+    document.querySelectorAll("table.m3-table").forEach((t) => t.classList.toggle("teams-hidden", !showTeams));
 
-    // Show/hide chrono column in race table
     const raceTable = document.getElementById("race-list")?.closest("table");
-    if (raceTable) {
-        raceTable.classList.toggle("chrono-hidden", !timingEnabled);
-    }
+    if (raceTable) raceTable.classList.toggle("chrono-hidden", !timingEnabled);
 
-    // Update chrono column header visibility
     const chronoTh = document.getElementById("race-chrono-th");
     if (chronoTh) chronoTh.style.display = timingEnabled ? "" : "none";
 
     detectAndEmitEvents();
     previousRaceList = raceList.map((p) => ({ ...p, lapTimes: [...(p.lapTimes || [])] }));
 
-    // Broadcast full state
     socket.emit("race-update", {
         raceList: raceList.map((p) => ({
             ...p,
             chronoDisplay: getChronoDisplay(p, raceList.indexOf(p)),
         })),
         teams: typeof teams !== "undefined" ? teams : [],
-        teamDisplayMode: teamDisplayMode,
-        timingEnabled: timingEnabled,
-        chronoDisplayMode: chronoDisplayMode,
-        globalFastestLap: globalFastestLap,
-        globalFastestLapPilotId: globalFastestLapPilotId,
+        teamDisplayMode,
+        timingEnabled,
+        chronoDisplayMode,
+        globalFastestLap,
+        globalFastestLapPilotId,
         settings: {
             raceName: document.getElementById("setting-race-name")?.value || "",
             session: document.getElementById("setting-session")?.value || "",
@@ -577,7 +505,7 @@ function displayRace() {
     });
 }
 
-// Race end
+// -- Race end ----------------------------------------------------------------
 
 function checkRaceEnd() {
     const stillRacing = raceList.some((p) => !p.finished && !p.dnf);
@@ -608,19 +536,15 @@ function updateControls() {
     }
 }
 
-// Live chrono refresh
+// -- Live chrono refresh -----------------------------------------------------
 
-// Refresh chrono cells every 100ms while race is running
+// Refreshes chrono cells every 100ms without a full re-render
 setInterval(() => {
     if (raceStatus !== "running" || !timingEnabled) return;
     const cells = document.querySelectorAll("#race-list .chrono-cell");
     raceList.forEach((pilot, index) => {
         const cell = cells[index];
         if (!cell) return;
-        if (pilot.dnf) {
-            cell.textContent = "DNF";
-            return;
-        }
-        cell.textContent = getChronoDisplay(pilot, index);
+        cell.textContent = pilot.dnf ? "DNF" : getChronoDisplay(pilot, index);
     });
 }, 100);
