@@ -128,6 +128,28 @@
                         <md-select-option value="last-lap"><div slot="headline">Last lap</div></md-select-option>
                     </md-outlined-select>
 
+                    <!-- Pre-race countdown -->
+                    <md-outlined-text-field
+                        id="countdown-duration"
+                        label="Countdown (s)"
+                        type="number"
+                        value="30"
+                        min="1"
+                        max="600"
+                        style="width: 130px; flex-shrink: 0;"
+                        title="Pre-race countdown duration. Leave at 0 or use Start Race to skip."
+                    ></md-outlined-text-field>
+                    <md-outlined-button
+                        id="btn-countdown"
+                        onclick="startCountdown()"
+                        title="Start pre-race countdown on the leaderboard"
+                    >Countdown</md-outlined-button>
+                    <md-text-button
+                        id="btn-countdown-stop"
+                        onclick="stopCountdown(true)"
+                        style="display:none; --md-text-button-label-text-color: var(--md-sys-color-error);"
+                    >Stop countdown</md-text-button>
+
                     <div class="spacer"></div>
 
                     <div class="button-group">
@@ -459,7 +481,6 @@
 
             function toggleChrono() {
                 const chip = document.getElementById("btn-chrono-toggle");
-                // MD filter-chip toggles `selected` on click natively — we just read it
                 const on = chip ? chip.selected : timingEnabled;
                 updateChronoSelectVisibility(on);
                 if (typeof onTimingEnabledChange === "function") {

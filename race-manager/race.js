@@ -15,6 +15,11 @@ let totalPauseDuration = 0;
 let globalFastestLap = null;
 let globalFastestLapPilotId = null;
 
+// ── Pre-race countdown ────────────────────────────────────────
+let countdownActive = false;
+let countdownEndTime = null;
+let countdownInterval = null;
+
 // backward compat with pilots.js
 Object.defineProperty(window, "isTeamManagementActive", {
     get: () => teamDisplayMode !== "hidden",
@@ -23,7 +28,6 @@ Object.defineProperty(window, "isTeamManagementActive", {
 
 // -- Timing helpers -----------------------------------------------------------
 
-// Returns elapsed race time in ms, excluding pauses
 function getPilotElapsed(pilot) {
     if (!timingEnabled) return null;
     if (pilot.raceStartTime === null || pilot.raceStartTime === undefined) return null;
@@ -33,7 +37,6 @@ function getPilotElapsed(pilot) {
     return Date.now() - pilot.raceStartTime - totalPauseDuration - pauseOffset;
 }
 
-// Formats ms to M:SS.mmm
 function formatTime(ms) {
     if (ms === null || ms === undefined || isNaN(ms)) return "—";
     const totalSeconds = Math.floor(ms / 1000);
@@ -43,7 +46,6 @@ function formatTime(ms) {
     return `${minutes}:${String(seconds).padStart(2, "0")}.${String(millis).padStart(3, "0")}`;
 }
 
-// Formats ms delta to +M:SS.mmm
 function formatDelta(ms) {
     if (ms === null || ms === undefined || isNaN(ms)) return "—";
     return `+${formatTime(ms)}`;
@@ -72,6 +74,73 @@ function onChronoDisplayModeChange(value) {
     displayRace();
 }
 
+// -- Pre-race countdown -------------------------------------------------------
+
+function startCountdown() {
+    if (raceList.length === 0) {
+        alert("Please load pilots first");
+        return;
+    }
+    if (raceStatus !== "standby") {
+        alert("Countdown can only be started before the race begins.");
+        return;
+    }
+
+    const durationInput = document.getElementById("countdown-duration");
+    const durationSec = parseInt(durationInput?.value) || 0;
+
+    if (durationSec <= 0) {
+        // No duration set — start race immediately
+        startRace();
+        return;
+    }
+
+    stopCountdown(false);
+    countdownActive = true;
+    countdownEndTime = Date.now() + durationSec * 1000;
+
+    updateCountdownUI();
+
+    countdownInterval = setInterval(() => {
+        const remaining = countdownEndTime - Date.now();
+        updateCountdownUI();
+        if (remaining <= 0) {
+            stopCountdown(false);
+            startRace();
+        }
+    }, 200);
+
+    displayRace();
+}
+
+function stopCountdown(broadcast = true) {
+    if (countdownInterval) {
+        clearInterval(countdownInterval);
+        countdownInterval = null;
+    }
+    countdownActive = false;
+    countdownEndTime = null;
+    updateCountdownUI();
+    if (broadcast) displayRace();
+}
+
+function updateCountdownUI() {
+    const btn = document.getElementById("btn-countdown");
+    const stopBtn = document.getElementById("btn-countdown-stop");
+    if (btn) btn.disabled = countdownActive || raceStatus !== "standby";
+    if (stopBtn) stopBtn.style.display = countdownActive ? "" : "none";
+}
+
+function getCountdownPayload() {
+    if (!countdownActive || countdownEndTime === null) {
+        return { active: false, remainingMs: 0 };
+    }
+    return {
+        active: true,
+        remainingMs: Math.max(0, countdownEndTime - Date.now()),
+    };
+}
+
 // -- Race lifecycle -----------------------------------------------------------
 
 function startRace() {
@@ -80,11 +149,15 @@ function startRace() {
         return;
     }
 
+    // Cancel any running countdown silently
+    stopCountdown(false);
+
     // Resume from pause
     if (raceStatus === "paused" && pauseStartTime !== null) {
         totalPauseDuration += Date.now() - pauseStartTime;
         pauseStartTime = null;
         raceStatus = "running";
+        socket.emit("race-resumed");
         updateControls();
         if (typeof saveAllToLocal === "function") saveAllToLocal();
         displayRace();
@@ -150,6 +223,9 @@ function endRaceManually() {
 }
 
 function resetRace() {
+    stopCountdown(false);
+    // Notify the leaderboard so it can flash the "Race restarted" banner
+    socket.emit("race-restarted");
     raceList.forEach((p) => {
         p.laps = 0;
         p.finished = false;
@@ -174,6 +250,7 @@ function resetRace() {
 }
 
 function reloadPilots() {
+    stopCountdown(false);
     raceList = pilots.map((p, index) => ({
         ...p,
         laps: 0,
@@ -211,13 +288,11 @@ function changeLap(index, delta) {
     if (newLaps < 0) return;
     if (newLaps >= 1 && !pilot.dnf) {
 
-        // Rolling: pilot crosses start line (0 → 1)
         if (isRolling && pilot.laps === 0 && delta === 1 && timingEnabled) {
             pilot.raceStartTime = Date.now();
             pilot.lastSplitTimestamp = Date.now();
         }
 
-        // Record split on lap completion
         if (delta === 1 && pilot.laps >= 1 && timingEnabled && pilot.raceStartTime !== null) {
             const now = Date.now();
             const split = now - pilot.lastSplitTimestamp;
@@ -226,7 +301,6 @@ function changeLap(index, delta) {
             checkFastestLap(pilot, split);
         }
 
-        // Remove last split on lap decrement
         if (delta === -1 && timingEnabled && pilot.lapTimes && pilot.lapTimes.length > 0) {
             const removed = pilot.lapTimes.pop();
             if (pilot.lastSplitTimestamp !== null) {
@@ -249,7 +323,6 @@ function changeLap(index, delta) {
     }
 }
 
-// Emits fastest-lap event if split beats the current global record
 function checkFastestLap(pilot, splitMs) {
     if (globalFastestLap === null || splitMs < globalFastestLap) {
         globalFastestLap = splitMs;
@@ -273,7 +346,6 @@ function checkFastestLap(pilot, splitMs) {
     }
 }
 
-// Recomputes globalFastestLap after a lap is removed
 function recomputeGlobalFastestLap() {
     globalFastestLap = null;
     globalFastestLapPilotId = null;
@@ -484,6 +556,9 @@ function displayRace() {
     detectAndEmitEvents();
     previousRaceList = raceList.map((p) => ({ ...p, lapTimes: [...(p.lapTimes || [])] }));
 
+    // Update countdown button states
+    updateCountdownUI();
+
     socket.emit("race-update", {
         raceList: raceList.map((p) => ({
             ...p,
@@ -495,6 +570,8 @@ function displayRace() {
         chronoDisplayMode,
         globalFastestLap,
         globalFastestLapPilotId,
+        raceStatus,
+        countdown: getCountdownPayload(),
         settings: {
             raceName: document.getElementById("setting-race-name")?.value || "",
             session: document.getElementById("setting-session")?.value || "",
@@ -523,22 +600,26 @@ function updateControls() {
 
     if (raceStatus === "running") {
         btnStart.disabled = true;
+        btnStart.textContent = "Start race";
         btnPause.disabled = false;
         btnFinish.disabled = false;
     } else if (raceStatus === "paused") {
         btnStart.disabled = false;
+        btnStart.textContent = "Resume race";
         btnPause.disabled = true;
         btnFinish.disabled = false;
     } else {
         btnStart.disabled = false;
+        btnStart.textContent = "Start race";
         btnPause.disabled = true;
         btnFinish.disabled = true;
     }
+
+    updateCountdownUI();
 }
 
 // -- Live chrono refresh -----------------------------------------------------
 
-// Refreshes chrono cells every 100ms without a full re-render
 setInterval(() => {
     if (raceStatus !== "running" || !timingEnabled) return;
     const cells = document.querySelectorAll("#race-list .chrono-cell");
@@ -548,3 +629,31 @@ setInterval(() => {
         cell.textContent = pilot.dnf ? "DNF" : getChronoDisplay(pilot, index);
     });
 }, 100);
+
+// -- Countdown broadcast refresh ---------------------------------------------
+// Re-broadcast remaining time every second while countdown is active so the
+// leaderboard stays in sync even if no lap events occur.
+setInterval(() => {
+    if (!countdownActive) return;
+    socket.emit("race-update", {
+        raceList: raceList.map((p) => ({
+            ...p,
+            chronoDisplay: getChronoDisplay(p, raceList.indexOf(p)),
+        })),
+        teams: typeof teams !== "undefined" ? teams : [],
+        teamDisplayMode,
+        timingEnabled,
+        chronoDisplayMode,
+        globalFastestLap,
+        globalFastestLapPilotId,
+        raceStatus,
+        countdown: getCountdownPayload(),
+        settings: {
+            raceName: document.getElementById("setting-race-name")?.value || "",
+            session: document.getElementById("setting-session")?.value || "",
+            weather: document.getElementById("setting-weather")?.value || "",
+            startType: document.getElementById("setting-start-type")?.value || "",
+            totalLaps: document.getElementById("total-laps")?.value || "3",
+        },
+    });
+}, 500);

@@ -40,11 +40,40 @@
             </div>
             <div class="empty-cell"></div>
 
-            <div class="empty-cell"></div>
-            <div class="grid-cell lap-container">
-                LAP &nbsp;<span class="lap-current" id="lb-lap-current">0</span><span class="lap-total" id="lb-lap-total">/0</span>
+            <!-- Race status block: toggles between countdown, lap counter, and paused states -->
+            <div class="slide-wrapper" id="race-status-wrapper">
+                <div class="slide-inner">
+                    <!-- Inner container whose height is animated by JS between states -->
+                    <div class="race-status-inner" id="race-status-inner">
+
+                        <!-- Countdown state: pre-race timer -->
+                        <div class="race-status-block rsb-countdown" id="rsb-countdown">
+                            <div class="rsb-label">Start in</div>
+                            <div class="rsb-chrono" id="lb-countdown-timer">0:00</div>
+                        </div>
+
+                        <!-- Lap state: lap counter + wipe overlays for paused and reset transitions -->
+                        <div class="race-status-block rsb-lap active" id="rsb-lap">
+                            <div class="lap-container">
+                                LAP &nbsp;<span class="lap-current" id="lb-lap-current">0</span><span class="lap-total" id="lb-lap-total">/0</span>
+                            </div>
+                            <!-- Amber overlay: slides in on pause, out on resume -->
+                            <div class="rsb-lap-wipe" id="rsb-lap-wipe">
+                                <div class="rsb-wipe-label">Race paused</div>
+                            </div>
+                            <!-- Red overlay: slides in on reset, auto-dismisses -->
+                            <div class="rsb-lap-wipe-reset" id="rsb-lap-wipe-reset">
+                                <div class="rsb-wipe-label">Race restarted</div>
+                            </div>
+                            <!-- Green overlay: slides in on resume, auto-dismisses -->
+                            <div class="rsb-lap-wipe-resumed" id="rsb-lap-wipe-resumed">
+                                <div class="rsb-wipe-label">Race resumed</div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
             </div>
-            <div class="empty-cell"></div>
 
             <div id="lb-pilots-container" style="display: contents"></div>
         </div>

@@ -23,6 +23,16 @@ io.on('connection', (socket) => {
         socket.broadcast.emit('race-event', data);
     });
 
+    // Broadcast race reset signal so the leaderboard can flash the banner
+    socket.on('race-restarted', () => {
+        socket.broadcast.emit('race-restarted');
+    });
+
+    // Broadcast race resumed signal so the leaderboard can flash the banner
+    socket.on('race-resumed', () => {
+        socket.broadcast.emit('race-resumed');
+    });
+
     socket.on('disconnect', () => {
         console.log("Un utilisateur s'est déconnecté");
     });
