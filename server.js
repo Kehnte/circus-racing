@@ -1,17 +1,16 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// Serve project folders
+// Serve the entire project as static files
 app.use(express.static(__dirname));
 
 io.on('connection', (socket) => {
-    console.log('Un utilisateur est connecté');
+    console.log('A user connected');
 
     // Broadcast full race state to all clients
     socket.on('race-update', (data) => {
@@ -34,14 +33,14 @@ io.on('connection', (socket) => {
     });
 
     socket.on('disconnect', () => {
-        console.log("Un utilisateur s'est déconnecté");
+        console.log('A user disconnected');
     });
 });
 
 const PORT = 3000;
 server.listen(PORT, () => {
-    console.log(`Serveur lancé sur http://localhost:${PORT}`);
-    console.log(`Le Manager sera sur http://localhost:${PORT}/race-manager/race-manager.html`);
-    console.log(`Le Leaderboard sera sur http://localhost:${PORT}/leaderboard/leaderboard.html`);
-    console.log(`L'Event Row sera sur http://localhost:${PORT}/event-row/event-row.html`);
+    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`Dashboard:   http://localhost:${PORT}/dashboard/`);
+    console.log(`Leaderboard: http://localhost:${PORT}/overlays/leaderboard/`);
+    console.log(`Race Alert:  http://localhost:${PORT}/overlays/race-alert/`);
 });

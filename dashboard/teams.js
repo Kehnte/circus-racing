@@ -49,7 +49,6 @@ function displayTeams() {
     document.querySelectorAll(".color-swatch[data-prefix]").forEach((swatch) => {
         swatch.addEventListener("click", () => {
             const prefix = swatch.dataset.prefix;
-            // Deselect all swatches for this prefix group, then select the clicked one
             document.querySelectorAll(`.color-swatch[data-prefix="${prefix}"]`).forEach((s) => s.classList.remove("selected"));
             swatch.classList.add("selected");
             const color = swatch.dataset.color;
@@ -68,7 +67,7 @@ const M3_COLORS = [
     "#FF8A65","#A1887F","#E0E0E0","#90A4AE"
 ];
 
-// Build the HTML for a color swatch palette with a hidden input holding the selected value idPrefix is used to namespace element IDs so multiple palettes can coexist on the page
+// Build the HTML for a color swatch palette with a hidden input holding the selected value
 function buildSwatchesHTML(selectedColor, idPrefix) {
     const swatches = M3_COLORS.map((c) => {
         const sel = c.toLowerCase() === selectedColor.toLowerCase() ? "selected" : "";
@@ -118,7 +117,7 @@ function createDisplayRow(team) {
     </tr>`;
 }
 
-// Remove a team by ID, then refresh all dependent UI (team dropdown, pilots table)
+// Remove a team by ID, then refresh all dependent UI
 function deleteTeam(idToDelete) {
     const teamToDelete = teams.find((t) => t.id === idToDelete);
     if (teamToDelete) {
@@ -155,7 +154,6 @@ function saveEdit(id) {
 
     team.name = name;
     team.acronym = acronym;
-    // Fall back to the existing color if the edit palette hidden input is missing
     team.color = document.getElementById("edit-color-value")?.value || team.color;
 
     editingTeamId = null;
@@ -166,4 +164,6 @@ function saveEdit(id) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+    displayTeams();
+    updateTeamDropdown();
 });

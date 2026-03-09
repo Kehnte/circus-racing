@@ -18,7 +18,6 @@ function addControl() {
     const newControl = {
         id: Date.now(),
         type: type,
-        // Fall back to a placeholder image when no URL is provided
         img: img || "https://placehold.co/40x40/png",
     };
 
@@ -57,7 +56,7 @@ function createControlDisplayRow(ctrl) {
     </tr>`;
 }
 
-// Build the inline edit row HTML for a control type (image URL + type text fields)
+// Build the inline edit row HTML for a control type
 function createControlEditRow(ctrl) {
     return `
     <tr>
@@ -83,19 +82,16 @@ function deleteControl(id) {
     }
 }
 
-// Open a control row for inline editing
 function startEditControl(id) {
     editingControlId = id;
     displayControls();
 }
 
-// Discard in-progress edits and revert the row back to display mode
 function cancelEditControl() {
     editingControlId = null;
     displayControls();
 }
 
-// Persist the inline-edited values back to the control object and close edit mode
 function saveEditControl(id) {
     const ctrl = controlsList.find((c) => c.id === id);
     ctrl.type = document.getElementById("edit-control-type").value?.trim();
@@ -107,7 +103,7 @@ function saveEditControl(id) {
     saveToStorage();
 }
 
-// Rebuild the controls dropdown options in the pilot form from the current controlsList
+// Rebuild the controls dropdown options in the pilot form
 function updateControlDropdown() {
     const select = document.getElementById("pilot-controls");
     if (!select) return;

@@ -1,0 +1,93 @@
+/* overlays.css - Shared wipe animation system used by leaderboard and future overlay components */
+
+/* Animated slide wrapper: grid-based expand from 0 height to full */
+.slide-wrapper {
+    grid-column: 1 / -1;
+    display: none;
+    grid-template-rows: 0fr;
+    overflow: hidden;
+    opacity: 0;
+    transition: grid-template-rows 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.35s ease;
+}
+
+.slide-wrapper.visible {
+    display: grid;
+}
+
+.slide-wrapper.open {
+    grid-template-rows: 1fr;
+    opacity: 1;
+}
+
+.slide-wrapper > .slide-inner {
+    min-height: 0;
+    overflow: hidden;
+    padding-left: 32px;
+    padding-right: 32px;
+}
+
+/* Race status block: outer container, height animated by JS between states */
+.race-status-inner {
+    position: relative;
+    overflow: hidden;
+    height: 80px;
+    transition: height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Each state is absolutely stacked; active one is revealed by JS */
+.race-status-block {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    pointer-events: none;
+    opacity: 0;
+}
+
+.race-status-block.active {
+    pointer-events: auto;
+    opacity: 1;
+}
+
+/* Wipe overlay base: enters from left, exits to right via translateX */
+.rsb-lap-wipe,
+.rsb-lap-wipe-reset,
+.rsb-lap-wipe-resumed {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transform: translateX(-100%);
+    transition: transform 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Visible state */
+.rsb-lap-wipe.wipe-in,
+.rsb-lap-wipe-reset.wipe-in,
+.rsb-lap-wipe-resumed.wipe-in {
+    transform: translateX(0);
+}
+
+/* Exit state */
+.rsb-lap-wipe.wipe-out,
+.rsb-lap-wipe-reset.wipe-out,
+.rsb-lap-wipe-resumed.wipe-out {
+    transform: translateX(100%);
+}
+
+/* Wipe colors and stacking order */
+.rsb-lap-wipe         { background-color: #FFC107; z-index: 1; }
+.rsb-lap-wipe-reset   { background-color: #F44336; z-index: 2; }
+.rsb-lap-wipe-resumed { background-color: #4CAF50; z-index: 3; }
+
+/* Label style inside wipe overlays */
+.rsb-wipe-label {
+    font-family: "Zalando Sans SemiExpanded", sans-serif;
+    font-size: 24px;
+    font-weight: 400;
+    font-style: italic;
+    text-transform: uppercase;
+    color: #fafafa;
+    line-height: 1;
+}

@@ -15,7 +15,7 @@ let totalPauseDuration = 0;
 let globalFastestLap = null;
 let globalFastestLapPilotId = null;
 
-// ── Pre-race countdown ────────────────────────────────────────
+// Pre-race countdown
 let countdownActive = false;
 let countdownEndTime = null;
 let countdownInterval = null;
@@ -26,7 +26,7 @@ Object.defineProperty(window, "isTeamManagementActive", {
     configurable: true,
 });
 
-// -- Timing helpers -----------------------------------------------------------
+// Timing helpers
 
 function getPilotElapsed(pilot) {
     if (!timingEnabled) return null;
@@ -51,7 +51,7 @@ function formatDelta(ms) {
     return `+${formatTime(ms)}`;
 }
 
-// -- Settings callbacks -------------------------------------------------------
+// Settings callbacks
 
 function onTeamDisplayModeChange(value) {
     teamDisplayMode = value;
@@ -74,7 +74,7 @@ function onChronoDisplayModeChange(value) {
     displayRace();
 }
 
-// -- Pre-race countdown -------------------------------------------------------
+// Pre-race countdown
 
 function startCountdown() {
     if (raceList.length === 0) {
@@ -90,7 +90,6 @@ function startCountdown() {
     const durationSec = parseInt(durationInput?.value) || 0;
 
     if (durationSec <= 0) {
-        // No duration set — start race immediately
         startRace();
         return;
     }
@@ -141,7 +140,7 @@ function getCountdownPayload() {
     };
 }
 
-// -- Race lifecycle -----------------------------------------------------------
+// Race lifecycle
 
 function startRace() {
     if (raceList.length === 0) {
@@ -149,7 +148,6 @@ function startRace() {
         return;
     }
 
-    // Cancel any running countdown silently
     stopCountdown(false);
 
     // Resume from pause
@@ -224,7 +222,6 @@ function endRaceManually() {
 
 function resetRace() {
     stopCountdown(false);
-    // Notify the leaderboard so it can flash the "Race restarted" banner
     socket.emit("race-restarted");
     raceList.forEach((p) => {
         p.laps = 0;
@@ -275,7 +272,7 @@ function reloadPilots() {
     displayRace();
 }
 
-// -- Lap management ----------------------------------------------------------
+// Lap management
 
 function changeLap(index, delta) {
     if (raceStatus !== "running") return;
@@ -360,7 +357,7 @@ function recomputeGlobalFastestLap() {
     });
 }
 
-// -- Position & reorder ------------------------------------------------------
+// Position & reorder
 
 function movePilot(index, delta) {
     const newPos = index + delta;
@@ -413,7 +410,7 @@ function recalculatePositions() {
     raceList.forEach((p, idx) => { p.position = idx + 1; });
 }
 
-// -- Chrono display ----------------------------------------------------------
+// Chrono display
 
 function getChronoDisplay(pilot, index) {
     if (!timingEnabled) return "";
@@ -450,7 +447,7 @@ function getChronoDisplay(pilot, index) {
     }
 }
 
-// -- Event detection ---------------------------------------------------------
+// Event detection
 
 function detectAndEmitEvents() {
     if (previousRaceList.length === 0) return;
@@ -482,7 +479,7 @@ function detectAndEmitEvents() {
     });
 }
 
-// -- Render ------------------------------------------------------------------
+// Render
 
 function displayRace() {
     const tableBody = document.getElementById("race-list");
@@ -522,17 +519,33 @@ function displayRace() {
             ${chronoCell}
             <td>
                 <div class="action-buttons">
-                    <md-icon-button onclick="changeLap(${index}, -1)" ${!isRunning ? "disabled" : ""} title="Remove lap"><md-icon>remove</md-icon></md-icon-button>
-                    <md-icon-button onclick="changeLap(${index}, 1)" ${!isRunning || pilot.finished ? "disabled" : ""} title="Add lap"><md-icon>add</md-icon></md-icon-button>
+                    <md-icon-button onclick="changeLap(${index}, -1)" ${!isRunning ? "disabled" : ""} title="Remove lap">
+                        <md-icon>remove</md-icon>
+                    </md-icon-button>
+                    <md-icon-button onclick="changeLap(${index}, 1)" ${!isRunning ? "disabled" : ""} title="Add lap">
+                        <md-icon>add</md-icon>
+                    </md-icon-button>
                 </div>
             </td>
             <td>
-                <input class="inline-number" type="number" value="${pilot.position}" min="1" max="${raceList.length}" onchange="jumpToPosition(${index}, this.value)" />
+                <input
+                    class="inline-number"
+                    type="number"
+                    min="1"
+                    max="${raceList.length}"
+                    value="${pilot.position}"
+                    onchange="jumpToPosition(${index}, this.value)"
+                    title="Jump to position"
+                />
             </td>
             <td>
                 <div class="action-buttons">
-                    <md-icon-button onclick="movePilot(${index}, -1)" ${index === 0 ? "disabled" : ""} title="Move up"><md-icon>arrow_upward</md-icon></md-icon-button>
-                    <md-icon-button onclick="movePilot(${index}, 1)" ${index === raceList.length - 1 ? "disabled" : ""} title="Move down"><md-icon>arrow_downward</md-icon></md-icon-button>
+                    <md-icon-button onclick="movePilot(${index}, -1)" ${index === 0 ? "disabled" : ""} title="Move up">
+                        <md-icon>arrow_upward</md-icon>
+                    </md-icon-button>
+                    <md-icon-button onclick="movePilot(${index}, 1)" ${index === raceList.length - 1 ? "disabled" : ""} title="Move down">
+                        <md-icon>arrow_downward</md-icon>
+                    </md-icon-button>
                 </div>
             </td>
             <td>
@@ -541,22 +554,19 @@ function displayRace() {
                 </md-icon-button>
             </td>
         </tr>`;
-
         tableBody.insertAdjacentHTML("beforeend", row);
     });
 
-    document.querySelectorAll("table.m3-table").forEach((t) => t.classList.toggle("teams-hidden", !showTeams));
-
-    const raceTable = document.getElementById("race-list")?.closest("table");
-    if (raceTable) raceTable.classList.toggle("chrono-hidden", !timingEnabled);
-
-    const chronoTh = document.getElementById("race-chrono-th");
-    if (chronoTh) chronoTh.style.display = timingEnabled ? "" : "none";
+    // Update table chrono column visibility
+    const table = tableBody.closest("table");
+    if (table) {
+        table.classList.toggle("chrono-hidden", !timingEnabled);
+        table.classList.toggle("teams-hidden", !showTeams);
+    }
 
     detectAndEmitEvents();
     previousRaceList = raceList.map((p) => ({ ...p, lapTimes: [...(p.lapTimes || [])] }));
 
-    // Update countdown button states
     updateCountdownUI();
 
     socket.emit("race-update", {
@@ -582,7 +592,7 @@ function displayRace() {
     });
 }
 
-// -- Race end ----------------------------------------------------------------
+// Race end
 
 function checkRaceEnd() {
     const stillRacing = raceList.some((p) => !p.finished && !p.dnf);
@@ -618,7 +628,7 @@ function updateControls() {
     updateCountdownUI();
 }
 
-// -- Live chrono refresh -----------------------------------------------------
+// Live chrono refresh
 
 setInterval(() => {
     if (raceStatus !== "running" || !timingEnabled) return;
@@ -630,9 +640,8 @@ setInterval(() => {
     });
 }, 100);
 
-// -- Countdown broadcast refresh ---------------------------------------------
-// Re-broadcast remaining time every second while countdown is active so the
-// leaderboard stays in sync even if no lap events occur.
+// Countdown broadcast refresh
+
 setInterval(() => {
     if (!countdownActive) return;
     socket.emit("race-update", {

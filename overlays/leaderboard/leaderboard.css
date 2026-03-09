@@ -1,3 +1,5 @@
+/* leaderboard.css */
+
 /* Reset */
 *,
 *::before,
@@ -14,7 +16,7 @@ body {
     color: #fafafa;
 }
 
-/* Typography Utilities */
+/* Typography */
 .lap-current,
 .lap-total,
 .pilot-rank,
@@ -38,7 +40,6 @@ body {
     grid-template-columns: 30px auto 30px;
     gap: 2px;
     width: fit-content;
-
     position: absolute;
     top: 40px;
     left: 48px;
@@ -47,11 +48,12 @@ body {
 .grid-cell {
     background-color: #212121;
 }
+
 .empty-cell {
     background: transparent;
 }
 
-/* Flex Utilities */
+/* Flex utilities */
 .circuit-name,
 .weather-icon,
 .session-type,
@@ -83,17 +85,19 @@ body {
     font-size: 12px;
     color: #353535;
 }
+
 .text-powered-by {
     font-weight: 400;
     font-size: 12px;
     color: #ffffff;
 }
+
 .text-circus-racing {
     font-weight: 700;
     font-style: italic;
 }
 
-/* Circuit & Session */
+/* Circuit & session row */
 .circuit-header-container,
 .setting-session-container {
     grid-column: 2;
@@ -101,9 +105,11 @@ body {
     gap: 2px;
     height: 30px;
 }
+
 .circuit-header-container {
     grid-template-columns: 1fr 30px;
 }
+
 .setting-session-container {
     grid-template-columns: 1fr 1fr;
 }
@@ -112,76 +118,24 @@ body {
     font-weight: 800;
     font-size: 14px;
 }
+
 .weather-icon {
     width: 30px;
     height: 30px;
-}
-.icon-svg {
-    width: 20px;
-    height: 20px;
 }
 
 .session-type {
     font-weight: 600;
     font-size: 14px;
 }
+
 .start-type {
     font-weight: 400;
     font-style: italic;
     font-size: 14px;
 }
 
-/* ── Animated slide wrappers ────────────────────────────────── */
-.slide-wrapper {
-    grid-column: 1 / -1;
-    display: none;
-    grid-template-rows: 0fr;
-    overflow: hidden;
-    opacity: 0;
-    transition: grid-template-rows 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-                opacity 0.35s ease;
-}
-
-.slide-wrapper.visible {
-    display: grid;
-}
-
-.slide-wrapper.open {
-    grid-template-rows: 1fr;
-    opacity: 1;
-}
-
-.slide-wrapper > .slide-inner {
-    min-height: 0;
-    overflow: hidden;
-    padding-left: 32px;
-    padding-right: 32px;
-}
-
-/* ── Race status block ───────────────────────────────────────── */
-/* Outer animated container — height is driven by JS to slide between states */
-.race-status-inner {
-    position: relative;
-    overflow: hidden;
-    height: 80px;
-    transition: height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Each state is absolutely stacked; visibility toggled by JS */
-.race-status-block {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    pointer-events: none;
-    opacity: 0;
-}
-
-.race-status-block.active {
-    pointer-events: auto;
-    opacity: 1;
-}
-
-/* Countdown state: dark background, label + timer stacked */
+/* Race status block states */
 .rsb-countdown {
     flex-direction: column;
     justify-content: center;
@@ -190,7 +144,6 @@ body {
     gap: 2px;
 }
 
-/* Lap state: dark background, lap counter centered; also hosts the wipe overlay */
 .rsb-lap {
     justify-content: center;
     align-items: center;
@@ -198,49 +151,6 @@ body {
     overflow: hidden;
 }
 
-/* Shared base for all wipe overlays — enter from left, exit to right via translateX only */
-.rsb-lap-wipe,
-.rsb-lap-wipe-reset,
-.rsb-lap-wipe-resumed {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    transform: translateX(-100%);
-    transition: transform 0.45s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Visible state: centered */
-.rsb-lap-wipe.wipe-in,
-.rsb-lap-wipe-reset.wipe-in,
-.rsb-lap-wipe-resumed.wipe-in {
-    transform: translateX(0);
-}
-
-/* Exit state: slide out to the right */
-.rsb-lap-wipe.wipe-out,
-.rsb-lap-wipe-reset.wipe-out,
-.rsb-lap-wipe-resumed.wipe-out {
-    transform: translateX(100%);
-}
-
-.rsb-lap-wipe         { background-color: #FFC107; z-index: 1; }
-.rsb-lap-wipe-reset   { background-color: #F44336; z-index: 2; }
-.rsb-lap-wipe-resumed { background-color: #4CAF50; z-index: 3; }
-
-/* Shared label style for wipe overlays */
-.rsb-wipe-label {
-    font-family: "Zalando Sans SemiExpanded", sans-serif;
-    font-size: 24px;
-    font-weight: 400;
-    font-style: italic;
-    text-transform: uppercase;
-    color: #fafafa;
-    line-height: 1;
-}
-
-/* Shared label style */
 .rsb-label {
     font-family: "Zalando Sans SemiExpanded", sans-serif;
     font-size: 24px;
@@ -251,7 +161,6 @@ body {
     line-height: 1;
 }
 
-/* Chrono inside countdown state */
 .rsb-chrono {
     font-family: "Roboto Mono", monospace;
     font-weight: 500;
@@ -260,7 +169,7 @@ body {
     line-height: 1.2;
 }
 
-/* Lap counter — no z-index so the wipe overlay sits above it */
+/* Lap counter */
 .lap-container {
     display: flex;
     justify-content: center;
@@ -268,15 +177,17 @@ body {
     font-size: 24px;
     color: #9e9e9e;
 }
+
 .lap-current {
     font-weight: 500;
     color: #fafafa;
 }
+
 .lap-total {
     font-weight: 500;
 }
 
-/* Pilots */
+/* Pilot rows */
 .pilot-row {
     grid-column: 2;
     display: flex;
@@ -293,6 +204,7 @@ body {
     font-weight: 700;
     font-size: 14px;
 }
+
 .pilot-rank.rank-first {
     background-color: #c62828;
 }
@@ -323,7 +235,7 @@ body {
     text-overflow: ellipsis;
 }
 
-/* Pilot infos */
+/* Pilot info area */
 .pilot-infos {
     flex: 1;
     min-width: 0;
@@ -334,12 +246,14 @@ body {
     gap: 5px;
     background-color: #212121;
 }
+
 .pilot-country {
     flex-shrink: 0;
     display: flex;
     align-items: center;
     font-size: 14px;
 }
+
 .pilot-name {
     font-size: 14px;
     font-weight: 400;
@@ -366,32 +280,34 @@ body {
     text-transform: uppercase;
 }
 
-/* DNF chrono */
 .pilot-chrono.chrono-dnf {
     color: #616161;
     font-style: italic;
 }
 
-/* Status Icons */
+/* Status icons */
 .icon-cell {
     width: 30px;
     flex-shrink: 0;
     height: 30px;
 }
+
 .status-fastest {
     background-color: #e91e63;
 }
+
 .status-finished {
     background-color: #212121;
 }
 
-/* Race Start */
+/* Race start countdown */
 .race-start-container {
     grid-column: 2;
     flex-direction: column;
     height: 80px;
     padding: 10px 0;
 }
+
 .race-start-label {
     font-size: 32px;
     font-weight: 500;
@@ -399,6 +315,7 @@ body {
     color: #9e9e9e;
     line-height: 1;
 }
+
 .race-start-time {
     font-size: 40px;
     font-weight: 500;

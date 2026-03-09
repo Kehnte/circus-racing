@@ -48,10 +48,7 @@ function saveToStorage() {
     try {
         localStorage.setItem(STORAGE_KEYS.TEAMS, JSON.stringify(teams));
         localStorage.setItem(STORAGE_KEYS.SHIPS, JSON.stringify(ships));
-        localStorage.setItem(
-            STORAGE_KEYS.CONTROLS,
-            JSON.stringify(controlsList),
-        );
+        localStorage.setItem(STORAGE_KEYS.CONTROLS, JSON.stringify(controlsList));
         localStorage.setItem(STORAGE_KEYS.PILOTS, JSON.stringify(pilots));
     } catch (error) {
         console.error("Error saving to LocalStorage:", error);
@@ -65,8 +62,7 @@ function saveRaceSettings() {
             raceName: document.getElementById("setting-race-name")?.value ?? "",
             session: document.getElementById("setting-session")?.value ?? "",
             weather: document.getElementById("setting-weather")?.value ?? "",
-            startType:
-                document.getElementById("setting-start-type")?.value ?? "",
+            startType: document.getElementById("setting-start-type")?.value ?? "",
             totalLaps: document.getElementById("total-laps")?.value ?? "",
         };
         localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
@@ -84,10 +80,7 @@ function saveAllToLocal() {
     saveRaceSettings();
     try {
         if (typeof raceList !== "undefined") {
-            localStorage.setItem(
-                STORAGE_KEYS.RACE_LIST,
-                JSON.stringify(raceList),
-            );
+            localStorage.setItem(STORAGE_KEYS.RACE_LIST, JSON.stringify(raceList));
         }
     } catch (error) {
         console.error("Error saving race list:", error);
@@ -143,31 +136,54 @@ document.addEventListener("DOMContentLoaded", () => {
     if (teamSection && typeof teamDisplayMode !== "undefined") {
         teamSection.style.display = teamDisplayMode !== "hidden" ? "block" : "none";
     }
-    document.querySelectorAll("table.m3-table").forEach((table) => {
-        table.classList.toggle("teams-hidden", teamDisplayMode === "hidden");
-    });
 
+    // Restore race settings fields
+    try {
+        const savedSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+        if (savedSettings) {
+            const s = JSON.parse(savedSettings);
+            setTimeout(() => {
+                if (s.raceName !== undefined) {
+                    const el = document.getElementById("setting-race-name");
+                    if (el) el.value = s.raceName;
+                }
+                if (s.session !== undefined) {
+                    const el = document.getElementById("setting-session");
+                    if (el) el.value = s.session;
+                }
+                if (s.weather !== undefined) {
+                    const el = document.getElementById("setting-weather");
+                    if (el) el.value = s.weather;
+                }
+                if (s.startType !== undefined) {
+                    const el = document.getElementById("setting-start-type");
+                    if (el) el.value = s.startType;
+                }
+                if (s.totalLaps !== undefined) {
+                    const el = document.getElementById("total-laps");
+                    if (el) el.value = s.totalLaps;
+                }
+            }, 50);
+        }
+    } catch (error) {
+        console.error("Error restoring race settings:", error);
+    }
+
+    // Restore raceList if available
+    try {
+        const savedRaceList = localStorage.getItem(STORAGE_KEYS.RACE_LIST);
+        if (savedRaceList && typeof raceList !== "undefined") {
+            raceList = JSON.parse(savedRaceList);
+        }
+    } catch (error) {
+        console.error("Error restoring race list:", error);
+    }
+
+    // Render all tables
     if (typeof displayTeams === "function") displayTeams();
     if (typeof displayShips === "function") displayShips();
     if (typeof displayControls === "function") displayControls();
     if (typeof displayPilots === "function") displayPilots();
-
-    if (typeof updateTeamDropdown === "function") updateTeamDropdown();
-    if (typeof updateShipDropdown === "function") updateShipDropdown();
-    if (typeof updateControlDropdown === "function") updateControlDropdown();
-
-    // Auto-save race settings (and re-broadcast race state) whenever any setting changes
-    [
-        "setting-race-name",
-        "setting-session",
-        "setting-weather",
-        "setting-start-type",
-        "total-laps",
-    ].forEach((id) => {
-        const el = document.getElementById(id);
-        if (el) el.addEventListener("change", () => {
-            saveRaceSettings();
-            if (typeof displayRace === "function") displayRace();
-        });
-    });
+    if (typeof displayRace === "function") displayRace();
+    if (typeof updateControls === "function") updateControls();
 });

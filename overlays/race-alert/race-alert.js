@@ -1,4 +1,4 @@
-// event-row.js
+// race-alert.js
 
 const socket = io();
 
@@ -9,30 +9,34 @@ let displayTimer = null;
 let currentTeamDisplayMode = "color-bar";
 let currentTimingEnabled = true;
 
+// Keep display mode and timing state in sync with the manager
 socket.on("race-data", (data) => {
     if (data.teamDisplayMode !== undefined) currentTeamDisplayMode = data.teamDisplayMode;
     if (data.timingEnabled !== undefined) currentTimingEnabled = data.timingEnabled;
 });
 
+// Queue incoming events and start processing if idle
 socket.on("race-event", (event) => {
     eventQueue.push(event);
     if (!isDisplaying) processQueue();
 });
 
+// Dequeue and display events one at a time, then hide when empty
 function processQueue() {
     if (eventQueue.length === 0) {
         isDisplaying = false;
-        hideEventRow();
+        hideAlert();
         return;
     }
     isDisplaying = true;
     const event = eventQueue.shift();
-    showEvent(event);
+    showAlert(event);
     const duration = (event.displayDuration >= 1 ? event.displayDuration : 5) * 1000;
     displayTimer = setTimeout(processQueue, duration);
 }
 
-function showEvent(event) {
+// Populate all fields and make the alert visible
+function showAlert(event) {
     const row = document.querySelector(".event-row");
     if (!row) return;
 
@@ -70,16 +74,18 @@ function showEvent(event) {
         }
     }
 
-    setEventStatus(event.type);
+    setAlertStatus(event.type);
     row.style.display = "";
 }
 
-function hideEventRow() {
+// Hide the alert row
+function hideAlert() {
     const row = document.querySelector(".event-row");
     if (row) row.style.display = "none";
 }
 
-function setEventStatus(type) {
+// Apply data-status attribute, icon and label text for the given event type
+function setAlertStatus(type) {
     const row = document.querySelector(".event-row");
     const iconContainer = document.querySelector(".event-icon");
     const label = document.querySelector(".event-label");
@@ -96,5 +102,5 @@ function setEventStatus(type) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    hideEventRow();
+    hideAlert();
 });

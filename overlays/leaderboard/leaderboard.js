@@ -8,7 +8,6 @@ const pilotElements = new Map();
 // Last received data snapshot, used to re-evaluate state after the reset lock expires
 let lastKnownData = null;
 
-
 // Show the slide wrapper with an entrance animation
 function showWrapper(id) {
     const el = document.getElementById(id);
@@ -27,7 +26,6 @@ function hideWrapper(id) {
     }, { once: true });
 }
 
-
 // Heights in px for each state driving the animated inner container
 const RSB_HEIGHTS = { countdown: 80, lap: 50, paused: 50 };
 
@@ -45,7 +43,6 @@ function setRaceStatusBlock(id) {
     });
 }
 
-
 let rsbWipeActive = false;
 
 // Slide the amber overlay in from the left (lap → paused)
@@ -54,7 +51,6 @@ function wipeInPaused() {
     rsbWipeActive = true;
     const wipe = document.getElementById("rsb-lap-wipe");
     if (!wipe) return;
-    // Reset to left side without transition before animating in
     wipe.style.transition = "none";
     wipe.classList.remove("wipe-in", "wipe-out");
     requestAnimationFrame(() => {
@@ -79,7 +75,6 @@ function wipeOutPaused(instant = false) {
     }
 }
 
-
 let rsbResetTimer = null;
 // While true, incoming race-update status changes are ignored
 let rsbResetLocked = false;
@@ -103,7 +98,7 @@ function wipeInReset() {
     rsbResetTimer = setTimeout(wipeOutReset, 3000);
 }
 
-// Slide the whole wrapper up (avoids revealing lap underneath), reset red silently, then unlock
+// Slide the wrapper up, reset red overlay silently, then unlock
 function wipeOutReset() {
     clearTimeout(rsbResetTimer);
     rsbResetTimer = null;
@@ -114,7 +109,6 @@ function wipeOutReset() {
         if (!wrapper.classList.contains("open")) {
             wrapper.classList.remove("visible");
             rsbResetLocked = false;
-            // Reset red overlay silently for next use
             const wipe = document.getElementById("rsb-lap-wipe-reset");
             if (wipe) {
                 wipe.style.transition = "none";
@@ -130,29 +124,23 @@ function wipeOutReset() {
     }, { once: true });
 }
 
-
 let countdownInterval = null;
 let countdownEndTime = null;
 
 // Timer handle for the resumed overlay auto-dismiss
 let rsbResumedTimer = null;
 
-// Push jaune → vert: jump green to left side instantly (it's offscreen so invisible), then push both right
+// Teleport green overlay to left, then push it in (displacing amber if visible)
 function wipeInResumed() {
     clearTimeout(rsbResumedTimer);
     const amber = document.getElementById("rsb-lap-wipe");
     const green = document.getElementById("rsb-lap-wipe-resumed");
     if (!green) return;
-
-    // Teleport green to left side with no transition — safe because it's offscreen
     green.style.transition = "none";
     green.classList.remove("wipe-in", "wipe-out");
-    // Force reflow so the browser commits the position before we re-enable transition
     green.getBoundingClientRect();
     green.style.transition = "";
-
     if (rsbWipeActive && amber) {
-        // Amber is visible at translateX(0): push both right simultaneously
         amber.classList.remove("wipe-in");
         amber.classList.add("wipe-out");
         rsbWipeActive = false;
@@ -161,7 +149,7 @@ function wipeInResumed() {
     rsbResumedTimer = setTimeout(wipeOutResumed, 3000);
 }
 
-// Slide the green overlay out to the right — leave it there, next wipeIn will reset
+// Slide the green overlay out to the right
 function wipeOutResumed() {
     clearTimeout(rsbResumedTimer);
     rsbResumedTimer = null;
@@ -202,7 +190,6 @@ function stopCountdownDisplay() {
     }
 }
 
-
 // Decide which state to show; no-op while the reset banner is locked
 function updateRaceStatusBlock(raceStatus, countdown, settings) {
     if (rsbResetLocked) return;
@@ -214,29 +201,24 @@ function updateRaceStatusBlock(raceStatus, countdown, settings) {
         setRaceStatusBlock("rsb-countdown");
         setRaceStatusHeight("countdown");
         showWrapper(wrapper);
-
     } else if (raceStatus === "running" || raceStatus === "finished") {
         stopCountdownDisplay();
         wipeOutPaused();
         setRaceStatusBlock("rsb-lap");
         setRaceStatusHeight("lap");
         showWrapper(wrapper);
-
     } else if (raceStatus === "paused") {
         stopCountdownDisplay();
         setRaceStatusBlock("rsb-lap");
         setRaceStatusHeight("paused");
         showWrapper(wrapper);
         wipeInPaused();
-
     } else {
-        // standby with no countdown: hide the whole block
         stopCountdownDisplay();
         wipeOutPaused();
         hideWrapper(wrapper);
     }
 }
-
 
 // Receive and render a full race state update from the manager
 function updateLeaderboard(data) {
@@ -257,11 +239,10 @@ function updateLeaderboard(data) {
 
     const weatherKey = settings.weather || "Clear";
     const weatherIconContainer = document.getElementById("lb-weather-icon");
-    if (weatherIconContainer && typeof WEATHER_ICONS !== "undefined" && WEATHER_ICONS[weatherKey]) {
+    if (weatherIconContainer && WEATHER_ICONS[weatherKey]) {
         weatherIconContainer.innerHTML = WEATHER_ICONS[weatherKey];
     }
 
-    // Keep lap counter up to date whenever the race is live
     if (raceStatus === "running" || raceStatus === "paused" || raceStatus === "finished") {
         const totalLaps = parseInt(settings.totalLaps) || 0;
         let leaderLaps = raceList.length > 0 ? raceList[0].laps : 0;
@@ -435,7 +416,6 @@ function updateLeaderboard(data) {
         });
     }
 }
-
 
 socket.on("race-data", (data) => {
     updateLeaderboard(data);

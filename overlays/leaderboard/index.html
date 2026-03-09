@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Leaderboard - Circus Racing</title>
+        <title>Circus Racing - Leaderboard</title>
 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -11,10 +11,8 @@
             href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,100..700;1,100..700&family=Zalando+Sans+SemiExpanded:ital,wght@0,200..900;1,200..900&display=swap"
             rel="stylesheet"
         />
-        <link
-            rel="stylesheet"
-            href="https://cdn.jsdelivr.net/npm/flag-icons/css/flag-icons.min.css"
-        />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons/css/flag-icons.min.css" />
+        <link rel="stylesheet" href="/shared/overlays.css" />
         <link rel="stylesheet" href="leaderboard.css" />
     </head>
     <body>
@@ -52,7 +50,7 @@
                             <div class="rsb-chrono" id="lb-countdown-timer">0:00</div>
                         </div>
 
-                        <!-- Lap state: lap counter + wipe overlays for paused and reset transitions -->
+                        <!-- Lap state: lap counter + wipe overlays for paused/reset/resumed transitions -->
                         <div class="race-status-block rsb-lap active" id="rsb-lap">
                             <div class="lap-container">
                                 LAP &nbsp;<span class="lap-current" id="lb-lap-current">0</span><span class="lap-total" id="lb-lap-total">/0</span>
@@ -80,7 +78,7 @@
 
         <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
         <script src="/socket.io/socket.io.js"></script>
-        <script src="../icons.js"></script>
+        <script src="/shared/icons.js"></script>
         <script src="leaderboard.js"></script>
     </body>
 </html>

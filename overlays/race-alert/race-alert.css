@@ -1,11 +1,13 @@
-/* CSS Reset */
+/* race-alert.css */
+
+/* Reset */
 *,
 *::before,
 *::after {
     box-sizing: border-box;
 }
 
-/* Global styles */
+/* Base */
 body {
     font-family: "Zalando Sans SemiExpanded", sans-serif;
     background-color: transparent;
@@ -20,7 +22,6 @@ body {
     flex-direction: row;
     gap: 2px;
     align-items: stretch;
-
     position: absolute;
     top: 40px;
     left: 50%;
@@ -60,7 +61,6 @@ body {
     font-weight: 600;
     font-style: italic;
     text-transform: uppercase;
-
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -108,7 +108,6 @@ body {
     font-weight: 500;
     text-transform: uppercase;
     line-height: 0.85;
-
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -164,7 +163,7 @@ body {
     text-overflow: ellipsis;
 }
 
-/* Statuses */
+/* Status icon backgrounds */
 .event-row[data-status="fastest-lap"] .event-icon {
     background-color: #e91e63;
 }

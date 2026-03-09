@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Circus Racing</title>
+        <title>Circus Racing - Dashboard</title>
 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -15,10 +15,7 @@
             href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
             rel="stylesheet"
         />
-        <link
-            rel="stylesheet"
-            href="https://cdn.jsdelivr.net/npm/flag-icons/css/flag-icons.min.css"
-        />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons/css/flag-icons.min.css" />
 
         <script type="importmap">
             {
@@ -33,7 +30,7 @@
             document.adoptedStyleSheets.push(typescaleStyles.styleSheet);
         </script>
 
-        <link rel="stylesheet" href="index.css" />
+        <link rel="stylesheet" href="dashboard.css" />
     </head>
 
     <body>
@@ -184,7 +181,7 @@
                             <tr>
                                 <th>Pos</th>
                                 <th>Pilot</th>
-                                <th class="team-ext">Team</th>
+                                <th class="team-ext" id="race-chrono-th-team">Team</th>
                                 <th>Laps</th>
                                 <th class="chrono-ext" id="race-chrono-th">Chrono</th>
                                 <th>Lap Counter</th>
@@ -234,7 +231,7 @@
                                     <md-outlined-text-field id="pilot-name" label="Pilot name" style="width:100%;"></md-outlined-text-field>
                                 </td>
                                 <td>
-                                    <md-outlined-text-field id="pilot-country" label="fr" maxlength="2" style="width:100%;"></md-outlined-text-field>
+                                    <md-outlined-text-field id="pilot-country" label="fr, gb, de…" maxlength="2" style="width:100%;"></md-outlined-text-field>
                                 </td>
                                 <td class="team-ext">
                                     <md-outlined-select id="pilot-team" label="Team" style="width:100%;"></md-outlined-select>
@@ -280,11 +277,11 @@
                                     <md-outlined-text-field id="name" label="Team name" style="width:100%;"></md-outlined-text-field>
                                 </td>
                                 <td class="col-shrink">
-                                    <md-outlined-text-field id="acronym" label="ACRO" maxlength="4" style="width:100%;"></md-outlined-text-field>
+                                    <md-outlined-text-field id="acronym" label="Acronym" maxlength="4" style="width:100%;"></md-outlined-text-field>
                                 </td>
-                                <td>
+                                <td class="col-shrink">
                                     <div class="color-palette-wrapper">
-                                        <div class="color-swatches" id="color-swatches">
+                                        <div class="color-swatches">
                                             <button type="button" class="color-swatch" style="background-color:#E57373" data-color="#E57373" title="Red 300"></button>
                                             <button type="button" class="color-swatch" style="background-color:#F06292" data-color="#F06292" title="Pink 300"></button>
                                             <button type="button" class="color-swatch" style="background-color:#BA68C8" data-color="#BA68C8" title="Purple 300"></button>
@@ -346,7 +343,7 @@
                                     <md-outlined-text-field id="ship-img" label="Image URL" style="width:100%;"></md-outlined-text-field>
                                 </td>
                                 <td class="col-grow">
-                                    <md-outlined-text-field id="ship-model" label="Model" style="width:100%;"></md-outlined-text-field>
+                                    <md-outlined-text-field id="ship-model" label="Ship model" style="width:100%;"></md-outlined-text-field>
                                 </td>
                                 <td class="col-shrink">
                                     <md-filled-button onclick="addShip()">Add ship</md-filled-button>
@@ -371,7 +368,7 @@
                         <thead>
                             <tr>
                                 <th class="col-shrink">Image</th>
-                                <th class="col-grow">Control Type</th>
+                                <th class="col-grow">Type</th>
                                 <th class="col-shrink">Actions</th>
                             </tr>
                         </thead>
@@ -424,7 +421,7 @@
         <script src="pilots.js"></script>
         <script src="race.js"></script>
         <script src="shortcuts.js"></script>
-        <script src="data-manager.js"></script>
+        <script src="database.js"></script>
 
         <script>
             document.addEventListener("DOMContentLoaded", () => {

@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Race Event Updates</title>
+        <title>Circus Racing - Race Alert</title>
 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -11,11 +11,8 @@
             href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,100..700;1,100..700&family=Zalando+Sans+SemiExpanded:ital,wght@0,200..900;1,200..900&display=swap"
             rel="stylesheet"
         />
-        <link
-            rel="stylesheet"
-            href="https://cdn.jsdelivr.net/npm/flag-icons/css/flag-icons.min.css"
-        />
-        <link rel="stylesheet" href="event-row.css" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons/css/flag-icons.min.css" />
+        <link rel="stylesheet" href="race-alert.css" />
     </head>
     <body>
         <div class="event-row" data-status="fastest-lap">
@@ -32,10 +29,11 @@
                 </div>
                 <div class="ship-model"></div>
                 <div class="event-chrono">—</div>
+            </div>
         </div>
 
         <script src="/socket.io/socket.io.js"></script>
-        <script src="../icons.js"></script>
-        <script src="event-row.js"></script>
+        <script src="/shared/icons.js"></script>
+        <script src="race-alert.js"></script>
     </body>
 </html>

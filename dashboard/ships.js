@@ -18,7 +18,6 @@ function addShip() {
     const newShip = {
         id: Date.now(),
         model: model,
-        // Fall back to a placeholder image when no URL is provided
         img: img || "https://placehold.co/40x40/png",
     };
 
@@ -57,7 +56,7 @@ function createShipDisplayRow(ship) {
     </tr>`;
 }
 
-// Build the inline edit row HTML for a ship (image URL + model text fields)
+// Build the inline edit row HTML for a ship
 function createShipEditRow(ship) {
     return `
     <tr>
@@ -72,7 +71,7 @@ function createShipEditRow(ship) {
     </tr>`;
 }
 
-// Remove a ship by ID and refresh all dependent UI (ship dropdown, pilots table)
+// Remove a ship by ID and refresh all dependent UI
 function deleteShip(idToDelete) {
     const shipToDelete = ships.find((s) => s.id === idToDelete);
     if (shipToDelete) {
@@ -84,19 +83,16 @@ function deleteShip(idToDelete) {
     }
 }
 
-// Open a ship row for inline editing
 function startEditShip(id) {
     editingShipId = id;
     displayShips();
 }
 
-// Discard in-progress edits and revert the row back to display mode
 function cancelEditShip() {
     editingShipId = null;
     displayShips();
 }
 
-// Validate the inline edit form and persist changes to the ship object
 function saveEditShip(id) {
     const ship = ships.find((s) => s.id === id);
     const model = document.getElementById("edit-ship-model").value?.trim();
@@ -116,7 +112,7 @@ function saveEditShip(id) {
     saveToStorage();
 }
 
-// Rebuild the ship dropdown options in the pilot form from the current ships array
+// Rebuild the ship dropdown options in the pilot form
 function updateShipDropdown() {
     const select = document.getElementById("pilot-ship");
     if (!select) return;
@@ -127,7 +123,6 @@ function updateShipDropdown() {
     });
 }
 
-// Reset the add-ship form fields to empty
 function clearShipForm() {
     document.getElementById("ship-model").value = "";
     document.getElementById("ship-img").value = "";

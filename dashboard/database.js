@@ -1,4 +1,4 @@
-// data-manager.js
+// database.js
 
 // Serialize the full application state (settings + all databases) to a JSON file and trigger a browser download with a timestamped filename
 function exportData() {
@@ -14,7 +14,6 @@ function exportData() {
             pilots: typeof pilots !== "undefined" ? pilots : [],
             teams: typeof teams !== "undefined" ? teams : [],
             ships: typeof ships !== "undefined" ? ships : [],
-            // Support both variable names used across different script versions
             controls:
                 typeof controlsList !== "undefined"
                     ? controlsList
@@ -26,7 +25,6 @@ function exportData() {
         const jsonString = JSON.stringify(data, null, 2);
         const blob = new Blob([jsonString], { type: "application/json" });
 
-        // Create a temporary anchor to trigger the file download
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
@@ -59,32 +57,23 @@ function handleFileImport(event) {
         try {
             const data = JSON.parse(e.target.result);
 
-            if (
-                confirm(
-                    "Import data? This will overwrite current settings and database.",
-                )
-            ) {
+            if (confirm("Import data? This will overwrite current settings and database.")) {
                 // Restore race settings fields from the imported object
                 if (data.raceSettings) {
                     const s = data.raceSettings;
                     if (s.raceName !== undefined)
-                        document.getElementById("setting-race-name").value =
-                            s.raceName;
+                        document.getElementById("setting-race-name").value = s.raceName;
                     if (s.session !== undefined)
-                        document.getElementById("setting-session").value =
-                            s.session;
+                        document.getElementById("setting-session").value = s.session;
                     if (s.weather !== undefined)
-                        document.getElementById("setting-weather").value =
-                            s.weather;
+                        document.getElementById("setting-weather").value = s.weather;
                     if (s.startType !== undefined)
-                        document.getElementById("setting-start-type").value =
-                            s.startType;
+                        document.getElementById("setting-start-type").value = s.startType;
                     if (s.totalLaps !== undefined)
-                        document.getElementById("total-laps").value =
-                            s.totalLaps;
+                        document.getElementById("total-laps").value = s.totalLaps;
                 }
 
-                // Restore pilots with backward compatibility: default missing country to "un"
+                // Restore pilots with backward compatibility
                 if (data.pilots) {
                     pilots = data.pilots.map((p) => ({
                         ...p,
@@ -94,12 +83,9 @@ function handleFileImport(event) {
 
                 if (data.teams) teams = data.teams;
                 if (data.ships) ships = data.ships;
-                // Write to whichever controls variable exists in the current scope
                 if (data.controls) {
-                    if (typeof controlsList !== "undefined")
-                        controlsList = data.controls;
-                    if (typeof controls !== "undefined")
-                        controls = data.controls;
+                    if (typeof controlsList !== "undefined") controlsList = data.controls;
+                    if (typeof controls !== "undefined") controls = data.controls;
                 }
 
                 // Persist and re-render everything
