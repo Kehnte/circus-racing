@@ -283,7 +283,7 @@ function changeLap(index, delta) {
     const newLaps = pilot.laps + delta;
 
     if (newLaps < 0) return;
-    if (newLaps >= 1 && !pilot.dnf) {
+    if (newLaps >= 1 && !pilot.dnf && !(delta === 1 && pilot.finished)) {
 
         if (isRolling && pilot.laps === 0 && delta === 1 && timingEnabled) {
             pilot.raceStartTime = Date.now();
@@ -360,6 +360,9 @@ function recomputeGlobalFastestLap() {
 // Position & reorder
 
 function movePilot(index, delta) {
+    if (raceStatus !== "running") return;
+    const pilot = raceList[index];
+    if (pilot.finished) return;
     const newPos = index + delta;
     if (newPos < 0 || newPos >= raceList.length) return;
     const temp = raceList[index];
@@ -371,13 +374,16 @@ function movePilot(index, delta) {
 }
 
 function jumpToPosition(index, newPosValue) {
+    if (raceStatus !== "running") { displayRace(); return; }
+    const pilot = raceList[index];
+    if (pilot.finished) { displayRace(); return; }
     const newPos = parseInt(newPosValue);
     if (isNaN(newPos) || newPos < 1 || newPos > raceList.length) {
         displayRace();
         return;
     }
-    const pilot = raceList.splice(index, 1)[0];
-    raceList.splice(newPos - 1, 0, pilot);
+    const spliced = raceList.splice(index, 1)[0];
+    raceList.splice(newPos - 1, 0, spliced);
     recalculatePositions();
     if (typeof saveAllToLocal === "function") saveAllToLocal();
     displayRace();
@@ -519,10 +525,10 @@ function displayRace() {
             ${chronoCell}
             <td>
                 <div class="action-buttons">
-                    <md-icon-button onclick="changeLap(${index}, -1)" ${!isRunning ? "disabled" : ""} title="Remove lap">
+                    <md-icon-button onclick="changeLap(${index}, -1)" ${(!isRunning || pilot.finished) ? "disabled" : ""} title="Remove lap">
                         <md-icon>remove</md-icon>
                     </md-icon-button>
-                    <md-icon-button onclick="changeLap(${index}, 1)" ${!isRunning ? "disabled" : ""} title="Add lap">
+                    <md-icon-button onclick="changeLap(${index}, 1)" ${(!isRunning || pilot.finished) ? "disabled" : ""} title="Add lap">
                         <md-icon>add</md-icon>
                     </md-icon-button>
                 </div>
@@ -535,15 +541,16 @@ function displayRace() {
                     max="${raceList.length}"
                     value="${pilot.position}"
                     onchange="jumpToPosition(${index}, this.value)"
+                    ${(!isRunning || pilot.finished) ? "disabled" : ""}
                     title="Jump to position"
                 />
             </td>
             <td>
                 <div class="action-buttons">
-                    <md-icon-button onclick="movePilot(${index}, -1)" ${index === 0 ? "disabled" : ""} title="Move up">
+                    <md-icon-button onclick="movePilot(${index}, -1)" ${(!isRunning || index === 0 || pilot.finished) ? "disabled" : ""} title="Move up">
                         <md-icon>arrow_upward</md-icon>
                     </md-icon-button>
-                    <md-icon-button onclick="movePilot(${index}, 1)" ${index === raceList.length - 1 ? "disabled" : ""} title="Move down">
+                    <md-icon-button onclick="movePilot(${index}, 1)" ${(!isRunning || index === raceList.length - 1 || pilot.finished) ? "disabled" : ""} title="Move down">
                         <md-icon>arrow_downward</md-icon>
                     </md-icon-button>
                 </div>
