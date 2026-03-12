@@ -444,3 +444,31 @@ table.m3-table.teams-hidden td.team-ext {
     white-space: nowrap;
     width: 1%;
 }
+
+/* Overlay quick-access links in the page header, pushed to the right */
+.header-overlay-links {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+/* Session row: rounded top corners only */
+.race-controls-bar.race-controls-session {
+    border-radius: var(--md-sys-shape-corner-medium) var(--md-sys-shape-corner-medium) 0 0;
+    border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+
+/* Display row: rounded bottom corners only */
+.race-controls-bar.race-controls-display {
+    border-radius: 0 0 var(--md-sys-shape-corner-medium) var(--md-sys-shape-corner-medium);
+}
+
+/* Action row below the settings bars: buttons + pilot count, no background fill */
+.race-actions-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    padding: 10px 4px 4px 4px;
+}

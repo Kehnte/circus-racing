@@ -707,3 +707,61 @@ socket.on("race-restarted", () => {
 socket.on("race-resumed", () => {
     wipeInResumed();
 });
+
+// Wraps lb-pilots-container in a div to allow height animation (display:contents is not animatable)
+function getPilotsAnimWrapper() {
+    const container = document.getElementById("lb-pilots-container");
+    if (!container) return null;
+    let wrapper = document.getElementById("lb-pilots-anim-wrapper");
+    if (!wrapper) {
+        wrapper = document.createElement("div");
+        wrapper.id = "lb-pilots-anim-wrapper";
+        wrapper.style.overflow = "hidden";
+        // Insert wrapper before container in the grid, then move container inside
+        container.parentNode.insertBefore(wrapper, container);
+        wrapper.appendChild(container);
+        // Wrapper must span all grid columns like the original container did
+        wrapper.style.gridColumn = "1 / -1";
+        wrapper.style.display = "block";
+    }
+    return wrapper;
+}
+
+// Slides the pilot list into view from top to bottom using anime.js
+function showPilots() {
+    const wrapper = getPilotsAnimWrapper();
+    if (!wrapper) return;
+    wrapper.style.display = "block";
+    wrapper.style.height = "auto";
+    const targetH = wrapper.scrollHeight;
+    wrapper.style.height = "0px";
+    anime({
+        targets: wrapper,
+        height: targetH,
+        duration: 400,
+        easing: "easeOutQuart",
+        complete: () => { wrapper.style.height = "auto"; },
+    });
+}
+
+// Slides the pilot list out of view from bottom to top using anime.js
+function hidePilots() {
+    const wrapper = getPilotsAnimWrapper();
+    if (!wrapper) return;
+    anime({
+        targets: wrapper,
+        height: 0,
+        duration: 350,
+        easing: "easeInQuart",
+        complete: () => { wrapper.style.display = "none"; },
+    });
+}
+
+// Listen for dashboard toggle command and animate accordingly
+socket.on("toggle-pilots-visibility", (data) => {
+    if (data.visible) {
+        showPilots();
+    } else {
+        hidePilots();
+    }
+});

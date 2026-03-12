@@ -10,6 +10,17 @@ let raceStatus = "standby";
 let timingEnabled = true;
 let chronoDisplayMode = "leader";
 
+// Tracks whether the pilot list is currently visible on the leaderboard
+let pilotsVisible = true;
+
+// Emits a socket event to show or hide the pilot list on the leaderboard overlay
+function togglePilotsVisibility() {
+    const chip = document.getElementById("btn-pilots-toggle");
+    // md-filter-chip toggles `selected` before the click handler fires, so read current state
+    pilotsVisible = chip ? chip.hasAttribute("selected") : !pilotsVisible;
+    socket.emit("toggle-pilots-visibility", { visible: pilotsVisible });
+}
+
 // Session mode: "laps" or "timed"
 let sessionMode = "laps";
 let sessionDurationMs = 30 * 60 * 1000; // default 30 minutes
@@ -865,4 +876,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Apply initial UI state
     updateSessionModeUI();
+
+    // Initialise pilots toggle chip to selected (pilots visible by default)
+    const pilotsChip = document.getElementById("btn-pilots-toggle");
+    if (pilotsChip) pilotsChip.setAttribute("selected", "");
 });

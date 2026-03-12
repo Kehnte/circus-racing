@@ -35,6 +35,11 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         console.log('A user disconnected');
     });
+    
+    // Relay pilot list visibility toggle from dashboard to leaderboard
+    socket.on("toggle-pilots-visibility", (data) => {
+        socket.broadcast.emit("toggle-pilots-visibility", data);
+    });
 });
 
 const PORT = 3000;

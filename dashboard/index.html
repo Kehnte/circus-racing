@@ -38,6 +38,17 @@
         <header class="page-header">
             <span style="font-size: 28px;">🏁</span>
             <h1>Circus Racing</h1>
+            <!-- Quick-access buttons to open overlay pages in a new tab -->
+            <div class="header-overlay-links">
+                <md-outlined-button href="/overlays/leaderboard/" target="_blank">
+                    <md-icon slot="icon">leaderboard</md-icon>
+                    Leaderboard
+                </md-outlined-button>
+                <md-outlined-button href="/overlays/race-alert/" target="_blank">
+                    <md-icon slot="icon">notifications</md-icon>
+                    Race alert
+                </md-outlined-button>
+            </div>
         </header>
 
         <div class="page-content">
@@ -80,7 +91,8 @@
                 </div>
 
                 <!-- Controls bar -->
-                <div class="race-controls-bar">
+                <!-- ── Row 1: session settings ── -->
+                <div class="race-controls-bar race-controls-session">
                     <md-outlined-select
                         id="setting-session-mode"
                         label="Session mode"
@@ -116,9 +128,35 @@
                         value="5"
                         min="1"
                         max="30"
-                        style="width: 140px; flex-shrink: 0;"
+                        style="width: 150px; flex-shrink: 0;"
                     ></md-outlined-text-field>
 
+                    <!-- Pre-race countdown duration and trigger buttons -->
+                    <md-outlined-text-field
+                        id="countdown-duration"
+                        label="Countdown (s)"
+                        type="number"
+                        value="30"
+                        min="1"
+                        max="600"
+                        style="width: 130px; flex-shrink: 0;"
+                        title="Pre-race countdown duration. Leave at 0 or use Start Race to skip."
+                    ></md-outlined-text-field>
+                    <md-outlined-button
+                        id="btn-countdown"
+                        onclick="startCountdown()"
+                        title="Start pre-race countdown on the leaderboard"
+                    >Countdown</md-outlined-button>
+                    <md-text-button
+                        id="btn-countdown-stop"
+                        onclick="stopCountdown(true)"
+                        style="display:none; --md-text-button-label-text-color: var(--md-sys-color-error);"
+                    >Stop countdown</md-text-button>
+                </div>
+
+                <!-- ── Row 2: display / overlay settings ── -->
+                <div class="race-controls-bar race-controls-display">
+                    <!-- Team column rendering mode -->
                     <md-outlined-select
                         id="setting-team-display"
                         label="Teams"
@@ -144,30 +182,12 @@
                         <md-select-option value="last-lap"><div slot="headline">Last lap</div></md-select-option>
                     </md-outlined-select>
 
-                    <!-- Pre-race countdown -->
-                    <md-outlined-text-field
-                        id="countdown-duration"
-                        label="Countdown (s)"
-                        type="number"
-                        value="30"
-                        min="1"
-                        max="600"
-                        style="width: 130px; flex-shrink: 0;"
-                        title="Pre-race countdown duration. Leave at 0 or use Start Race to skip."
-                    ></md-outlined-text-field>
-                    <md-outlined-button
-                        id="btn-countdown"
-                        onclick="startCountdown()"
-                        title="Start pre-race countdown on the leaderboard"
-                    >Countdown</md-outlined-button>
-                    <md-text-button
-                        id="btn-countdown-stop"
-                        onclick="stopCountdown(true)"
-                        style="display:none; --md-text-button-label-text-color: var(--md-sys-color-error);"
-                    >Stop countdown</md-text-button>
+                    <!-- Toggle pilot list visibility in the leaderboard overlay -->
+                    <md-filter-chip id="btn-pilots-toggle" label="Pilots" selected onclick="togglePilotsVisibility()"></md-filter-chip>
+                </div>
 
-                    <div class="spacer"></div>
-
+                <!-- ── Race action buttons + pilot count ── -->
+                <div class="race-actions-bar">
                     <div class="button-group">
                         <md-filled-button onclick="startRace()" id="btn-start">Start race</md-filled-button>
                         <md-outlined-button onclick="pauseRace()" id="btn-pause" disabled>Pause race</md-outlined-button>
