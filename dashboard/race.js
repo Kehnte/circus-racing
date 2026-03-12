@@ -10,6 +10,15 @@ let raceStatus = "standby";
 let timingEnabled = true;
 let chronoDisplayMode = "leader";
 
+// Session mode: "laps" or "timed"
+let sessionMode = "laps";
+let sessionDurationMs = 30 * 60 * 1000; // default 30 minutes
+
+// Timed session state
+let timedSessionEndTime = null;   // absolute timestamp when the session timer expires
+let timedSessionExpired = false;  // true once the timer hits 0:00 (waiting for pilots to finish their lap)
+let timedSessionInterval = null;
+
 // Timing accumulators shared across all pilots
 let globalRaceStartTime = null;
 let pauseStartTime = null;
@@ -56,6 +65,25 @@ function formatDelta(ms) {
     return `+${formatTime(ms)}`;
 }
 
+// Formats remaining ms as M:SS for the session countdown (no milliseconds)
+function formatSessionCountdown(ms) {
+    if (ms <= 0) return "0:00";
+    const totalSec = Math.ceil(ms / 1000);
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+// Returns remaining ms in the timed session (0 if expired or not active)
+function getSessionRemainingMs() {
+    if (sessionMode !== "timed" || timedSessionEndTime === null) return null;
+    if (raceStatus === "paused") {
+        // remaining was frozen at pause start
+        return Math.max(0, timedSessionEndTime - pauseStartTime - totalPauseDuration);
+    }
+    return Math.max(0, timedSessionEndTime - Date.now());
+}
+
 // Settings callbacks
 
 // Applies team display mode change, hides/shows the Teams section and re-renders
@@ -80,6 +108,22 @@ function onChronoDisplayModeChange(value) {
     chronoDisplayMode = value;
     if (typeof saveAllToLocal === "function") saveAllToLocal();
     displayRace();
+}
+
+// Switches between "laps" and "timed" session modes, toggling the relevant fields
+function onSessionModeChange(value) {
+    sessionMode = value;
+    updateSessionModeUI();
+    if (typeof saveAllToLocal === "function") saveAllToLocal();
+    displayRace();
+}
+
+// Shows/hides Total Laps vs Session Duration fields based on current sessionMode
+function updateSessionModeUI() {
+    const lapsField = document.getElementById("total-laps");
+    const timedField = document.getElementById("session-duration");
+    if (lapsField) lapsField.style.display = sessionMode === "laps" ? "" : "none";
+    if (timedField) timedField.style.display = sessionMode === "timed" ? "" : "none";
 }
 
 // Pre-race countdown
@@ -152,6 +196,61 @@ function getCountdownPayload() {
     };
 }
 
+// Timed session helpers
+
+// Starts the session countdown interval that ticks every 200ms
+function startTimedSession() {
+    stopTimedSession();
+    const durationInput = document.getElementById("session-duration");
+    const durationMin = parseFloat(durationInput?.value) || 30;
+    sessionDurationMs = durationMin * 60 * 1000;
+
+    timedSessionEndTime = Date.now() + sessionDurationMs;
+    timedSessionExpired = false;
+
+    timedSessionInterval = setInterval(() => {
+        const remaining = getSessionRemainingMs();
+        if (remaining !== null && remaining <= 0 && !timedSessionExpired) {
+            timedSessionExpired = true;
+            onSessionTimerExpired();
+        }
+        // Broadcast updated countdown every tick
+        broadcastRaceUpdate();
+    }, 200);
+}
+
+// Clears the session timer interval
+function stopTimedSession() {
+    if (timedSessionInterval) {
+        clearInterval(timedSessionInterval);
+        timedSessionInterval = null;
+    }
+}
+
+// Called when the session timer reaches zero: marks active pilots as "awaiting last lap"
+function onSessionTimerExpired() {
+    // Each pilot that is still racing will be finished as soon as their next lap is registered
+    // We just set the flag here; changeLap() will call checkRaceEnd() which handles the rest
+    displayRace();
+}
+
+// Resumes the timed session after a pause by recalculating the end time
+function resumeTimedSession() {
+    if (timedSessionEndTime === null) return;
+    // Shift end time forward by the pause duration
+    timedSessionEndTime += Date.now() - pauseStartTime;
+    if (!timedSessionInterval) {
+        timedSessionInterval = setInterval(() => {
+            const remaining = getSessionRemainingMs();
+            if (remaining !== null && remaining <= 0 && !timedSessionExpired) {
+                timedSessionExpired = true;
+                onSessionTimerExpired();
+            }
+            broadcastRaceUpdate();
+        }, 200);
+    }
+}
+
 // Race lifecycle
 
 // Starts the race or resumes it from pause; initialises pilot timestamps on a fresh grid start
@@ -166,6 +265,7 @@ function startRace() {
     // Resume from pause: accumulate pause duration and continue
     if (raceStatus === "paused" && pauseStartTime !== null) {
         totalPauseDuration += Date.now() - pauseStartTime;
+        if (sessionMode === "timed") resumeTimedSession();
         pauseStartTime = null;
         raceStatus = "running";
         socket.emit("race-resumed");
@@ -183,15 +283,14 @@ function startRace() {
         globalRaceStartTime = Date.now();
         totalPauseDuration = 0;
         pauseStartTime = null;
+        timedSessionExpired = false;
 
         raceList.forEach((p) => {
             if (isRolling) {
-                // Rolling start: clock begins on each pilot's first lap crossing
                 p.raceStartTime = null;
                 p.lastSplitTimestamp = null;
                 p.laps = 0;
             } else {
-                // Grid start: all pilots share the same start timestamp, lap 1 begins immediately
                 p.raceStartTime = globalRaceStartTime;
                 p.lastSplitTimestamp = globalRaceStartTime;
                 p.laps = 1;
@@ -200,6 +299,8 @@ function startRace() {
             p.totalTime = null;
             p.frozenTime = null;
         });
+
+        if (sessionMode === "timed") startTimedSession();
     }
 
     raceStatus = "running";
@@ -213,6 +314,8 @@ function pauseRace() {
     if (raceStatus !== "running") return;
     raceStatus = "paused";
     pauseStartTime = Date.now();
+    // Pause the timed session interval but keep timedSessionEndTime intact
+    stopTimedSession();
     updateControls();
     if (typeof saveAllToLocal === "function") saveAllToLocal();
     displayRace();
@@ -221,6 +324,7 @@ function pauseRace() {
 // Force-finishes the race and snapshots total time for all pilots still running
 function endRaceManually() {
     raceStatus = "finished";
+    stopTimedSession();
     if (timingEnabled) {
         raceList.forEach((p) => {
             if (p.raceStartTime !== null && p.totalTime === null && !p.dnf) {
@@ -240,6 +344,7 @@ function endRaceManually() {
 // Resets all pilot lap data and timing state back to standby without removing pilots
 function resetRace() {
     stopCountdown(false);
+    stopTimedSession();
     socket.emit("race-restarted");
     raceList.forEach((p) => {
         p.laps = 0;
@@ -257,6 +362,8 @@ function resetRace() {
     totalPauseDuration = 0;
     globalFastestLap = null;
     globalFastestLapPilotId = null;
+    timedSessionEndTime = null;
+    timedSessionExpired = false;
     raceStatus = "standby";
     recalculatePositions();
     updateControls();
@@ -267,6 +374,7 @@ function resetRace() {
 // Rebuilds raceList from the pilots roster, resetting all race data
 function reloadPilots() {
     stopCountdown(false);
+    stopTimedSession();
     raceList = pilots.map((p, index) => ({
         ...p,
         laps: 0,
@@ -285,6 +393,8 @@ function reloadPilots() {
     totalPauseDuration = 0;
     globalFastestLap = null;
     globalFastestLapPilotId = null;
+    timedSessionEndTime = null;
+    timedSessionExpired = false;
     raceStatus = "standby";
     updateControls();
     if (typeof saveAllToLocal === "function") saveAllToLocal();
@@ -330,7 +440,15 @@ function changeLap(index, delta) {
         }
 
         pilot.laps = newLaps;
-        pilot.finished = pilot.laps > totalLaps;
+
+        // In laps mode: finished when pilot exceeds totalLaps
+        // In timed mode: finished when the timer has expired and a new lap is registered
+        if (sessionMode === "laps") {
+            pilot.finished = pilot.laps > totalLaps;
+        } else {
+            // Timer expired: this lap crossing finishes the pilot
+            pilot.finished = timedSessionExpired && delta === 1;
+        }
 
         // Snapshot finish time the moment the pilot crosses the finish line
         if (pilot.finished && timingEnabled && pilot.raceStartTime !== null && pilot.totalTime === null) {
@@ -610,7 +728,11 @@ function displayRace() {
     previousRaceList = raceList.map((p) => ({ ...p, lapTimes: [...(p.lapTimes || [])] }));
 
     updateCountdownUI();
+    broadcastRaceUpdate();
+}
 
+// Broadcast helper — emits current race state to all overlays
+function broadcastRaceUpdate() {
     socket.emit("race-update", {
         raceList: raceList.map((p) => ({
             ...p,
@@ -624,6 +746,12 @@ function displayRace() {
         globalFastestLapPilotId,
         raceStatus,
         countdown: getCountdownPayload(),
+        sessionMode,
+        sessionCountdown: sessionMode === "timed" ? {
+            active: raceStatus === "running" || raceStatus === "paused",
+            remainingMs: getSessionRemainingMs() ?? 0,
+            expired: timedSessionExpired,
+        } : null,
         settings: {
             raceName: document.getElementById("setting-race-name")?.value || "",
             session: document.getElementById("setting-session")?.value || "",
@@ -637,10 +765,19 @@ function displayRace() {
 // Race end
 
 // Automatically marks the race finished when every pilot has either finished or DNF'd
+// In timed mode, waits until timer has expired before allowing auto-finish
 function checkRaceEnd() {
+    if (raceStatus !== "running") return;
+
+    if (sessionMode === "timed") {
+        // Only auto-finish once the timer has expired and all pilots are done
+        if (!timedSessionExpired) return;
+    }
+
     const stillRacing = raceList.some((p) => !p.finished && !p.dnf);
-    if (!stillRacing && raceList.length > 0 && raceStatus === "running") {
+    if (!stillRacing && raceList.length > 0) {
         raceStatus = "finished";
+        stopTimedSession();
         updateControls();
     }
 }
@@ -688,27 +825,7 @@ setInterval(() => {
 // Keeps the leaderboard countdown display in sync by broadcasting state every 500 ms
 setInterval(() => {
     if (!countdownActive) return;
-    socket.emit("race-update", {
-        raceList: raceList.map((p) => ({
-            ...p,
-            chronoDisplay: getChronoDisplay(p, raceList.indexOf(p)),
-        })),
-        teams: typeof teams !== "undefined" ? teams : [],
-        teamDisplayMode,
-        timingEnabled,
-        chronoDisplayMode,
-        globalFastestLap,
-        globalFastestLapPilotId,
-        raceStatus,
-        countdown: getCountdownPayload(),
-        settings: {
-            raceName: document.getElementById("setting-race-name")?.value || "",
-            session: document.getElementById("setting-session")?.value || "",
-            weather: document.getElementById("setting-weather")?.value || "",
-            startType: document.getElementById("setting-start-type")?.value || "",
-            totalLaps: document.getElementById("total-laps")?.value || "3",
-        },
-    });
+    broadcastRaceUpdate();
 }, 500);
 
 // Settings live broadcast
@@ -724,11 +841,28 @@ document.addEventListener("DOMContentLoaded", () => {
     ];
 
     settingIds.forEach((id) => {
-        // Delay by one tick so Material Web components have committed their value before we read it
         const handler = () => setTimeout(displayRace, 0);
         const el = document.getElementById(id);
         if (!el) return;
         el.addEventListener("change", handler);
         el.addEventListener("input", handler);
     });
+
+    // Session mode selector
+    const sessionModeSelect = document.getElementById("setting-session-mode");
+    if (sessionModeSelect) {
+        sessionModeSelect.addEventListener("change", () => {
+            onSessionModeChange(sessionModeSelect.value);
+        });
+    }
+
+    // Session duration field
+    const sessionDurationEl = document.getElementById("session-duration");
+    if (sessionDurationEl) {
+        sessionDurationEl.addEventListener("change", () => setTimeout(displayRace, 0));
+        sessionDurationEl.addEventListener("input", () => setTimeout(displayRace, 0));
+    }
+
+    // Apply initial UI state
+    updateSessionModeUI();
 });

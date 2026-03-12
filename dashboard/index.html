@@ -81,6 +81,15 @@
 
                 <!-- Controls bar -->
                 <div class="race-controls-bar">
+                    <md-outlined-select
+                        id="setting-session-mode"
+                        label="Session mode"
+                        style="width: 140px; flex-shrink: 0;"
+                    >
+                        <md-select-option value="laps"><div slot="headline">Laps</div></md-select-option>
+                        <md-select-option value="timed"><div slot="headline">Timed</div></md-select-option>
+                    </md-outlined-select>
+
                     <md-outlined-text-field
                         id="total-laps"
                         label="Total laps"
@@ -88,6 +97,16 @@
                         value="3"
                         min="1"
                         style="width: 110px; flex-shrink: 0;"
+                    ></md-outlined-text-field>
+
+                    <md-outlined-text-field
+                        id="session-duration"
+                        label="Duration (min)"
+                        type="number"
+                        value="30"
+                        min="1"
+                        max="600"
+                        style="width: 140px; flex-shrink: 0; display: none;"
                     ></md-outlined-text-field>
 
                     <md-outlined-text-field

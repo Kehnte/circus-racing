@@ -25,6 +25,11 @@ let totalPages = 1;
 let currentPage = 0;
 let pageTimer = null;
 
+// Session countdown ticker (timed mode only)
+let sessionCountdownInterval = null;
+let sessionCountdownEndTime = null;
+let sessionCountdownExpired = false;
+
 // Layout helpers
 
 // Measures the pixel height of all grid rows above the pilots container at runtime
@@ -198,7 +203,7 @@ function wipeOutResumed() {
     wipe.classList.add("wipe-out");
 }
 
-// Countdown display
+// Countdown display (pre-race)
 
 let countdownInterval = null;
 let countdownEndTime = null;
@@ -231,6 +236,63 @@ function stopCountdownDisplay() {
     if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
 }
 
+// Session countdown display (timed mode)
+
+// Formats ms as M:SS (no millis) for the session countdown
+function formatSessionCountdown(ms) {
+    if (ms <= 0) return "0:00";
+    const totalSec = Math.ceil(ms / 1000);
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+// Updates the lap-container to show the session countdown instead of lap info
+function setLapContainerToCountdown(remainingMs, expired) {
+    const lapContainer = document.querySelector(".lap-container");
+    if (!lapContainer) return;
+    const text = expired ? "0:00" : formatSessionCountdown(remainingMs);
+    lapContainer.innerHTML = `<span class="lap-current">${text}</span>`;
+}
+
+// Restores the lap-container to its normal lap counter display
+function setLapContainerToLaps(lapCurrent, lapTotal) {
+    const lapContainer = document.querySelector(".lap-container");
+    if (!lapContainer) return;
+    lapContainer.innerHTML = `LAP &nbsp;<span class="lap-current" id="lb-lap-current">${lapCurrent}</span><span class="lap-total" id="lb-lap-total">/${lapTotal}</span>`;
+}
+
+// Starts a local 200ms ticker keeping the session countdown fresh on the leaderboard
+function startSessionCountdownDisplay(remainingMs, expired) {
+    stopSessionCountdownDisplay();
+    if (expired) {
+        setLapContainerToCountdown(0, true);
+        return;
+    }
+    sessionCountdownExpired = false;
+    sessionCountdownEndTime = Date.now() + remainingMs;
+    function tick() {
+        const remaining = sessionCountdownEndTime - Date.now();
+        if (remaining <= 0) {
+            sessionCountdownExpired = true;
+            setLapContainerToCountdown(0, true);
+            stopSessionCountdownDisplay();
+            return;
+        }
+        setLapContainerToCountdown(remaining, false);
+    }
+    tick();
+    sessionCountdownInterval = setInterval(tick, 200);
+}
+
+// Clears the session countdown ticker
+function stopSessionCountdownDisplay() {
+    if (sessionCountdownInterval) {
+        clearInterval(sessionCountdownInterval);
+        sessionCountdownInterval = null;
+    }
+}
+
 // Race status routing
 
 // Selects the correct race-status block and wipe state based on raceStatus and countdown payload
@@ -239,14 +301,12 @@ function updateRaceStatusBlock(raceStatus, countdown, settings) {
     const wrapper = "race-status-wrapper";
 
     if (raceStatus === "standby" && countdown && countdown.active && countdown.remainingMs > 0) {
-        // Active pre-race countdown: show the countdown block
         startCountdownDisplay(countdown.remainingMs);
         wipeOutPaused();
         setRaceStatusBlock("rsb-countdown");
         setRaceStatusHeight("countdown");
         showWrapper(wrapper);
     } else if (raceStatus === "standby") {
-        // Standby with no countdown: show lap counter at 0 so it's always visible
         stopCountdownDisplay();
         wipeOutPaused();
         setRaceStatusBlock("rsb-lap");
@@ -459,21 +519,20 @@ function buildChronoCell(pilot, globalIndex, chronoDisplayMode, timingEnabled) {
 }
 
 // Decides whether to do a full rebuild, a FLIP-animated reorder, or an in-place update
-function renderPage(raceList, teams, page, chronoDisplayMode, timingEnabled, settings, teamDisplayMode) {
+function renderPage(raceList, teams, page, chronoDisplayMode, timingEnabled, settings, teamDisplayMode, sessionMode) {
     const maxRows = computeMaxRowsPerPage();
     const start = page * maxRows;
     const pageSlice = raceList.slice(start, start + maxRows);
-    const totalLapsVal = parseInt((settings || {}).totalLaps) || 0;
+    // In timed mode there is no lap cap — pilots run as many laps as they complete
+    const totalLapsVal = sessionMode === "timed" ? 0 : (parseInt((settings || {}).totalLaps) || 0);
 
     const incomingIds = pageSlice.map((p) => p.id);
     const renderedIds = Array.from(pilotElements.keys());
     const renderedSet = new Set(renderedIds);
 
-    // Pilot set changed → full rebuild required
     const setChanged = incomingIds.length !== renderedIds.length
         || incomingIds.some((id) => !renderedSet.has(id));
 
-    // teamDisplayMode changed → row HTML structure changed → must rebuild
     const modeChanged = teamDisplayMode !== lastTeamDisplayMode;
     lastTeamDisplayMode = teamDisplayMode;
 
@@ -482,7 +541,6 @@ function renderPage(raceList, teams, page, chronoDisplayMode, timingEnabled, set
         return;
     }
 
-    // FLIP step 1: snapshot Y positions before any DOM mutation
     const snapshots = new Map();
     pilotElements.forEach((els, pilotId) => {
         if (els.rowEl.isConnected) snapshots.set(pilotId, els.rowEl.getBoundingClientRect().top);
@@ -490,7 +548,6 @@ function renderPage(raceList, teams, page, chronoDisplayMode, timingEnabled, set
 
     updatePage(pageSlice, teams, start, chronoDisplayMode, timingEnabled, totalLapsVal, teamDisplayMode);
 
-    // Reorder DOM nodes to match the new sorted order
     const container = document.getElementById("lb-pilots-container");
     if (container) {
         pageSlice.forEach((pilot) => {
@@ -502,7 +559,6 @@ function renderPage(raceList, teams, page, chronoDisplayMode, timingEnabled, set
         });
     }
 
-    // FLIP step 2: animate each row from its old Y to its new Y
     if (typeof anime === "undefined") return;
     const toAnimate = [];
     pilotElements.forEach((els, pilotId) => {
@@ -513,7 +569,7 @@ function renderPage(raceList, teams, page, chronoDisplayMode, timingEnabled, set
     });
     if (toAnimate.length === 0) return;
     toAnimate.forEach(({ el, delta }) => { el.style.transform = `translateY(${delta}px)`; });
-    toAnimate.forEach(({ el }) => el.getBoundingClientRect()); // force reflow
+    toAnimate.forEach(({ el }) => el.getBoundingClientRect());
     anime({
         targets: toAnimate.map(({ el }) => el),
         translateY: 0,
@@ -524,7 +580,6 @@ function renderPage(raceList, teams, page, chronoDisplayMode, timingEnabled, set
 
 // Pagination cycling
 
-// Starts or restarts the page-cycling interval when pilot count changes
 function startPageCycle(data) {
     if (pageTimer) { clearInterval(pageTimer); pageTimer = null; }
 
@@ -544,7 +599,8 @@ function startPageCycle(data) {
                 currentData.chronoDisplayMode || "leader",
                 currentData.timingEnabled !== false,
                 currentData.settings || {},
-                currentData.teamDisplayMode || "color-bar"
+                currentData.teamDisplayMode || "color-bar",
+                currentData.sessionMode || "laps"
             );
             updatePageIndicator(currentPage, totalPages);
         }
@@ -553,7 +609,6 @@ function startPageCycle(data) {
 
 // Main update handler
 
-// Receives a full race-data payload and updates every leaderboard section accordingly
 function updateLeaderboard(data) {
     lastKnownData = data;
     currentData = data;
@@ -566,6 +621,8 @@ function updateLeaderboard(data) {
     const raceStatus = data.raceStatus || "standby";
     const countdown = data.countdown || null;
     const teamDisplayMode = data.teamDisplayMode || "color-bar";
+    const sessionMode = data.sessionMode || "laps";
+    const sessionCountdown = data.sessionCountdown || null;
 
     document.getElementById("lb-location").textContent = settings.raceName || "UNKNOWN RACE";
     document.getElementById("lb-session").textContent = settings.session || "Session";
@@ -577,16 +634,36 @@ function updateLeaderboard(data) {
         weatherIconContainer.innerHTML = WEATHER_ICONS[weatherKey];
     }
 
-    // Always update both lap counters regardless of race status (keeps standby and post-reset correct)
-    const totalLaps = parseInt(settings.totalLaps) || 0;
-    let leaderLaps = raceList.length > 0 ? raceList[0].laps : 0;
-    if (totalLaps > 0) leaderLaps = Math.min(leaderLaps, totalLaps);
-    document.getElementById("lb-lap-current").textContent = leaderLaps;
-    document.getElementById("lb-lap-total").textContent = "/" + (settings.totalLaps || "0");
+    // Lap container: timed mode shows session countdown, laps mode shows lap counter
+    if (sessionMode === "timed" && sessionCountdown && sessionCountdown.active) {
+        startSessionCountdownDisplay(sessionCountdown.remainingMs, sessionCountdown.expired);
+    } else if (sessionMode === "timed" && sessionCountdown && !sessionCountdown.active) {
+        // Standby or finished in timed mode — show the full duration as static text
+        stopSessionCountdownDisplay();
+        setLapContainerToCountdown(sessionCountdown.remainingMs || 0, sessionCountdown.expired || false);
+    } else {
+        // Laps mode: stop any running session countdown and restore lap display
+        stopSessionCountdownDisplay();
+        const totalLaps = parseInt(settings.totalLaps) || 0;
+        let leaderLaps = raceList.length > 0 ? raceList[0].laps : 0;
+        if (totalLaps > 0) leaderLaps = Math.min(leaderLaps, totalLaps);
+        setLapContainerToLaps(leaderLaps, settings.totalLaps || "0");
+    }
+
+    // Always update lap counter values even in laps mode (setLapContainerToLaps already did it above)
+    // but keep the individual element refs valid for legacy code paths
+    if (sessionMode === "laps") {
+        const totalLaps = parseInt(settings.totalLaps) || 0;
+        let leaderLaps = raceList.length > 0 ? raceList[0].laps : 0;
+        if (totalLaps > 0) leaderLaps = Math.min(leaderLaps, totalLaps);
+        const lapCurrentEl = document.getElementById("lb-lap-current");
+        const lapTotalEl = document.getElementById("lb-lap-total");
+        if (lapCurrentEl) lapCurrentEl.textContent = leaderLaps;
+        if (lapTotalEl) lapTotalEl.textContent = "/" + (settings.totalLaps || "0");
+    }
 
     updateRaceStatusBlock(raceStatus, countdown, settings);
 
-    // Recompute pagination if the pilot count changed
     const newTotalPages = Math.max(1, Math.ceil(raceList.length / computeMaxRowsPerPage()));
     if (newTotalPages !== totalPages) {
         currentPage = 0;
@@ -594,10 +671,9 @@ function updateLeaderboard(data) {
         startPageCycle(data);
     }
 
-    renderPage(raceList, teams, currentPage, chronoDisplayMode, timingEnabled, settings, teamDisplayMode);
+    renderPage(raceList, teams, currentPage, chronoDisplayMode, timingEnabled, settings, teamDisplayMode, sessionMode);
     updatePageIndicator(currentPage, totalPages);
 
-    // Apply icon badges after render so pilotElements is guaranteed up to date
     raceList.forEach((pilot) => {
         if (pilot.finished) setFinishedIcon(pilot.id);
     });
@@ -614,9 +690,9 @@ socket.on("race-data", (data) => {
     updateLeaderboard(data);
 });
 
-// Clears all pilot DOM, resets pagination and shows the reset wipe banner
 socket.on("race-restarted", () => {
     wipeInReset();
+    stopSessionCountdownDisplay();
     currentPage = 0;
     totalPages = 1;
     fastestLapPilotId = null;
@@ -628,7 +704,6 @@ socket.on("race-restarted", () => {
     updatePageIndicator(0, 1);
 });
 
-// Shows the green "Race resumed" wipe banner
 socket.on("race-resumed", () => {
     wipeInResumed();
 });
