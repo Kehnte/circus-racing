@@ -2,6 +2,7 @@
 
 const socket = io();
 
+// Active race state
 let raceList = [];
 let previousRaceList = [];
 let teamDisplayMode = "color-bar";
@@ -9,18 +10,19 @@ let raceStatus = "standby";
 let timingEnabled = true;
 let chronoDisplayMode = "leader";
 
+// Timing accumulators shared across all pilots
 let globalRaceStartTime = null;
 let pauseStartTime = null;
 let totalPauseDuration = 0;
 let globalFastestLap = null;
 let globalFastestLapPilotId = null;
 
-// Pre-race countdown
+// Pre-race countdown state
 let countdownActive = false;
 let countdownEndTime = null;
 let countdownInterval = null;
 
-// backward compat with pilots.js
+// Backward-compat shim so pilots.js can read team visibility as a boolean
 Object.defineProperty(window, "isTeamManagementActive", {
     get: () => teamDisplayMode !== "hidden",
     configurable: true,
@@ -28,6 +30,7 @@ Object.defineProperty(window, "isTeamManagementActive", {
 
 // Timing helpers
 
+// Returns elapsed ms for a pilot, accounting for pauses, DNF freeze and finish snapshot
 function getPilotElapsed(pilot) {
     if (!timingEnabled) return null;
     if (pilot.raceStartTime === null || pilot.raceStartTime === undefined) return null;
@@ -37,6 +40,7 @@ function getPilotElapsed(pilot) {
     return Date.now() - pilot.raceStartTime - totalPauseDuration - pauseOffset;
 }
 
+// Formats a millisecond duration as M:SS.mmm
 function formatTime(ms) {
     if (ms === null || ms === undefined || isNaN(ms)) return "—";
     const totalSeconds = Math.floor(ms / 1000);
@@ -46,6 +50,7 @@ function formatTime(ms) {
     return `${minutes}:${String(seconds).padStart(2, "0")}.${String(millis).padStart(3, "0")}`;
 }
 
+// Formats a gap as +M:SS.mmm
 function formatDelta(ms) {
     if (ms === null || ms === undefined || isNaN(ms)) return "—";
     return `+${formatTime(ms)}`;
@@ -53,6 +58,7 @@ function formatDelta(ms) {
 
 // Settings callbacks
 
+// Applies team display mode change, hides/shows the Teams section and re-renders
 function onTeamDisplayModeChange(value) {
     teamDisplayMode = value;
     const teamSection = document.getElementById("teams-manager-section");
@@ -62,12 +68,14 @@ function onTeamDisplayModeChange(value) {
     displayRace();
 }
 
+// Toggles live timing on/off and re-renders
 function onTimingEnabledChange(value) {
     timingEnabled = value;
     if (typeof saveAllToLocal === "function") saveAllToLocal();
     displayRace();
 }
 
+// Switches the chrono column display mode and re-renders
 function onChronoDisplayModeChange(value) {
     chronoDisplayMode = value;
     if (typeof saveAllToLocal === "function") saveAllToLocal();
@@ -76,6 +84,7 @@ function onChronoDisplayModeChange(value) {
 
 // Pre-race countdown
 
+// Starts the pre-race countdown timer; fires startRace() when it reaches zero
 function startCountdown() {
     if (raceList.length === 0) {
         alert("Please load pilots first");
@@ -112,6 +121,7 @@ function startCountdown() {
     displayRace();
 }
 
+// Cancels an active countdown; optionally broadcasts the cancellation
 function stopCountdown(broadcast = true) {
     if (countdownInterval) {
         clearInterval(countdownInterval);
@@ -123,6 +133,7 @@ function stopCountdown(broadcast = true) {
     if (broadcast) displayRace();
 }
 
+// Syncs the countdown button and stop-link visibility with current state
 function updateCountdownUI() {
     const btn = document.getElementById("btn-countdown");
     const stopBtn = document.getElementById("btn-countdown-stop");
@@ -130,6 +141,7 @@ function updateCountdownUI() {
     if (stopBtn) stopBtn.style.display = countdownActive ? "" : "none";
 }
 
+// Returns the countdown payload to embed in every race-update broadcast
 function getCountdownPayload() {
     if (!countdownActive || countdownEndTime === null) {
         return { active: false, remainingMs: 0 };
@@ -142,6 +154,7 @@ function getCountdownPayload() {
 
 // Race lifecycle
 
+// Starts the race or resumes it from pause; initialises pilot timestamps on a fresh grid start
 function startRace() {
     if (raceList.length === 0) {
         alert("Please load pilots first");
@@ -150,7 +163,7 @@ function startRace() {
 
     stopCountdown(false);
 
-    // Resume from pause
+    // Resume from pause: accumulate pause duration and continue
     if (raceStatus === "paused" && pauseStartTime !== null) {
         totalPauseDuration += Date.now() - pauseStartTime;
         pauseStartTime = null;
@@ -173,10 +186,12 @@ function startRace() {
 
         raceList.forEach((p) => {
             if (isRolling) {
+                // Rolling start: clock begins on each pilot's first lap crossing
                 p.raceStartTime = null;
                 p.lastSplitTimestamp = null;
                 p.laps = 0;
             } else {
+                // Grid start: all pilots share the same start timestamp, lap 1 begins immediately
                 p.raceStartTime = globalRaceStartTime;
                 p.lastSplitTimestamp = globalRaceStartTime;
                 p.laps = 1;
@@ -193,6 +208,7 @@ function startRace() {
     displayRace();
 }
 
+// Pauses the race and records the pause start timestamp
 function pauseRace() {
     if (raceStatus !== "running") return;
     raceStatus = "paused";
@@ -202,6 +218,7 @@ function pauseRace() {
     displayRace();
 }
 
+// Force-finishes the race and snapshots total time for all pilots still running
 function endRaceManually() {
     raceStatus = "finished";
     if (timingEnabled) {
@@ -220,6 +237,7 @@ function endRaceManually() {
     displayRace();
 }
 
+// Resets all pilot lap data and timing state back to standby without removing pilots
 function resetRace() {
     stopCountdown(false);
     socket.emit("race-restarted");
@@ -246,6 +264,7 @@ function resetRace() {
     displayRace();
 }
 
+// Rebuilds raceList from the pilots roster, resetting all race data
 function reloadPilots() {
     stopCountdown(false);
     raceList = pilots.map((p, index) => ({
@@ -274,6 +293,7 @@ function reloadPilots() {
 
 // Lap management
 
+// Increments or decrements a pilot's lap count, records split times and checks for race end
 function changeLap(index, delta) {
     if (raceStatus !== "running") return;
 
@@ -285,11 +305,13 @@ function changeLap(index, delta) {
     if (newLaps < 0) return;
     if (newLaps >= 1 && !pilot.dnf && !(delta === 1 && pilot.finished)) {
 
+        // Rolling start: start the clock on the pilot's first lap crossing
         if (isRolling && pilot.laps === 0 && delta === 1 && timingEnabled) {
             pilot.raceStartTime = Date.now();
             pilot.lastSplitTimestamp = Date.now();
         }
 
+        // Record split time when completing a lap
         if (delta === 1 && pilot.laps >= 1 && timingEnabled && pilot.raceStartTime !== null) {
             const now = Date.now();
             const split = now - pilot.lastSplitTimestamp;
@@ -298,6 +320,7 @@ function changeLap(index, delta) {
             checkFastestLap(pilot, split);
         }
 
+        // Undo the last split when removing a lap
         if (delta === -1 && timingEnabled && pilot.lapTimes && pilot.lapTimes.length > 0) {
             const removed = pilot.lapTimes.pop();
             if (pilot.lastSplitTimestamp !== null) {
@@ -309,6 +332,7 @@ function changeLap(index, delta) {
         pilot.laps = newLaps;
         pilot.finished = pilot.laps > totalLaps;
 
+        // Snapshot finish time the moment the pilot crosses the finish line
         if (pilot.finished && timingEnabled && pilot.raceStartTime !== null && pilot.totalTime === null) {
             pilot.totalTime = getPilotElapsed(pilot);
         }
@@ -320,6 +344,7 @@ function changeLap(index, delta) {
     }
 }
 
+// Emits a fastest-lap event if the given split beats the current global record
 function checkFastestLap(pilot, splitMs) {
     if (globalFastestLap === null || splitMs < globalFastestLap) {
         globalFastestLap = splitMs;
@@ -343,6 +368,7 @@ function checkFastestLap(pilot, splitMs) {
     }
 }
 
+// Scans all pilots' lap times to recompute the global fastest lap after a lap removal
 function recomputeGlobalFastestLap() {
     globalFastestLap = null;
     globalFastestLapPilotId = null;
@@ -359,8 +385,9 @@ function recomputeGlobalFastestLap() {
 
 // Position & reorder
 
+// Swaps a pilot one step up or down in the list; allowed in standby and running
 function movePilot(index, delta) {
-    if (raceStatus !== "running") return;
+    if (raceStatus === "finished") return;
     const pilot = raceList[index];
     if (pilot.finished) return;
     const newPos = index + delta;
@@ -373,8 +400,9 @@ function movePilot(index, delta) {
     displayRace();
 }
 
+// Moves a pilot directly to an arbitrary position; allowed in standby and running
 function jumpToPosition(index, newPosValue) {
-    if (raceStatus !== "running") { displayRace(); return; }
+    if (raceStatus === "finished") { displayRace(); return; }
     const pilot = raceList[index];
     if (pilot.finished) { displayRace(); return; }
     const newPos = parseInt(newPosValue);
@@ -389,6 +417,7 @@ function jumpToPosition(index, newPosValue) {
     displayRace();
 }
 
+// Toggles a pilot's DNF flag; freezes their elapsed time when set
 function toggleDNF(index) {
     const pilot = raceList[index];
     pilot.dnf = !pilot.dnf;
@@ -406,6 +435,7 @@ function toggleDNF(index) {
     displayRace();
 }
 
+// Sorts raceList by DNF → finished → laps desc, then reassigns position numbers
 function recalculatePositions() {
     raceList.sort((a, b) => {
         if (a.dnf !== b.dnf) return a.dnf ? 1 : -1;
@@ -418,6 +448,7 @@ function recalculatePositions() {
 
 // Chrono display
 
+// Returns the formatted chrono string for a pilot according to the active display mode
 function getChronoDisplay(pilot, index) {
     if (!timingEnabled) return "";
 
@@ -455,6 +486,7 @@ function getChronoDisplay(pilot, index) {
 
 // Event detection
 
+// Diffs raceList against previousRaceList and emits incident/finished events for state changes
 function detectAndEmitEvents() {
     if (previousRaceList.length === 0) return;
 
@@ -487,6 +519,7 @@ function detectAndEmitEvents() {
 
 // Render
 
+// Rebuilds the race table, updates column visibility and broadcasts full state to overlays
 function displayRace() {
     const tableBody = document.getElementById("race-list");
     const pilotCountEl = document.getElementById("pilot-count");
@@ -506,12 +539,14 @@ function displayRace() {
         const posBadgeClass = index === 0 ? "position-badge pos-first" : "position-badge";
         const teamColor = team ? team.color : "inherit";
         const teamAcronym = team ? team.acronym : "-";
+        const canReorder = (raceStatus === "running" || raceStatus === "standby") && !pilot.finished;
+        const canSetPos  = (raceStatus === "running" || raceStatus === "standby") && !pilot.finished;
         const chronoCell = timingEnabled
             ? `<td class="chrono-cell" style="${pilot.dnf ? "opacity:0.5;" : ""}">${pilot.dnf ? "DNF" : getChronoDisplay(pilot, index)}</td>`
             : "";
 
         const dnfTitle = pilot.dnf ? "Reset DNF" : "DNF";
-        const dnfIcon = pilot.dnf ? "restart_alt" : "cancel";
+        const dnfIcon  = pilot.dnf ? "restart_alt" : "cancel";
         const dnfStyle = pilot.dnf
             ? "--md-icon-button-icon-color: var(--md-sys-color-tertiary);"
             : "--md-icon-button-icon-color: var(--md-sys-color-error);";
@@ -541,16 +576,16 @@ function displayRace() {
                     max="${raceList.length}"
                     value="${pilot.position}"
                     onchange="jumpToPosition(${index}, this.value)"
-                    ${(!isRunning || pilot.finished) ? "disabled" : ""}
+                    ${!canSetPos ? "disabled" : ""}
                     title="Jump to position"
                 />
             </td>
             <td>
                 <div class="action-buttons">
-                    <md-icon-button onclick="movePilot(${index}, -1)" ${(!isRunning || index === 0 || pilot.finished) ? "disabled" : ""} title="Move up">
+                    <md-icon-button onclick="movePilot(${index}, -1)" ${(!canReorder || index === 0) ? "disabled" : ""} title="Move up">
                         <md-icon>arrow_upward</md-icon>
                     </md-icon-button>
-                    <md-icon-button onclick="movePilot(${index}, 1)" ${(!isRunning || index === raceList.length - 1 || pilot.finished) ? "disabled" : ""} title="Move down">
+                    <md-icon-button onclick="movePilot(${index}, 1)" ${(!canReorder || index === raceList.length - 1) ? "disabled" : ""} title="Move down">
                         <md-icon>arrow_downward</md-icon>
                     </md-icon-button>
                 </div>
@@ -564,7 +599,7 @@ function displayRace() {
         tableBody.insertAdjacentHTML("beforeend", row);
     });
 
-    // Update table chrono column visibility
+    // Toggle chrono and team column visibility via CSS classes
     const table = tableBody.closest("table");
     if (table) {
         table.classList.toggle("chrono-hidden", !timingEnabled);
@@ -601,6 +636,7 @@ function displayRace() {
 
 // Race end
 
+// Automatically marks the race finished when every pilot has either finished or DNF'd
 function checkRaceEnd() {
     const stillRacing = raceList.some((p) => !p.finished && !p.dnf);
     if (!stillRacing && raceList.length > 0 && raceStatus === "running") {
@@ -609,9 +645,10 @@ function checkRaceEnd() {
     }
 }
 
+// Syncs Start/Pause/Finish button states with the current raceStatus
 function updateControls() {
-    const btnStart = document.getElementById("btn-start");
-    const btnPause = document.getElementById("btn-pause");
+    const btnStart  = document.getElementById("btn-start");
+    const btnPause  = document.getElementById("btn-pause");
     const btnFinish = document.getElementById("btn-finish");
     if (!btnStart || !btnPause || !btnFinish) return;
 
@@ -635,8 +672,9 @@ function updateControls() {
     updateCountdownUI();
 }
 
-// Live chrono refresh
+// Intervals
 
+// Refreshes chrono cells in the dashboard table every 100 ms while the race is running
 setInterval(() => {
     if (raceStatus !== "running" || !timingEnabled) return;
     const cells = document.querySelectorAll("#race-list .chrono-cell");
@@ -647,8 +685,7 @@ setInterval(() => {
     });
 }, 100);
 
-// Countdown broadcast refresh
-
+// Keeps the leaderboard countdown display in sync by broadcasting state every 500 ms
 setInterval(() => {
     if (!countdownActive) return;
     socket.emit("race-update", {
@@ -673,3 +710,25 @@ setInterval(() => {
         },
     });
 }, 500);
+
+// Settings live broadcast
+
+// Attaches change/input listeners to all settings fields so the leaderboard updates immediately on any edit
+document.addEventListener("DOMContentLoaded", () => {
+    const settingIds = [
+        "setting-race-name",
+        "setting-session",
+        "setting-weather",
+        "setting-start-type",
+        "total-laps",
+    ];
+
+    settingIds.forEach((id) => {
+        // Delay by one tick so Material Web components have committed their value before we read it
+        const handler = () => setTimeout(displayRace, 0);
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener("change", handler);
+        el.addEventListener("input", handler);
+    });
+});
