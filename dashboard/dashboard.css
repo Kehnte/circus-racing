@@ -445,6 +445,11 @@ table.m3-table.teams-hidden td.team-ext {
     width: 1%;
 }
 
+.col-medium {
+    white-space: nowrap;
+    width: 10%;
+}
+
 /* Overlay quick-access links in the page header, pushed to the right */
 .header-overlay-links {
     margin-left: auto;

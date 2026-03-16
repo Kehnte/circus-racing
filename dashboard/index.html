@@ -108,39 +108,35 @@
                         type="number"
                         value="3"
                         min="1"
-                        style="width: 110px; flex-shrink: 0;"
+                        style="width: 100px; flex-shrink: 0;"
                     ></md-outlined-text-field>
 
                     <md-outlined-text-field
-                        id="session-duration"
+                        id="timed-duration"
                         label="Duration (min)"
                         type="number"
                         value="30"
                         min="1"
-                        max="600"
-                        style="width: 140px; flex-shrink: 0; display: none;"
+                        style="width: 130px; flex-shrink: 0; display: none;"
                     ></md-outlined-text-field>
 
                     <md-outlined-text-field
                         id="event-duration"
-                        label="Event duration (s)"
+                        label="Alert duration (s)"
                         type="number"
                         value="5"
                         min="1"
-                        max="30"
-                        style="width: 150px; flex-shrink: 0;"
+                        style="width: 140px; flex-shrink: 0;"
                     ></md-outlined-text-field>
 
-                    <!-- Pre-race countdown duration and trigger buttons -->
                     <md-outlined-text-field
                         id="countdown-duration"
                         label="Countdown (s)"
                         type="number"
-                        value="30"
-                        min="1"
-                        max="600"
+                        value="0"
+                        min="0"
                         style="width: 130px; flex-shrink: 0;"
-                        title="Pre-race countdown duration. Leave at 0 or use Start Race to skip."
+                        title="Pre-race countdown in seconds. Leave at 0 or use Start Race to skip."
                     ></md-outlined-text-field>
                     <md-outlined-button
                         id="btn-countdown"
@@ -229,6 +225,7 @@
                                 <th>DNF</th>
                             </tr>
                         </thead>
+
                         <tbody id="race-list"></tbody>
                     </table>
                 </div>
@@ -305,7 +302,7 @@
                             <tr>
                                 <th class="col-grow">Name</th>
                                 <th class="col-shrink">Acronym</th>
-                                <th class="col-shrink">Color</th>
+                                <th class="col-medium">Color</th>
                                 <th class="col-shrink">Actions</th>
                             </tr>
                         </thead>
@@ -324,8 +321,8 @@
                                             <button type="button" class="color-swatch" style="background-color:#E57373" data-color="#E57373" title="Red 300"></button>
                                             <button type="button" class="color-swatch" style="background-color:#F06292" data-color="#F06292" title="Pink 300"></button>
                                             <button type="button" class="color-swatch" style="background-color:#BA68C8" data-color="#BA68C8" title="Purple 300"></button>
-                                            <button type="button" class="color-swatch" style="background-color:#9575CD" data-color="#9575CD" title="Deep Purple 300"></button>
-                                            <button type="button" class="color-swatch" style="background-color:#7986CB" data-color="#7986CB" title="Indigo 300"></button>
+                                            <button type="button" class="color-swatch" style="background-color:#9575CD" data-color="#9575CD" title="Deep Purple 400"></button>
+                                            <button type="button" class="color-swatch" style="background-color:#7986CB" data-color="#7986CB" title="Indigo 400"></button>
                                             <button type="button" class="color-swatch" style="background-color:#64B5F6" data-color="#64B5F6" title="Blue 300"></button>
                                             <button type="button" class="color-swatch" style="background-color:#4FC3F7" data-color="#4FC3F7" title="Light Blue 300"></button>
                                             <button type="button" class="color-swatch" style="background-color:#4DD0E1" data-color="#4DD0E1" title="Cyan 300"></button>
@@ -438,6 +435,53 @@
             </div>
 
             <!-- ================================================
+                 REGISTRATIONS SECTION
+                 ================================================ -->
+            <div class="m3-card" id="registrations-section">
+                <div class="section-header">
+                    <h2 class="m3-card-title" style="margin-bottom:0">
+                        Pilot registrations
+                        <span id="registrations-badge" style="
+                            display: none;
+                            align-items: center;
+                            justify-content: center;
+                            background-color: var(--md-sys-color-error);
+                            color: var(--md-sys-color-on-error);
+                            border-radius: 10px;
+                            font-size: 11px;
+                            font-weight: 700;
+                            min-width: 20px;
+                            height: 20px;
+                            padding: 0 6px;
+                            margin-left: 8px;
+                            vertical-align: middle;
+                        "></span>
+                    </h2>
+                    <md-text-button onclick="loadRegistrations()">
+                        <span class="material-symbols-outlined" slot="icon">refresh</span>
+                        Refresh
+                    </md-text-button>
+                </div>
+
+                <div class="form-row" style="margin-bottom: 16px;">
+                    <md-outlined-select
+                        id="registrations-race-select"
+                        label="Race"
+                        style="min-width: 280px; flex: 1;"
+                        onchange="loadRegistrations()"
+                    >
+                        <md-select-option value=""><div slot="headline">— Select a race —</div></md-select-option>
+                    </md-outlined-select>
+                </div>
+
+                <div id="registrations-content">
+                    <p class="md-typescale-body-medium" style="color: var(--md-sys-color-on-surface-variant);">
+                        Select a race to view pending registrations.
+                    </p>
+                </div>
+            </div>
+
+            <!-- ================================================
                  DATA SECTION
                  ================================================ -->
             <div class="m3-card" id="data-manager-section">
@@ -469,6 +513,7 @@
         <script src="race.js"></script>
         <script src="shortcuts.js"></script>
         <script src="database.js"></script>
+        <script src="registrations.js"></script>
 
         <script>
             document.addEventListener("DOMContentLoaded", () => {

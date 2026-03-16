@@ -31,9 +31,6 @@ app.use((req, res, next) => {
 // ---------------------------------------------------------------------------
 // REST API — routes from src/ (TypeScript compiled to dist/ in prod,
 // loaded with tsx/ts-node in dev via "npm run dev:ts")
-//
-// In development, tsx registers a require hook so we can require .ts files
-// directly.  In production, require the compiled dist/.
 // ---------------------------------------------------------------------------
 try {
   const authRouter       = require('./src/api/auth').default;
@@ -42,6 +39,7 @@ try {
   const controlsRouter   = require('./src/api/controls').default;
   const racetracksRouter = require('./src/api/racetracks').default;
   const pilotsRouter     = require('./src/api/pilots').default;
+  const racesRouter      = require('./src/api/races').default;
 
   app.use('/api/auth',       authRouter);
   app.use('/api/teams',      teamsRouter);
@@ -49,6 +47,7 @@ try {
   app.use('/api/controls',   controlsRouter);
   app.use('/api/racetracks', racetracksRouter);
   app.use('/api/pilots',     pilotsRouter);
+  app.use('/api/races',      racesRouter);
 
   console.log('✅ REST API routes loaded');
 } catch (err) {
@@ -117,8 +116,8 @@ server.listen(PORT, () => {
   console.log(`   Dashboard:   http://localhost:${PORT}/dashboard/`);
   console.log(`   Leaderboard: http://localhost:${PORT}/overlays/leaderboard/`);
   console.log(`   Race Alert:  http://localhost:${PORT}/overlays/race-alert/`);
-  console.log(`   API:         http://localhost:${PORT}/api/`);
   console.log(`   Pilot app:   http://localhost:${PORT}/pilot-app/register.html`);
+  console.log(`   API:         http://localhost:${PORT}/api/`);
   console.log('');
 });
 
