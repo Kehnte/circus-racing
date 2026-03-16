@@ -118,6 +118,7 @@ server.listen(PORT, () => {
   console.log(`   Leaderboard: http://localhost:${PORT}/overlays/leaderboard/`);
   console.log(`   Race Alert:  http://localhost:${PORT}/overlays/race-alert/`);
   console.log(`   API:         http://localhost:${PORT}/api/`);
+  console.log(`   Pilot app:   http://localhost:${PORT}/pilot-app/register.html`);
   console.log('');
 });
 
