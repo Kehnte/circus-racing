@@ -35,6 +35,25 @@
 
     <body>
 
+        <!-- ================================================
+             AUTH OVERLAY — shown when not logged in
+             ================================================ -->
+        <div id="auth-overlay" style="display: none; position: fixed; inset: 0; z-index: 1000; background: var(--md-sys-color-background); align-items: center; justify-content: center;">
+            <div class="m3-card" style="max-width: 400px; width: 100%; padding: 32px;">
+                <h2 class="m3-card-title" style="text-align: center; margin-bottom: 8px;">🏁 Circus Racing</h2>
+                <p class="md-typescale-body-medium" style="text-align: center; margin-bottom: 24px; color: var(--md-sys-color-on-surface-variant);">Admin / Moderator access only</p>
+                <div style="display: flex; flex-direction: column; gap: 16px;">
+                    <md-outlined-text-field id="login-email" label="Email" type="email" style="width: 100%;"></md-outlined-text-field>
+                    <md-outlined-text-field id="login-password" label="Password" type="password" style="width: 100%;"></md-outlined-text-field>
+                    <p id="login-error" style="color: var(--md-sys-color-error); font-size: 14px; margin: 0; min-height: 20px;"></p>
+                    <md-filled-button onclick="dashboardLogin()" style="width: 100%;">Sign in</md-filled-button>
+                </div>
+                <p class="md-typescale-body-small" style="text-align: center; margin-top: 16px; color: var(--md-sys-color-on-surface-variant);">
+                    Not registered? <a href="/pilot-app/register.html">Create an account</a>
+                </p>
+            </div>
+        </div>
+
         <header class="page-header">
             <span style="font-size: 28px;">🏁</span>
             <h1>Circus Racing</h1>
@@ -48,6 +67,10 @@
                     <md-icon slot="icon">notifications</md-icon>
                     Race alert
                 </md-outlined-button>
+                <md-text-button onclick="dashboardLogout()" style="--md-text-button-label-text-color: var(--md-sys-color-on-surface-variant);">
+                    <md-icon slot="icon">logout</md-icon>
+                    Logout
+                </md-text-button>
             </div>
         </header>
 
@@ -491,7 +514,8 @@
                 <div class="button-group">
                     <md-filled-button onclick="exportData()">Export all data (JSON)</md-filled-button>
                     <md-outlined-button onclick="importData()">Import data (JSON)</md-outlined-button>
-                    <md-text-button onclick="resetAllData()" style="--md-text-button-label-text-color: var(--md-sys-color-error);">Reset all data</md-text-button>
+                    <md-outlined-button onclick="migrateLocalData()">Migrate local data to DB</md-outlined-button>
+                    <md-text-button onclick="resetAllData()" style="--md-text-button-label-text-color: var(--md-sys-color-error);">Clear local storage</md-text-button>
                 </div>
                 <input
                     type="file"
@@ -505,6 +529,7 @@
         </div>
 
         <script src="/socket.io/socket.io.js"></script>
+        <script src="api.js"></script>
         <script src="storage.js"></script>
         <script src="teams.js"></script>
         <script src="ships.js"></script>

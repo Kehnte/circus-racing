@@ -480,7 +480,7 @@ function checkFastestLap(pilot, splitMs) {
         globalFastestLapPilotId = pilot.id;
 
         const team = typeof teams !== "undefined" ? teams.find((t) => t.id === pilot.teamId) : null;
-        const ship = typeof ships !== "undefined" ? ships.find((s) => s.id === pilot.shipId) : null;
+        const ship = typeof vehicles !== "undefined" ? vehicles.find((s) => s.id === pilot.shipId) : null;
         const displayDuration = parseInt(document.getElementById("event-duration")?.value) || 5;
 
         socket.emit("race-event", {
@@ -624,7 +624,7 @@ function detectAndEmitEvents() {
         if (!previous) return;
 
         const team = typeof teams !== "undefined" ? teams.find((t) => t.id === pilot.teamId) : null;
-        const ship = typeof ships !== "undefined" ? ships.find((s) => s.id === pilot.shipId) : null;
+        const ship = typeof vehicles !== "undefined" ? vehicles.find((s) => s.id === pilot.shipId) : null;
         const displayDuration = parseInt(document.getElementById("event-duration")?.value) || 5;
 
         const payload = {
@@ -661,7 +661,7 @@ function displayRace() {
     const showTeams = teamDisplayMode !== "hidden";
 
     raceList.forEach((pilot, index) => {
-        const team = typeof teams !== "undefined" ? teams.find((t) => t.id === pilot.teamId) : null;
+        const team = typeof teams !== "undefined" ? teams.find((t) => t.id === (pilot.teamId ?? null)) : null;
         const lapDisplay = pilot.finished
             ? `<span class="lap-display finished">Finished</span>`
             : `<span class="lap-display">${pilot.laps}</span>`;

@@ -1,32 +1,42 @@
 // teams.js
 
-// Master list of registered teams
+// Master list of registered teams (populated from API)
 let teams = [];
 // ID of the team row currently open for inline editing (null = none)
 let editingTeamId = null;
 
-// Read the add-team form, validate it and push a new team into the teams array
-function addTeam() {
-    const name = document.getElementById("name").value?.trim();
+/** Load teams from API and render the table */
+async function initTeams() {
+    try {
+        teams = await apiGet("/teams");
+    } catch {
+        teams = [];
+    }
+    displayTeams();
+    updateTeamDropdown();
+}
+
+/** Read the add-team form, POST to API, refresh table */
+async function addTeam() {
+    const name    = document.getElementById("name").value?.trim();
     const acronym = document.getElementById("acronym").value?.trim();
+    const color   = document.getElementById("color").value;
 
     if (!name || !acronym) {
         alert("Please fill in all fields");
         return;
     }
 
-    const newTeam = {
-        id: Date.now(),
-        name: name,
-        acronym: acronym,
-        color: document.getElementById("color").value,
-    };
-
-    teams.push(newTeam);
-    displayTeams();
-    clearForm();
-    updateTeamDropdown();
-    saveToStorage();
+    try {
+        const created = await apiPost("/teams", { name, acronym, color });
+        teams.push(created);
+        displayTeams();
+        clearForm();
+        updateTeamDropdown();
+        if (typeof displayPilots === "function") displayPilots();
+    } catch (e) {
+        alert(e.message || "Failed to create team");
+    }
 }
 
 // Reset the add-team text fields (color swatch keeps its current selection)
@@ -94,7 +104,7 @@ function createEditRow(team) {
       <td>${buildSwatchesHTML(team.color, "edit")}</td>
       <td>
         <div class="action-buttons">
-          <md-icon-button onclick="saveEdit(${team.id})" title="Save"><md-icon>check</md-icon></md-icon-button>
+          <md-icon-button onclick="saveEdit('${team.id}')" title="Save"><md-icon>check</md-icon></md-icon-button>
           <md-icon-button onclick="cancelEdit()" title="Cancel"><md-icon>close</md-icon></md-icon-button>
         </div>
       </td>
@@ -110,22 +120,23 @@ function createDisplayRow(team) {
       <td><span class="team-color-dot" style="background-color: ${team.color}; width: 20px; height: 20px; border-radius: 4px; display: inline-block;"></span> ${team.color}</td>
       <td>
         <div class="action-buttons">
-          <md-icon-button onclick="startEdit(${team.id})" title="Edit"><md-icon>edit</md-icon></md-icon-button>
-          <md-icon-button onclick="deleteTeam(${team.id})" title="Delete" style="--md-icon-button-icon-color: var(--md-sys-color-error);"><md-icon>delete</md-icon></md-icon-button>
+          <md-icon-button onclick="startEdit('${team.id}')" title="Edit"><md-icon>edit</md-icon></md-icon-button>
+          <md-icon-button onclick="deleteTeam('${team.id}')" title="Delete" style="--md-icon-button-icon-color: var(--md-sys-color-error);"><md-icon>delete</md-icon></md-icon-button>
         </div>
       </td>
     </tr>`;
 }
 
-// Remove a team by ID, then refresh all dependent UI
-function deleteTeam(idToDelete) {
-    const teamToDelete = teams.find((t) => t.id === idToDelete);
-    if (teamToDelete) {
-        teams = teams.filter((t) => t.id !== idToDelete);
+/** Remove a team via API, then refresh UI */
+async function deleteTeam(id) {
+    try {
+        await apiDelete(`/teams/${id}`);
+        teams = teams.filter((t) => t.id !== id);
         displayTeams();
         if (typeof updateTeamDropdown === "function") updateTeamDropdown();
         if (typeof displayPilots === "function") displayPilots();
-        saveToStorage();
+    } catch (e) {
+        alert(e.message || "Failed to delete team");
     }
 }
 
@@ -141,29 +152,41 @@ function cancelEdit() {
     displayTeams();
 }
 
-// Validate the inline edit form and persist changes to the team object
-function saveEdit(id) {
-    const team = teams.find((t) => t.id === id);
-    const name = document.getElementById("edit-name").value?.trim();
-    const acronym = document.getElementById("edit-acronym").value?.trim();
+/** Validate the inline edit form and PATCH the team via API */
+async function saveEdit(id) {
+    const name    = document.getElementById("edit-name")?.value?.trim();
+    const acronym = document.getElementById("edit-acronym")?.value?.trim();
+    const color   = document.getElementById("edit-color-value")?.value;
 
     if (!name || !acronym) {
         alert("Please fill in all fields");
         return;
     }
 
-    team.name = name;
-    team.acronym = acronym;
-    team.color = document.getElementById("edit-color-value")?.value || team.color;
-
-    editingTeamId = null;
-    displayTeams();
-    updateTeamDropdown();
-    if (typeof displayPilots === "function") displayPilots();
-    saveToStorage();
+    try {
+        const updated = await apiPatch(`/teams/${id}`, { name, acronym, color });
+        const idx = teams.findIndex((t) => t.id === id);
+        if (idx !== -1) teams[idx] = updated;
+        editingTeamId = null;
+        displayTeams();
+        updateTeamDropdown();
+        if (typeof displayPilots === "function") displayPilots();
+    } catch (e) {
+        alert(e.message || "Failed to update team");
+    }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-    displayTeams();
-    updateTeamDropdown();
-});
+// Rebuild the team dropdown in the pilot form
+function updateTeamDropdown() {
+    const select = document.getElementById("pilot-team");
+    if (!select) return;
+    select.innerHTML = '<md-select-option value=""><div slot="headline">Select a team</div></md-select-option>';
+    teams.forEach((team) => {
+        select.innerHTML += `<md-select-option value="${team.id}"><div slot="headline">${team.name}</div></md-select-option>`;
+    });
+}
+
+// Legacy reset — kept for database.js compatibility
+function resetTeams() {
+    if (typeof initTeams === "function") initTeams();
+}

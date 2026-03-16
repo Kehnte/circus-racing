@@ -1,5 +1,7 @@
 import { Router } from "express";
 import { eq } from "drizzle-orm";
+import { randomBytes } from "crypto";
+import { hash } from "@node-rs/bcrypt";
 import { db } from "../db/db.js";
 import { pilot, raceEntry } from "../db/schema.js";
 import { requireAuth } from "../middleware/auth.js";
@@ -17,6 +19,43 @@ function safePublic(p: typeof pilot.$inferSelect) {
   const { passwordHash, ...safe } = p;
   return safe;
 }
+
+/**
+ * POST /pilots — admin only
+ * Creates a pilot manually (dashboard manual mode).
+ * A placeholder email and password are generated so the pilot can later
+ * self-register and be merged by an admin ("rebind" flow).
+ */
+router.post("/", ...requireAdmin, async (req, res) => {
+  const { displayName, handleSC, country, avatarUrl, teamId, vehicleId, controlsId } = req.body;
+  if (!displayName?.trim()) {
+    res.status(400).json({ error: "displayName is required" });
+    return;
+  }
+
+  const slug         = displayName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const suffix       = randomBytes(4).toString("hex");
+  const email        = `manual-${slug}-${suffix}@circus.local`;
+  const password     = randomBytes(16).toString("hex");
+  const passwordHash = await hash(password, 12);
+  const token        = randomBytes(32).toString("hex");
+
+  const [created] = await db.insert(pilot).values({
+    displayName: displayName.trim(),
+    email,
+    passwordHash,
+    token,
+    role: "PILOT",
+    ...(handleSC   ? { handleSC }   : {}),
+    ...(country    ? { country }    : {}),
+    ...(avatarUrl  ? { avatarUrl }  : {}),
+    ...(teamId     ? { teamId }     : {}),
+    ...(vehicleId  ? { vehicleId }  : {}),
+    ...(controlsId ? { controlsId } : {}),
+  }).returning();
+
+  res.status(201).json(safePublic(created));
+});
 
 /** GET /pilots — admin/modo only (full list with emails) */
 router.get("/", ...requireModo, async (_req, res) => {
