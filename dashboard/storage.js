@@ -18,7 +18,11 @@ function loadFromStorage() {
         if (savedTeams) teams = JSON.parse(savedTeams);
 
         const savedShips = localStorage.getItem(STORAGE_KEYS.SHIPS);
-        if (savedShips) ships = JSON.parse(savedShips);
+        if (savedShips) {
+            const parsed = JSON.parse(savedShips);
+            // Migrate old ships without category
+            vehicles = parsed.map(v => ({ category: "ship", ...v }));
+        }
 
         const savedControls = localStorage.getItem(STORAGE_KEYS.CONTROLS);
         if (savedControls) controlsList = JSON.parse(savedControls);
@@ -43,11 +47,11 @@ function loadFromStorage() {
     }
 }
 
-// Persist the four database arrays (teams, ships, controls, pilots) to LocalStorage
+// Persist the four database arrays (teams, vehicles, controls, pilots) to LocalStorage
 function saveToStorage() {
     try {
         localStorage.setItem(STORAGE_KEYS.TEAMS, JSON.stringify(teams));
-        localStorage.setItem(STORAGE_KEYS.SHIPS, JSON.stringify(ships));
+        localStorage.setItem(STORAGE_KEYS.SHIPS, JSON.stringify(vehicles));
         localStorage.setItem(STORAGE_KEYS.CONTROLS, JSON.stringify(controlsList));
         localStorage.setItem(STORAGE_KEYS.PILOTS, JSON.stringify(pilots));
     } catch (error) {
@@ -96,12 +100,12 @@ function resetTeams() {
     if (typeof displayPilots === "function") displayPilots();
 }
 
-// Clear the ships array and its LocalStorage entry, then refresh all dependent UI
-function resetShips() {
-    ships = [];
+// Clear the vehicles array and its LocalStorage entry, then refresh all dependent UI
+function resetVehicles() {
+    vehicles = [];
     localStorage.removeItem(STORAGE_KEYS.SHIPS);
-    displayShips();
-    if (typeof updateShipDropdown === "function") updateShipDropdown();
+    displayVehicles();
+    if (typeof updateVehicleDropdown === "function") updateVehicleDropdown();
     if (typeof displayPilots === "function") displayPilots();
 }
 
@@ -181,7 +185,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Render all tables
     if (typeof displayTeams === "function") displayTeams();
-    if (typeof displayShips === "function") displayShips();
+    if (typeof displayVehicles === "function") displayVehicles();
     if (typeof displayControls === "function") displayControls();
     if (typeof displayPilots === "function") displayPilots();
     if (typeof displayRace === "function") displayRace();

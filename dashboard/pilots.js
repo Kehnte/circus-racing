@@ -26,14 +26,17 @@ function updateTeamDropdown() {
     });
 }
 
-function updateShipDropdown() {
+function updateVehicleDropdown() {
     const select = document.getElementById("pilot-ship");
     if (!select) return;
-    select.innerHTML = '<md-select-option value=""><div slot="headline">Select a ship</div></md-select-option>';
-    ships.forEach((ship) => {
-        select.innerHTML += `<md-select-option value="${ship.id}"><div slot="headline">${ship.model}</div></md-select-option>`;
+    select.innerHTML = '<md-select-option value=""><div slot="headline">Select a vehicle</div></md-select-option>';
+    vehicles.forEach((vehicle) => {
+        select.innerHTML += `<md-select-option value="${vehicle.id}"><div slot="headline">[${vehicle.category || 'ship'}] ${vehicle.model}</div></md-select-option>`;
     });
 }
+
+// Backward compat alias
+function updateShipDropdown() { updateVehicleDropdown(); }
 
 function updateControlDropdown() {
     const select = document.getElementById("pilot-controls");
@@ -88,7 +91,7 @@ function displayPilots() {
 
 function createPilotDisplayRow(pilot) {
     const team = teams.find((t) => t.id === pilot.teamId);
-    const ship = ships.find((s) => s.id === pilot.shipId);
+    const vehicle = vehicles.find((v) => v.id === pilot.shipId);
     const ctrl = controlsList.find((c) => c.id === pilot.controlId);
     const safeCountry = pilot.country || "un";
 
@@ -99,7 +102,7 @@ function createPilotDisplayRow(pilot) {
         <td class="team-ext">
           ${team ? team.name : "---"}
         </td>
-        <td>${ship ? ship.model : "No ship"}</td>
+        <td>${vehicle ? `[${vehicle.category || 'ship'}] ${vehicle.model}` : "No vehicle"}</td>
         <td>${ctrl ? ctrl.type : "Unknown"}</td>
         <td>
           <div class="action-buttons">
@@ -121,8 +124,8 @@ function createPilotEditRow(pilot) {
         .map((t) => `<md-select-option value="${t.id}" ${t.id === pilot.teamId ? "selected" : ""}><div slot="headline">${t.name}</div></md-select-option>`)
         .join("");
 
-    let shipOptions = ships
-        .map((s) => `<md-select-option value="${s.id}" ${s.id === pilot.shipId ? "selected" : ""}><div slot="headline">${s.model}</div></md-select-option>`)
+    let vehicleOptions = vehicles
+        .map((v) => `<md-select-option value="${v.id}" ${v.id === pilot.shipId ? "selected" : ""}><div slot="headline">[${v.category || 'ship'}] ${v.model}</div></md-select-option>`)
         .join("");
 
     let controlOptions = controlsList
@@ -136,7 +139,7 @@ function createPilotEditRow(pilot) {
       <td class="team-ext">
         <md-outlined-select id="edit-pilot-team" style="width:100%;">${teamOptions}</md-outlined-select>
       </td>
-      <td><md-outlined-select id="edit-pilot-ship" style="width:100%;">${shipOptions}</md-outlined-select></td>
+      <td><md-outlined-select id="edit-pilot-ship" style="width:100%;">${vehicleOptions}</md-outlined-select></td>
       <td><md-outlined-select id="edit-pilot-controls" style="width:100%;">${controlOptions}</md-outlined-select></td>
       <td>
         <div class="action-buttons">
@@ -184,7 +187,7 @@ function saveEditPilot(id) {
 
     pilot.name = name;
     pilot.country = country || "un";
-    pilot.teamId = showTeams ? parseInt(teamId) : pilot.teamId;
+    pilot.teamId = showTeams ? parseInt(teamId) : null;
     pilot.shipId = parseInt(shipId);
     pilot.controlId = parseInt(controlId);
 
@@ -196,13 +199,17 @@ function saveEditPilot(id) {
 function clearPilotForm() {
     setVal("pilot-name", "");
     setVal("pilot-country", "");
-    setVal("pilot-team", "");
-    setVal("pilot-ship", "");
-    setVal("pilot-controls", "");
+    const teamSel = document.getElementById("pilot-team");
+    if (teamSel) teamSel.value = "";
+    const shipSel = document.getElementById("pilot-ship");
+    if (shipSel) shipSel.value = "";
+    const ctrlSel = document.getElementById("pilot-controls");
+    if (ctrlSel) ctrlSel.value = "";
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+    displayPilots();
+    updateVehicleDropdown();
     updateTeamDropdown();
-    updateShipDropdown();
     updateControlDropdown();
 });

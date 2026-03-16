@@ -258,7 +258,7 @@
                                 <th>Name</th>
                                 <th>Nationality</th>
                                 <th class="team-ext">Team</th>
-                                <th>Ship</th>
+                                <th>Vehicle</th>
                                 <th>Controls</th>
                                 <th>Actions</th>
                             </tr>
@@ -276,7 +276,7 @@
                                     <md-outlined-select id="pilot-team" label="Team" style="width:100%;"></md-outlined-select>
                                 </td>
                                 <td>
-                                    <md-outlined-select id="pilot-ship" label="Ship" style="width:100%;"></md-outlined-select>
+                                    <md-outlined-select id="pilot-ship" label="Vehicle" style="width:100%;"></md-outlined-select>
                                 </td>
                                 <td>
                                     <md-outlined-select id="pilot-controls" label="Controls" style="width:100%;"></md-outlined-select>
@@ -362,8 +362,8 @@
                  ================================================ -->
             <div class="m3-card" id="ships-manager-section">
                 <div class="section-header">
-                    <h2 class="m3-card-title" style="margin-bottom:0">Ships</h2>
-                    <md-text-button onclick="resetShips()">Reset ships</md-text-button>
+                    <h2 class="m3-card-title" style="margin-bottom:0">Vehicles</h2>
+                    <md-text-button onclick="resetVehicles()">Reset vehicles</md-text-button>
                 </div>
 
                 <div class="m3-table-wrapper">
@@ -372,6 +372,7 @@
                             <tr>
                                 <th class="col-shrink">Image</th>
                                 <th class="col-grow">Model</th>
+                                <th class="col-shrink">Category</th>
                                 <th class="col-shrink">Actions</th>
                             </tr>
                         </thead>
@@ -382,10 +383,17 @@
                                     <md-outlined-text-field id="ship-img" label="Image URL" style="width:100%;"></md-outlined-text-field>
                                 </td>
                                 <td class="col-grow">
-                                    <md-outlined-text-field id="ship-model" label="Ship model" style="width:100%;"></md-outlined-text-field>
+                                    <md-outlined-text-field id="ship-model" label="Vehicle model" style="width:100%;"></md-outlined-text-field>
                                 </td>
                                 <td class="col-shrink">
-                                    <md-filled-button onclick="addShip()">Add ship</md-filled-button>
+                                    <md-outlined-select id="ship-category" style="width:100%;">
+                                        <md-select-option value="ship" selected><div slot="headline">Ship</div></md-select-option>
+                                        <md-select-option value="rover"><div slot="headline">Rover</div></md-select-option>
+                                        <md-select-option value="bike"><div slot="headline">Bike</div></md-select-option>
+                                    </md-outlined-select>
+                                </td>
+                                <td class="col-shrink">
+                                    <md-filled-button onclick="addVehicle()">Add vehicle</md-filled-button>
                                 </td>
                             </tr>
                         </tfoot>
