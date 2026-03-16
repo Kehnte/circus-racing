@@ -1,25 +1,40 @@
 {
   "name": "circus-racing",
-  "version": "1.0.0",
-  "description": "",
+  "version": "2.0.0",
+  "description": "Race management & streaming overlay tool for Star Citizen events",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "dev:ts": "npx tsx server.js",
+    "build": "tsc --project tsconfig.json",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Kehnte/circus-racing.git"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "Kehnte",
+  "license": "GPL-3.0",
   "type": "commonjs",
-  "bugs": {
-    "url": "https://github.com/Kehnte/circus-racing/issues"
-  },
-  "homepage": "https://github.com/Kehnte/circus-racing#readme",
   "dependencies": {
+    "@libsql/client": "^0.17.0",
+    "@node-rs/bcrypt": "^1.10.4",
+    "dotenv": "^17.3.1",
+    "drizzle-orm": "^0.45.1",
     "express": "^5.2.1",
-    "socket.io": "^4.8.3"
+    "jsonwebtoken": "^9.0.2",
+    "socket.io": "^4.8.3",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.9",
+    "@types/node": "^22.0.0",
+    "drizzle-kit": "^0.31.9",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
   }
 }

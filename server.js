@@ -1,51 +1,124 @@
+'use strict';
+
+require('dotenv').config();
+
 const express = require('express');
-const http = require('http');
+const http    = require('http');
 const { Server } = require('socket.io');
+const path    = require('path');
 
-const app = express();
+const app    = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io     = new Server(server);
 
-// Serve the entire project as static files
-app.use(express.static(__dirname));
+// ---------------------------------------------------------------------------
+// Body parsing
+// ---------------------------------------------------------------------------
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
+// ---------------------------------------------------------------------------
+// CORS — allow overlays served from a different port / OBS browser source
+// ---------------------------------------------------------------------------
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-token');
+  if (req.method === 'OPTIONS') { res.sendStatus(204); return; }
+  next();
+});
+
+// ---------------------------------------------------------------------------
+// REST API — routes from src/ (TypeScript compiled to dist/ in prod,
+// loaded with tsx/ts-node in dev via "npm run dev:ts")
+//
+// In development, tsx registers a require hook so we can require .ts files
+// directly.  In production, require the compiled dist/.
+// ---------------------------------------------------------------------------
+try {
+  const authRouter       = require('./src/api/auth').default;
+  const teamsRouter      = require('./src/api/teams').default;
+  const vehiclesRouter   = require('./src/api/vehicles').default;
+  const controlsRouter   = require('./src/api/controls').default;
+  const racetracksRouter = require('./src/api/racetracks').default;
+  const pilotsRouter     = require('./src/api/pilots').default;
+
+  app.use('/api/auth',       authRouter);
+  app.use('/api/teams',      teamsRouter);
+  app.use('/api/vehicles',   vehiclesRouter);
+  app.use('/api/controls',   controlsRouter);
+  app.use('/api/racetracks', racetracksRouter);
+  app.use('/api/pilots',     pilotsRouter);
+
+  console.log('✅ REST API routes loaded');
+} catch (err) {
+  console.error('⚠️  Could not load REST API routes:', err.message);
+  console.error('   Run "npm run build" or use "npm run dev:ts" for TypeScript support.');
+}
+
+// ---------------------------------------------------------------------------
+// Static files — dashboard, overlays, pilot-app
+// ---------------------------------------------------------------------------
+app.use(express.static(path.join(__dirname)));
+
+// ---------------------------------------------------------------------------
+// Socket.IO — real-time overlay communication (unchanged from v1)
+// ---------------------------------------------------------------------------
 io.on('connection', (socket) => {
-    console.log('A user connected');
+  console.log('Socket connected:', socket.id);
 
-    // Broadcast full race state to all clients
-    socket.on('race-update', (data) => {
-        socket.broadcast.emit('race-data', data);
-    });
+  // Broadcast full race state to all clients (leaderboard overlay)
+  socket.on('race-update', (data) => {
+    socket.broadcast.emit('race-data', data);
+  });
 
-    // Broadcast race events (finished, incident, fastest-lap) to all clients
-    socket.on('race-event', (data) => {
-        socket.broadcast.emit('race-event', data);
-    });
+  // Broadcast race events: finished, incident, fastest-lap
+  socket.on('race-event', (data) => {
+    socket.broadcast.emit('race-event', data);
+  });
 
-    // Broadcast race reset signal so the leaderboard can flash the banner
-    socket.on('race-restarted', () => {
-        socket.broadcast.emit('race-restarted');
-    });
+  // Race lifecycle signals → overlay banners
+  socket.on('race-restarted', () => {
+    socket.broadcast.emit('race-restarted');
+  });
 
-    // Broadcast race resumed signal so the leaderboard can flash the banner
-    socket.on('race-resumed', () => {
-        socket.broadcast.emit('race-resumed');
-    });
+  socket.on('race-resumed', () => {
+    socket.broadcast.emit('race-resumed');
+  });
 
-    socket.on('disconnect', () => {
-        console.log('A user disconnected');
-    });
-    
-    // Relay pilot list visibility toggle from dashboard to leaderboard
-    socket.on("toggle-pilots-visibility", (data) => {
-        socket.broadcast.emit("toggle-pilots-visibility", data);
-    });
+  // Pilot list visibility toggle (dashboard → leaderboard)
+  socket.on('toggle-pilots-visibility', (data) => {
+    socket.broadcast.emit('toggle-pilots-visibility', data);
+  });
+
+  socket.on('disconnect', () => {
+    console.log('Socket disconnected:', socket.id);
+  });
 });
 
-const PORT = 3000;
+// ---------------------------------------------------------------------------
+// Global error handler
+// ---------------------------------------------------------------------------
+app.use((err, req, res, _next) => {
+  console.error(err.stack);
+  res.status(err.status ?? 500).json({
+    error: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message,
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Start
+// ---------------------------------------------------------------------------
+const PORT = parseInt(process.env.PORT ?? '3000', 10);
+
 server.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-    console.log(`Dashboard:   http://localhost:${PORT}/dashboard/`);
-    console.log(`Leaderboard: http://localhost:${PORT}/overlays/leaderboard/`);
-    console.log(`Race Alert:  http://localhost:${PORT}/overlays/race-alert/`);
+  console.log('');
+  console.log('🏁 Circus Racing server started');
+  console.log(`   Dashboard:   http://localhost:${PORT}/dashboard/`);
+  console.log(`   Leaderboard: http://localhost:${PORT}/overlays/leaderboard/`);
+  console.log(`   Race Alert:  http://localhost:${PORT}/overlays/race-alert/`);
+  console.log(`   API:         http://localhost:${PORT}/api/`);
+  console.log('');
 });
+
+module.exports = { app, io };

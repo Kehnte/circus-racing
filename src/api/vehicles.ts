@@ -1,0 +1,43 @@
+import { Router } from "express";
+import { eq } from "drizzle-orm";
+import { db } from "../db/db.js";
+import { vehicle } from "../db/schema.js";
+import { requireModo } from "../middleware/roles.js";
+
+const router = Router();
+
+/** GET /vehicles — public */
+router.get("/", async (_req, res) => {
+  const vehicles = await db.select().from(vehicle).all();
+  res.json(vehicles);
+});
+
+/** POST /vehicles — admin/modo */
+router.post("/", ...requireModo, async (req, res) => {
+  const { type, model, img } = req.body;
+  if (!type || !model) {
+    res.status(400).json({ error: "type and model are required" });
+    return;
+  }
+  const [created] = await db.insert(vehicle).values({ type, model, img: img ?? null }).returning();
+  res.status(201).json(created);
+});
+
+/** PATCH /vehicles/:id — admin/modo */
+router.patch("/:id", ...requireModo, async (req, res) => {
+  const { type, model, img } = req.body;
+  const [updated] = await db.update(vehicle)
+    .set({ ...(type && { type }), ...(model && { model }), ...(img !== undefined && { img }) })
+    .where(eq(vehicle.id, String(req.params.id)))
+    .returning();
+  if (!updated) { res.status(404).json({ error: "Vehicle not found" }); return; }
+  res.json(updated);
+});
+
+/** DELETE /vehicles/:id — admin/modo */
+router.delete("/:id", ...requireModo, async (req, res) => {
+  await db.delete(vehicle).where(eq(vehicle.id, String(req.params.id)));
+  res.sendStatus(204);
+});
+
+export default router;
