@@ -26,8 +26,8 @@ let sessionMode = "laps";
 let sessionDurationMs = 30 * 60 * 1000; // default 30 minutes
 
 // Timed session state
-let timedSessionEndTime = null;   // absolute timestamp when the session timer expires
-let timedSessionExpired = false;  // true once the timer hits 0:00 (waiting for pilots to finish their lap)
+let timedSessionEndTime = null;
+let timedSessionExpired = false;
 let timedSessionInterval = null;
 
 // Timing accumulators shared across all pilots

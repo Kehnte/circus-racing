@@ -63,7 +63,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Clear field error on input
     ["field-displayName", "field-email", "field-password", "field-passwordConfirm",
-     "field-handleSC", "field-avatarUrl"].forEach(id => {
+     "field-avatarUrl"].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.addEventListener("input", () => clearFieldError(el));
     });
@@ -148,14 +148,12 @@ async function handleRegister() {
     };
 
     // Optional fields — only include if non-empty
-    const handleSC  = fieldValue("field-handleSC");
     const avatarUrl = fieldValue("field-avatarUrl");
     const country   = selectValue("field-country");
     const teamId    = selectValue("field-teamId");
     const vehicleId = selectValue("field-vehicleId");
     const controlsId = selectValue("field-controlsId");
 
-    if (handleSC)   payload.handleSC   = handleSC;
     if (avatarUrl)  payload.avatarUrl  = avatarUrl;
     if (country && country !== "un") payload.country = country;
     if (teamId)     payload.teamId     = teamId;

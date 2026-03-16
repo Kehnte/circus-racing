@@ -1,122 +1,102 @@
 // storage.js
-// Race-state persistence in localStorage (teams/vehicles/controls/pilots now come from the API).
+// Handles race-state persistence in localStorage.
+// Teams, vehicles, controls and pilots are now sourced from the API.
 
-// LocalStorage key constants — centralised to avoid typos across the codebase
+// LocalStorage keys
 const STORAGE_KEYS = {
-    RACE_LIST: "circusRacing_raceList",
-    SETTINGS: "circusRacing_settings",
-    TEAM_DISPLAY_MODE: "circusRacing_teamDisplayMode",
-    // Legacy keys — kept for the "Migrate local data" feature in database.js
-    TEAMS: "circusRacing_teams",
-    SHIPS: "circusRacing_ships",
+    RACE_LIST:        "circusRacing_raceList",
+    SETTINGS:         "circusRacing_settings",
+    TEAM_DISPLAY_MODE:"circusRacing_teamDisplayMode",
+    // Legacy keys kept so migrateLocalData() in database.js can still read them
+    TEAMS:    "circusRacing_teams",
+    SHIPS:    "circusRacing_ships",
     CONTROLS: "circusRacing_controls",
-    PILOTS: "circusRacing_pilots",
+    PILOTS:   "circusRacing_pilots",
 };
 
-// Read the race settings form and persist it alongside the team display mode
+// Persist the race settings form values and team display mode
 function saveRaceSettings() {
     try {
-        const settings = {
-            raceName: document.getElementById("setting-race-name")?.value ?? "",
-            session: document.getElementById("setting-session")?.value ?? "",
-            weather: document.getElementById("setting-weather")?.value ?? "",
+        localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify({
+            raceName:  document.getElementById("setting-race-name")?.value  ?? "",
+            session:   document.getElementById("setting-session")?.value    ?? "",
+            weather:   document.getElementById("setting-weather")?.value    ?? "",
             startType: document.getElementById("setting-start-type")?.value ?? "",
-            totalLaps: document.getElementById("total-laps")?.value ?? "",
-        };
-        localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
+            totalLaps: document.getElementById("total-laps")?.value         ?? "",
+        }));
         if (typeof teamDisplayMode !== "undefined") {
             localStorage.setItem(STORAGE_KEYS.TEAM_DISPLAY_MODE, teamDisplayMode);
         }
-    } catch (error) {
-        console.error("Error saving race settings:", error);
+    } catch (e) {
+        console.error("Error saving race settings:", e);
     }
 }
 
-// Convenience wrapper: save race settings + live race list in one call
+// Persist race settings + live raceList
 function saveAllToLocal() {
     saveRaceSettings();
     try {
         if (typeof raceList !== "undefined") {
             localStorage.setItem(STORAGE_KEYS.RACE_LIST, JSON.stringify(raceList));
         }
-    } catch (error) {
-        console.error("Error saving race list:", error);
+    } catch (e) {
+        console.error("Error saving race list:", e);
     }
 }
 
-// Restore race settings fields and raceList from localStorage.
-// Called by initDashboard() after auth is confirmed.
+// Restore race settings, team display mode and raceList from localStorage.
+// Called by initDashboard() after auth succeeds.
 function loadRaceSettings() {
-    // Restore team display mode
+    // Restore team display mode (with backward compat for the old boolean key)
     try {
-        const savedTeamDisplayMode = localStorage.getItem(STORAGE_KEYS.TEAM_DISPLAY_MODE);
-        if (savedTeamDisplayMode && typeof teamDisplayMode !== "undefined") {
-            teamDisplayMode = savedTeamDisplayMode;
+        const saved = localStorage.getItem(STORAGE_KEYS.TEAM_DISPLAY_MODE);
+        const legacy = localStorage.getItem("circusRacing_teamMgmt");
+
+        if (typeof teamDisplayMode !== "undefined") {
+            if (saved) {
+                teamDisplayMode = saved;
+            } else if (legacy !== null) {
+                teamDisplayMode = legacy === "false" ? "hidden" : "color-bar";
+                localStorage.removeItem("circusRacing_teamMgmt");
+            }
         }
 
-        // Backward compat: migrate old boolean teamMgmt key
-        const legacyTeamMgmt = localStorage.getItem("circusRacing_teamMgmt");
-        if (legacyTeamMgmt !== null && !savedTeamDisplayMode) {
-            teamDisplayMode = legacyTeamMgmt === "false" ? "hidden" : "color-bar";
-            localStorage.removeItem("circusRacing_teamMgmt");
-        }
-
-        // Apply to select + section visibility
-        const teamSelect = document.getElementById("setting-team-display");
-        if (teamSelect && typeof teamDisplayMode !== "undefined") {
-            teamSelect.value = teamDisplayMode;
-        }
+        const teamSelect  = document.getElementById("setting-team-display");
         const teamSection = document.getElementById("teams-manager-section");
+        if (teamSelect  && typeof teamDisplayMode !== "undefined") teamSelect.value = teamDisplayMode;
         if (teamSection && typeof teamDisplayMode !== "undefined") {
             teamSection.style.display = teamDisplayMode !== "hidden" ? "block" : "none";
         }
-    } catch (error) {
-        console.error("Error restoring team display mode:", error);
+    } catch (e) {
+        console.error("Error restoring team display mode:", e);
     }
 
-    // Restore race settings fields
+    // Restore race settings fields (deferred so md-* elements are ready)
     try {
-        const savedSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-        if (savedSettings) {
-            const s = JSON.parse(savedSettings);
+        const saved = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+        if (saved) {
+            const s = JSON.parse(saved);
             setTimeout(() => {
-                if (s.raceName !== undefined) {
-                    const el = document.getElementById("setting-race-name");
-                    if (el) el.value = s.raceName;
-                }
-                if (s.session !== undefined) {
-                    const el = document.getElementById("setting-session");
-                    if (el) el.value = s.session;
-                }
-                if (s.weather !== undefined) {
-                    const el = document.getElementById("setting-weather");
-                    if (el) el.value = s.weather;
-                }
-                if (s.startType !== undefined) {
-                    const el = document.getElementById("setting-start-type");
-                    if (el) el.value = s.startType;
-                }
-                if (s.totalLaps !== undefined) {
-                    const el = document.getElementById("total-laps");
-                    if (el) el.value = s.totalLaps;
-                }
+                const set = (id, val) => { const el = document.getElementById(id); if (el && val !== undefined) el.value = val; };
+                set("setting-race-name",  s.raceName);
+                set("setting-session",    s.session);
+                set("setting-weather",    s.weather);
+                set("setting-start-type", s.startType);
+                set("total-laps",         s.totalLaps);
             }, 50);
         }
-    } catch (error) {
-        console.error("Error restoring race settings:", error);
+    } catch (e) {
+        console.error("Error restoring race settings:", e);
     }
 
-    // Restore raceList if available
+    // Restore raceList
     try {
-        const savedRaceList = localStorage.getItem(STORAGE_KEYS.RACE_LIST);
-        if (savedRaceList && typeof raceList !== "undefined") {
-            raceList = JSON.parse(savedRaceList);
-        }
-    } catch (error) {
-        console.error("Error restoring race list:", error);
+        const saved = localStorage.getItem(STORAGE_KEYS.RACE_LIST);
+        if (saved && typeof raceList !== "undefined") raceList = JSON.parse(saved);
+    } catch (e) {
+        console.error("Error restoring race list:", e);
     }
 
-    // Render race table if function exists
-    if (typeof displayRace === "function") displayRace();
+    if (typeof displayRace   === "function") displayRace();
     if (typeof updateControls === "function") updateControls();
 }

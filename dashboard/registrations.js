@@ -119,7 +119,6 @@ async function loadRegistrations() {
                         <th>Team</th>
                         <th>Vehicle</th>
                         <th>Controls</th>
-                        ${isAutoMode ? '<th>SC Handle</th>' : ""}
                         <th style="width:140px">Actions</th>
                     </tr>
                 </thead>
@@ -127,7 +126,6 @@ async function loadRegistrations() {
 
         pending.forEach(entry => {
             const p = entry.pilot;
-            const missingHandle = isAutoMode && !p?.handleSC;
 
             html += `<tr id="entry-row-${entry.id}">
                 <td>
@@ -143,22 +141,12 @@ async function loadRegistrations() {
                 <td>${escReg(p?.teamId ? "Team linked" : "—")}</td>
                 <td>${escReg(p?.vehicleId ? "Vehicle linked" : "—")}</td>
                 <td>${escReg(p?.controlsId ? "Controls linked" : "—")}</td>
-                ${isAutoMode ? `<td>
-                    ${missingHandle
-                        ? `<span style="display:inline-flex;align-items:center;gap:4px;color:var(--md-sys-color-error);font-size:12px;">
-                               <span class="material-symbols-outlined" style="font-size:14px">warning</span>
-                               Missing handle
-                           </span>`
-                        : `<span style="font-family:'Roboto Mono',monospace;font-size:12px;">${escReg(p?.handleSC ?? "—")}</span>`
-                    }
-                </td>` : ""}
                 <td>
                     <div style="display:flex;gap:8px;align-items:center;">
                         <md-filled-button
                             style="--md-filled-button-container-color: var(--md-sys-color-tertiary); --md-filled-button-label-text-color: var(--md-sys-color-on-tertiary);"
                             onclick="validateEntry('${entry.raceId}', '${entry.id}')"
                             id="btn-validate-${entry.id}"
-                            ${missingHandle ? 'title="handleSC manquant — le pilote ne pourra pas être suivi en AUTO"' : ""}
                         >
                             <span class="material-symbols-outlined" slot="icon">verified</span>
                             Validate
@@ -180,7 +168,6 @@ async function loadRegistrations() {
                     <tr>
                         <th style="width:28px"></th>
                         <th>Pilot</th>
-                        ${isAutoMode ? '<th>SC Handle</th>' : ""}
                         <th style="width:100px">Status</th>
                     </tr>
                 </thead>
@@ -199,7 +186,6 @@ async function loadRegistrations() {
                     <span style="font-weight:500">${escReg(p?.displayName ?? "—")}</span>
                     ${p?.country ? `<span class="fi fi-${escReg(p.country)}" style="margin-left:6px;"></span>` : ""}
                 </td>
-                ${isAutoMode ? `<td><span style="font-family:'Roboto Mono',monospace;font-size:12px;">${escReg(p?.handleSC ?? "—")}</span></td>` : ""}
                 <td>
                     <span style="display:inline-flex;align-items:center;gap:4px;color:var(--md-sys-color-tertiary);font-size:12px;font-weight:500;">
                         <span class="material-symbols-outlined" style="font-size:14px">verified</span>

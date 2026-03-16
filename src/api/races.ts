@@ -110,7 +110,6 @@ router.get("/:id/entries", ...requireModo, async (req, res) => {
       displayName: pilot.displayName,
       country: pilot.country,
       avatarUrl: pilot.avatarUrl,
-      handleSC: pilot.handleSC,
       teamId: pilot.teamId,
       vehicleId: pilot.vehicleId,
       controlsId: pilot.controlsId,

@@ -123,7 +123,6 @@ async function loadProfile() {
 
     // Lockable fields (defer for same reason)
     setTimeout(() => {
-        setFieldValue("field-handleSC", pilot.handleSC ?? "");
         document.getElementById("field-teamId").value     = pilot.teamId     ?? "";
         document.getElementById("field-vehicleId").value  = pilot.vehicleId  ?? "";
         document.getElementById("field-controlsId").value = pilot.controlsId ?? "";
@@ -133,7 +132,7 @@ async function loadProfile() {
 function applyLockState() {
     isLocked = true;
     document.getElementById("lock-notice").style.display = "block";
-    ["field-handleSC", "field-teamId", "field-vehicleId", "field-controlsId"].forEach(id => {
+    ["field-teamId", "field-vehicleId", "field-controlsId"].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.setAttribute("disabled", "");
     });
@@ -331,7 +330,6 @@ async function handleSaveRaceConfig() {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                handleSC:   fieldValue("field-handleSC") || null,
                 teamId:     document.getElementById("field-teamId").value     || null,
                 vehicleId:  document.getElementById("field-vehicleId").value  || null,
                 controlsId: document.getElementById("field-controlsId").value || null,

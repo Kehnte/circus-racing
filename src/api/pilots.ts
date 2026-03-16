@@ -13,21 +13,19 @@ const router = Router();
 const ALWAYS_EDITABLE = ["displayName", "country", "avatarUrl"] as const;
 
 // Fields locked after a validated race entry (admin/modo can still change them)
-const LOCKABLE_FIELDS = ["handleSC", "teamId", "vehicleId", "controlsId"] as const;
+const LOCKABLE_FIELDS = ["teamId", "vehicleId", "controlsId"] as const;
 
 function safePublic(p: typeof pilot.$inferSelect) {
   const { passwordHash, ...safe } = p;
   return safe;
 }
 
-/**
- * POST /pilots — admin only
- * Creates a pilot manually (dashboard manual mode).
- * A placeholder email and password are generated so the pilot can later
- * self-register and be merged by an admin ("rebind" flow).
- */
+// POST /pilots — admin only
+// Creates a pilot manually for dashboard manual mode.
+// Generates a placeholder email/password; the pilot can be merged with a real
+// self-registered account later via the admin "rebind" flow.
 router.post("/", ...requireAdmin, async (req, res) => {
-  const { displayName, handleSC, country, avatarUrl, teamId, vehicleId, controlsId } = req.body;
+  const { displayName, country, avatarUrl, teamId, vehicleId, controlsId } = req.body;
   if (!displayName?.trim()) {
     res.status(400).json({ error: "displayName is required" });
     return;
@@ -46,7 +44,6 @@ router.post("/", ...requireAdmin, async (req, res) => {
     passwordHash,
     token,
     role: "PILOT",
-    ...(handleSC   ? { handleSC }   : {}),
     ...(country    ? { country }    : {}),
     ...(avatarUrl  ? { avatarUrl }  : {}),
     ...(teamId     ? { teamId }     : {}),
@@ -79,7 +76,7 @@ router.get("/:id", ...requireModo, async (req, res) => {
 
 /**
  * PATCH /pilots/me — pilot edits their own profile
- * Lockable fields (handleSC, teamId, vehicleId, controlsId) are blocked
+ * Lockable fields (teamId, vehicleId, controlsId) are blocked
  * once the pilot has a VALIDATED race_entry.
  */
 router.patch("/me", requireAuth, async (req, res) => {

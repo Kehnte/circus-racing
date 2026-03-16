@@ -12,10 +12,10 @@ const SALT_ROUNDS = 12;
 
 /**
  * POST /auth/register
- * Body: { displayName, email, password, handleSC?, country?, avatarUrl?, teamId?, vehicleId?, controlsId? }
+ * Body: { displayName, email, password, country?, avatarUrl?, teamId?, vehicleId?, controlsId? }
  */
 router.post("/register", async (req, res) => {
-  const { displayName, email, password, handleSC, country, avatarUrl, teamId, vehicleId, controlsId } = req.body;
+  const { displayName, email, password, country, avatarUrl, teamId, vehicleId, controlsId } = req.body;
 
   if (!displayName || !email || !password) {
     res.status(400).json({ error: "displayName, email and password are required" });
@@ -54,7 +54,6 @@ router.post("/register", async (req, res) => {
     passwordHash,
     role,
     token,
-    handleSC: handleSC ?? null,
     country: country ?? "un",
     avatarUrl: avatarUrl ?? null,
     teamId: teamId ?? null,

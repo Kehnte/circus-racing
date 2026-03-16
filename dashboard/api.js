@@ -1,11 +1,11 @@
 // api.js — Authenticated API helpers for the dashboard
 
-/** Get the stored JWT */
+// Get stored JWT
 function getJwt() {
     return localStorage.getItem("cr_jwt");
 }
 
-/** Show the login overlay and hide the main content */
+// Show login overlay, hide main content
 function showLoginOverlay() {
     const overlay = document.getElementById("auth-overlay");
     const main = document.querySelector(".page-content");
@@ -13,7 +13,7 @@ function showLoginOverlay() {
     if (main) main.style.display = "none";
 }
 
-/** Hide the login overlay and show the main content */
+// Hide login overlay, reveal main content
 function hideLoginOverlay() {
     const overlay = document.getElementById("auth-overlay");
     const main = document.querySelector(".page-content");
@@ -21,7 +21,7 @@ function hideLoginOverlay() {
     if (main) main.style.display = "";
 }
 
-/** Core request — injects JWT, handles 401 */
+// Core request — injects JWT, surfaces 401 as a login redirect
 async function apiRequest(method, path, body) {
     const jwt = getJwt();
     const opts = {
@@ -48,7 +48,7 @@ const apiPost   = (path, body) => apiRequest("POST",   path, body);
 const apiPatch  = (path, body) => apiRequest("PATCH",  path, body);
 const apiDelete = (path)       => apiRequest("DELETE", path);
 
-/** Handle login form submission */
+// Handle login form submission
 async function dashboardLogin() {
     const email    = document.getElementById("login-email")?.value?.trim();
     const password = document.getElementById("login-password")?.value;
@@ -79,35 +79,32 @@ async function dashboardLogin() {
     }
 }
 
-/** Logout: clear JWT and show login overlay */
+// Clear JWT and show login overlay
 function dashboardLogout() {
     localStorage.removeItem("cr_jwt");
     localStorage.removeItem("cr_pilot");
     showLoginOverlay();
 }
 
-/** Initialise all dashboard modules after auth succeeds */
+// Load all dashboard modules in dependency order
 async function initDashboard() {
     try {
-        // Load reference data in parallel
         await Promise.all([
             typeof initTeams    === "function" ? initTeams()    : Promise.resolve(),
             typeof initVehicles === "function" ? initVehicles() : Promise.resolve(),
             typeof initControls === "function" ? initControls() : Promise.resolve(),
         ]);
-        // Pilots depend on teams/vehicles/controls for display
+        // Pilots depend on teams/vehicles/controls arrays being populated first
         if (typeof initPilots === "function") await initPilots();
         // Restore race settings from localStorage
         if (typeof loadRaceSettings === "function") loadRaceSettings();
-        // Registrations section
-        if (typeof loadRaceListForRegistrations === "function") loadRaceListForRegistrations();
     } catch (e) {
         console.error("Dashboard init error:", e);
     }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    // Start hidden; reveal once auth is confirmed
+    // Hide content while checking auth; each branch will reveal it
     const main = document.querySelector(".page-content");
     if (main) main.style.display = "none";
 
@@ -118,7 +115,7 @@ document.addEventListener("DOMContentLoaded", () => {
         initDashboard();
     }
 
-    // Submit login on Enter in password field
+    // Allow submitting login with Enter
     document.getElementById("login-password")?.addEventListener("keydown", (e) => {
         if (e.key === "Enter") dashboardLogin();
     });
