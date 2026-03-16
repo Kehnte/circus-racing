@@ -183,6 +183,46 @@ html, body {
     gap: 12px;
 }
 
+.country-input-wrap {
+    position: relative;
+    flex: 1;
+}
+
+.country-dropdown {
+    position: absolute;
+    top: calc(100% + 2px);
+    left: 0;
+    right: 0;
+    max-height: 240px;
+    overflow-y: auto;
+    background: var(--md-sys-color-surface-container-high);
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.2);
+    z-index: 200;
+}
+
+.country-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--md-sys-color-on-surface);
+}
+
+.country-dropdown-item:hover,
+.country-dropdown-item.active {
+    background: var(--md-sys-color-secondary-container);
+}
+
+.country-dropdown-item .fi {
+    width: 20px;
+    height: 14px;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
 .country-flag-preview {
     display: flex;
     align-items: center;

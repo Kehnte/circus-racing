@@ -31,6 +31,7 @@ async function addControl() {
         document.getElementById("control-img").value = "";
         updateControlDropdown();
         if (typeof displayPilots === "function") displayPilots();
+        broadcastChange("controls");
     } catch (e) {
         alert(e.message || "Failed to create control type");
     }
@@ -85,6 +86,7 @@ async function deleteControl(id) {
         displayControls();
         updateControlDropdown();
         if (typeof displayPilots === "function") displayPilots();
+        broadcastChange("controls");
     } catch (e) {
         alert(e.message || "Failed to delete control type");
     }
@@ -108,6 +110,7 @@ async function saveEditControl(id) {
         displayControls();
         updateControlDropdown();
         if (typeof displayPilots === "function") displayPilots();
+        broadcastChange("controls");
     } catch (e) {
         alert(e.message || "Failed to update control type");
     }

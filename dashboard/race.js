@@ -1,8 +1,16 @@
 // race.js
 
-const socket = io();
+const socket = io("/?role=dashboard");
 
+// ---------------------------------------------------------------------------
+// AUTO mode state
+// ---------------------------------------------------------------------------
+let activeRaceId = null;    // DB race ID currently loaded in the dashboard
+let trackingMode = "manual"; // "manual" | "auto"
+
+// ---------------------------------------------------------------------------
 // Active race state
+// ---------------------------------------------------------------------------
 let raceList = [];
 let previousRaceList = [];
 let teamDisplayMode = "color-bar";
@@ -266,6 +274,15 @@ function resumeTimedSession() {
 
 // Starts the race or resumes it from pause; initialises pilot timestamps on a fresh grid start
 function startRace() {
+    if (trackingMode === "auto") {
+        if (!activeRaceId) { alert("No race loaded"); return; }
+        const endpoint = raceStatus === "paused"
+            ? `/api/races/${activeRaceId}/resume`
+            : `/api/races/${activeRaceId}/start`;
+        apiRequest("POST", endpoint).then(() => updateControls()).catch(e => alert(e.message));
+        return;
+    }
+
     if (raceList.length === 0) {
         alert("Please load pilots first");
         return;
@@ -322,6 +339,14 @@ function startRace() {
 
 // Pauses the race and records the pause start timestamp
 function pauseRace() {
+    if (trackingMode === "auto") {
+        if (!activeRaceId) return;
+        apiRequest("POST", `/api/races/${activeRaceId}/pause`).then(() => {
+            raceStatus = "paused";
+            updateControls();
+        }).catch(e => alert(e.message));
+        return;
+    }
     if (raceStatus !== "running") return;
     raceStatus = "paused";
     pauseStartTime = Date.now();
@@ -334,6 +359,14 @@ function pauseRace() {
 
 // Force-finishes the race and snapshots total time for all pilots still running
 function endRaceManually() {
+    if (trackingMode === "auto") {
+        if (!activeRaceId) return;
+        apiRequest("POST", `/api/races/${activeRaceId}/finish`).then(() => {
+            raceStatus = "finished";
+            updateControls();
+        }).catch(e => alert(e.message));
+        return;
+    }
     raceStatus = "finished";
     stopTimedSession();
     if (timingEnabled) {
@@ -416,6 +449,7 @@ function reloadPilots() {
 
 // Increments or decrements a pilot's lap count, records split times and checks for race end
 function changeLap(index, delta) {
+    if (trackingMode === "auto") return; // engine handles laps in AUTO mode
     if (raceStatus !== "running") return;
 
     const pilot = raceList[index];
@@ -548,6 +582,7 @@ function jumpToPosition(index, newPosValue) {
 
 // Toggles a pilot's DNF flag; freezes their elapsed time when set
 function toggleDNF(index) {
+    if (trackingMode === "auto") return; // use confirm-dnf API in AUTO mode
     const pilot = raceList[index];
     pilot.dnf = !pilot.dnf;
     if (pilot.dnf) {
@@ -818,6 +853,11 @@ function updateControls() {
     }
 
     updateCountdownUI();
+
+    // AUTO mode: disable manual lap/reorder/DNF buttons
+    if (trackingMode === "auto") {
+        document.querySelectorAll(".lap-btn, .reorder-btn, .dnf-btn").forEach(el => { el.disabled = true; });
+    }
 }
 
 // Intervals
@@ -880,4 +920,143 @@ document.addEventListener("DOMContentLoaded", () => {
     // Initialise pilots toggle chip to selected (pilots visible by default)
     const pilotsChip = document.getElementById("btn-pilots-toggle");
     if (pilotsChip) pilotsChip.setAttribute("selected", "");
+});
+
+// ---------------------------------------------------------------------------
+// AUTO mode — active race selector
+// ---------------------------------------------------------------------------
+
+async function loadActiveRaceList() {
+    const races = await apiRequest("GET", "/api/races?status=PENDING,SCHEDULED,STARTED,PAUSED");
+    const select = document.getElementById("active-race-select");
+    if (!select) return;
+    select.innerHTML = '<option value="">— Sélectionner une course —</option>';
+    races.forEach(r => {
+        const opt = document.createElement("option");
+        opt.value = r.id;
+        opt.textContent = `${r.name} [${r.status}]`;
+        select.appendChild(opt);
+    });
+}
+
+async function loadActiveRace(raceId) {
+    if (!raceId) {
+        activeRaceId = null;
+        trackingMode = "manual";
+        updateControls();
+        return;
+    }
+    const r = await apiRequest("GET", `/api/races/${raceId}`);
+    activeRaceId = r.id;
+    trackingMode = r.trackingMode ?? "manual";
+
+    // Populate settings fields from DB race
+    const setVal = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.value = val; };
+    setVal("setting-race-name", r.name);
+    setVal("setting-session", r.session);
+    setVal("setting-weather", r.weather);
+    setVal("setting-start-type", r.startType);
+    setVal("total-laps", r.lapCount);
+    setVal("setting-session-mode", r.sessionMode);
+
+    // Reflect current race status
+    const statusMap = { STARTED: "running", PAUSED: "paused", FINISHED: "finished" };
+    raceStatus = statusMap[r.status] ?? "standby";
+
+    updateTrackingModeUI();
+    updateControls();
+    displayRace();
+}
+
+function updateTrackingModeUI() {
+    const btn = document.getElementById("btn-tracking-mode");
+    if (btn) btn.textContent = trackingMode === "auto" ? "Mode AUTO ✓" : "Mode MANUEL";
+    // Disable manual interaction buttons in AUTO mode
+    const manualOnly = document.querySelectorAll(".lap-btn, .reorder-btn");
+    manualOnly.forEach(el => el.disabled = (trackingMode === "auto"));
+}
+
+async function toggleTrackingMode() {
+    if (!activeRaceId) { alert("Charger une course d'abord"); return; }
+    const newMode = trackingMode === "manual" ? "auto" : "manual";
+    await apiRequest("PATCH", `/api/races/${activeRaceId}/tracking-mode`, { trackingMode: newMode });
+    trackingMode = newMode;
+    updateTrackingModeUI();
+    updateControls();
+    displayRace();
+}
+
+// ---------------------------------------------------------------------------
+// AUTO mode — DNF warning panel
+// ---------------------------------------------------------------------------
+
+const _dnfWarningPilots = new Set();
+
+function handleDnfWarning({ pilotId, cleared }) {
+    if (cleared) {
+        _dnfWarningPilots.delete(pilotId);
+    } else {
+        _dnfWarningPilots.add(pilotId);
+    }
+    renderDnfWarningPanel();
+}
+
+function renderDnfWarningPanel() {
+    const panel = document.getElementById("dnf-warning-panel");
+    if (!panel) return;
+    if (_dnfWarningPilots.size === 0) { panel.hidden = true; return; }
+    panel.hidden = false;
+    panel.innerHTML = [..._dnfWarningPilots].map(pilotId => {
+        const pilot = raceList.find(p => p.id === pilotId);
+        const name = pilot?.name ?? pilotId;
+        return `<div class="dnf-warning-row">
+            <span>⚠️ <strong>${name}</strong> hors zone circuit</span>
+            <button onclick="confirmDnf('${pilotId}')">Confirmer DNF</button>
+            <button onclick="ignoreDnf('${pilotId}')">Ignorer</button>
+        </div>`;
+    }).join("");
+}
+
+async function confirmDnf(pilotId) {
+    if (!activeRaceId) return;
+    await apiRequest("POST", `/api/race-events/races/${activeRaceId}/confirm-dnf/${pilotId}`);
+    _dnfWarningPilots.delete(pilotId);
+    renderDnfWarningPanel();
+}
+
+async function ignoreDnf(pilotId) {
+    if (!activeRaceId) return;
+    await apiRequest("POST", `/api/race-events/races/${activeRaceId}/ignore-dnf/${pilotId}`);
+    _dnfWarningPilots.delete(pilotId);
+    renderDnfWarningPanel();
+}
+
+// ---------------------------------------------------------------------------
+// Socket listeners — AUTO mode server events
+// ---------------------------------------------------------------------------
+
+// Server pushes race state in AUTO mode → update dashboard table
+socket.on("race-data", (data) => {
+    if (trackingMode !== "auto") return;
+    if (data.raceList) raceList = data.raceList;
+    if (data.raceStatus) raceStatus = data.raceStatus;
+    if (data.globalFastestLap !== undefined) globalFastestLap = data.globalFastestLap;
+    if (data.globalFastestLapPilotId !== undefined) globalFastestLapPilotId = data.globalFastestLapPilotId;
+    displayRace();
+});
+
+// DNF warning from engine
+socket.on("dnf-warning", (data) => handleDnfWarning(data));
+
+// Admin toggled mode from another session
+socket.on("tracking-mode-changed", ({ trackingMode: m }) => {
+    trackingMode = m;
+    updateTrackingModeUI();
+    updateControls();
+});
+
+// All pilots finished automatically (AUTO mode)
+socket.on("race-auto-finished", () => {
+    raceStatus = "finished";
+    updateControls();
 });

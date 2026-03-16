@@ -33,21 +33,28 @@ app.use((req, res, next) => {
 // loaded with tsx/ts-node in dev via "npm run dev:ts")
 // ---------------------------------------------------------------------------
 try {
-  const authRouter       = require('./src/api/auth').default;
-  const teamsRouter      = require('./src/api/teams').default;
-  const vehiclesRouter   = require('./src/api/vehicles').default;
-  const controlsRouter   = require('./src/api/controls').default;
-  const racetracksRouter = require('./src/api/racetracks').default;
-  const pilotsRouter     = require('./src/api/pilots').default;
-  const racesRouter      = require('./src/api/races').default;
+  const { initEmitter }  = require('./src/socket/emitter');
+  initEmitter(io);
 
-  app.use('/api/auth',       authRouter);
-  app.use('/api/teams',      teamsRouter);
-  app.use('/api/vehicles',   vehiclesRouter);
-  app.use('/api/controls',   controlsRouter);
-  app.use('/api/racetracks', racetracksRouter);
-  app.use('/api/pilots',     pilotsRouter);
-  app.use('/api/races',      racesRouter);
+  const authRouter        = require('./src/api/auth').default;
+  const teamsRouter       = require('./src/api/teams').default;
+  const vehiclesRouter    = require('./src/api/vehicles').default;
+  const controlsRouter    = require('./src/api/controls').default;
+  const racetracksRouter  = require('./src/api/racetracks').default;
+  const pilotsRouter      = require('./src/api/pilots').default;
+  const racesRouter       = require('./src/api/races').default;
+  const ocrRouter         = require('./src/api/ocr').default;
+  const raceEventsRouter  = require('./src/api/race-events').default;
+
+  app.use('/api/auth',         authRouter);
+  app.use('/api/teams',        teamsRouter);
+  app.use('/api/vehicles',     vehiclesRouter);
+  app.use('/api/controls',     controlsRouter);
+  app.use('/api/racetracks',   racetracksRouter);
+  app.use('/api/pilots',       pilotsRouter);
+  app.use('/api/races',        racesRouter);
+  app.use('/api/ocr',          ocrRouter);
+  app.use('/api/race-events',  raceEventsRouter);
 
   console.log('✅ REST API routes loaded');
 } catch (err) {
@@ -65,6 +72,11 @@ app.use(express.static(path.join(__dirname)));
 // ---------------------------------------------------------------------------
 io.on('connection', (socket) => {
   console.log('Socket connected:', socket.id);
+
+  // Dashboard identifies itself to receive server-only events (dnf-warning, etc.)
+  if (socket.handshake.query.role === 'dashboard') {
+    socket.join('dashboard');
+  }
 
   // Broadcast full race state to all clients (leaderboard overlay)
   socket.on('race-update', (data) => {

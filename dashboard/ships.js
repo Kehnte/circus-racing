@@ -38,6 +38,7 @@ async function addVehicle() {
         clearVehicleForm();
         updateVehicleDropdown();
         if (typeof displayPilots === "function") displayPilots();
+        broadcastChange("vehicles");
     } catch (e) {
         alert(e.message || "Failed to create vehicle");
     }
@@ -55,14 +56,12 @@ function displayVehicles() {
 }
 
 function createVehicleDisplayRow(vehicle) {
-    const icons = { ship: "rocket", rover: "directions_car", bike: "two_wheeler" };
-    const icon  = icons[vehicle.category] || "rocket";
     const img   = vehicle.img || "https://placehold.co/40x40/png";
     return `
     <tr>
       <td><img src="${img}"></td>
       <td>${vehicle.model}</td>
-      <td><md-icon title="${vehicle.category || 'ship'}">${icon}</md-icon></td>
+      <td>${vehicle.category || 'ship'}</td>
       <td>
         <div class="action-buttons">
           <md-icon-button onclick="startEditVehicle('${vehicle.id}')" title="Edit"><md-icon>edit</md-icon></md-icon-button>
@@ -97,6 +96,7 @@ async function deleteVehicle(id) {
         displayVehicles();
         updateVehicleDropdown();
         if (typeof displayPilots === "function") displayPilots();
+        broadcastChange("vehicles");
     } catch (e) {
         alert(e.message || "Failed to delete vehicle");
     }
@@ -121,6 +121,7 @@ async function saveEditVehicle(id) {
         displayVehicles();
         updateVehicleDropdown();
         if (typeof displayPilots === "function") displayPilots();
+        broadcastChange("vehicles");
     } catch (e) {
         alert(e.message || "Failed to update vehicle");
     }

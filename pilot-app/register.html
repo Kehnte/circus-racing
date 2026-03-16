@@ -31,16 +31,10 @@
         </script>
 
         <link rel="stylesheet" href="pilot-app.css" />
+        <script src="/shared/nav.js"></script>
     </head>
 
     <body>
-        <header class="page-header">
-            <span style="font-size: 28px;">🏁</span>
-            <h1>Circus Racing</h1>
-            <span class="md-typescale-body-medium" style="color: var(--md-sys-color-on-surface-variant); margin-left: auto;">
-                Already registered? <a href="profile.html" class="header-link">Sign in</a>
-            </span>
-        </header>
 
         <main class="page-content">
             <div class="register-layout">
@@ -120,17 +114,17 @@
 
                         <!-- Team -->
                         <md-outlined-select id="field-teamId" label="Team" style="width:100%">
-                            <md-select-option value="">— No team —</md-select-option>
+                            <md-select-option value="">None</md-select-option>
                         </md-outlined-select>
 
                         <!-- Vehicle -->
                         <md-outlined-select id="field-vehicleId" label="Vehicle" style="width:100%">
-                            <md-select-option value="">— No vehicle —</md-select-option>
+                            <md-select-option value="">None</md-select-option>
                         </md-outlined-select>
 
                         <!-- Controls -->
                         <md-outlined-select id="field-controlsId" label="Controls" style="width:100%">
-                            <md-select-option value="">— No controls —</md-select-option>
+                            <md-select-option value="">None</md-select-option>
                         </md-outlined-select>
                     </div>
                 </div>

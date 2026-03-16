@@ -31,6 +31,7 @@ async function addTeam() {
         clearForm();
         updateTeamDropdown();
         if (typeof displayPilots === "function") displayPilots();
+        broadcastChange("teams");
     } catch (e) {
         alert(e.message || "Failed to create team");
     }
@@ -126,6 +127,7 @@ async function deleteTeam(id) {
         displayTeams();
         updateTeamDropdown();
         if (typeof displayPilots === "function") displayPilots();
+        broadcastChange("teams");
     } catch (e) {
         alert(e.message || "Failed to delete team");
     }
@@ -150,6 +152,7 @@ async function saveEdit(id) {
         displayTeams();
         updateTeamDropdown();
         if (typeof displayPilots === "function") displayPilots();
+        broadcastChange("teams");
     } catch (e) {
         alert(e.message || "Failed to update team");
     }

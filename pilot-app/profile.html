@@ -31,20 +31,10 @@
         </script>
 
         <link rel="stylesheet" href="pilot-app.css" />
+        <script src="/shared/nav.js"></script>
     </head>
 
     <body>
-        <header class="page-header">
-            <span style="font-size: 28px;">🏁</span>
-            <h1>Circus Racing</h1>
-            <div style="margin-left: auto; display: flex; align-items: center; gap: 12px;">
-                <span id="header-displayName" class="md-typescale-body-medium" style="color: var(--md-sys-color-on-surface-variant);"></span>
-                <md-outlined-button onclick="handleLogout()">
-                    <span class="material-symbols-outlined" slot="icon">logout</span>
-                    Sign out
-                </md-outlined-button>
-            </div>
-        </header>
 
         <main class="page-content">
 
@@ -84,12 +74,12 @@
                             <span class="material-symbols-outlined" style="font-size:16px; flex-shrink:0">key</span>
                             <span id="ocr-token-value" style="flex:1">—</span>
                             <md-icon-button onclick="copyToken()" title="Copy token">
-                                <span class="material-symbols-outlined">content_copy</span>
+                                <md-icon>content_copy</md-icon>
                             </md-icon-button>
                         </div>
                         <div style="margin-top: 12px;">
                             <md-outlined-button onclick="handleRegenerateToken()" id="btn-regen-token">
-                                <span class="material-symbols-outlined" slot="icon">refresh</span>
+                                <md-icon slot="icon">refresh</md-icon>
                                 Regenerate
                             </md-outlined-button>
                         </div>
@@ -113,8 +103,10 @@
                             ></md-outlined-text-field>
 
                             <div class="country-row">
-                                <md-outlined-select id="field-country" label="Country" style="flex:1">
-                                </md-outlined-select>
+                                <div class="country-input-wrap">
+                                    <md-outlined-text-field id="field-country" label="Country" autocomplete="off" style="width:100%"></md-outlined-text-field>
+                                    <div id="country-dropdown" class="country-dropdown" hidden></div>
+                                </div>
                                 <div class="country-flag-preview" id="country-flag-preview">
                                     <span class="fi fi-un"></span>
                                 </div>
@@ -131,7 +123,7 @@
 
                         <div style="margin-top: 20px;">
                             <md-filled-button onclick="handleSaveIdentity()" id="btn-save-identity">
-                                <span class="material-symbols-outlined" slot="icon">save</span>
+                                <md-icon slot="icon">save</md-icon>
                                 Save
                             </md-filled-button>
                         </div>
@@ -146,21 +138,21 @@
                         </p>
                         <div class="form-stack">
                             <md-outlined-select id="field-teamId" label="Team" style="width:100%">
-                                <md-select-option value="">— No team —</md-select-option>
+                                <md-select-option value="">None</md-select-option>
                             </md-outlined-select>
 
                             <md-outlined-select id="field-vehicleId" label="Vehicle" style="width:100%">
-                                <md-select-option value="">— No vehicle —</md-select-option>
+                                <md-select-option value="">None</md-select-option>
                             </md-outlined-select>
 
                             <md-outlined-select id="field-controlsId" label="Controls" style="width:100%">
-                                <md-select-option value="">— No controls —</md-select-option>
+                                <md-select-option value="">None</md-select-option>
                             </md-outlined-select>
                         </div>
 
                         <div style="margin-top: 20px;">
                             <md-filled-button onclick="handleSaveRaceConfig()" id="btn-save-raceconfig">
-                                <span class="material-symbols-outlined" slot="icon">save</span>
+                                <md-icon slot="icon">save</md-icon>
                                 Save
                             </md-filled-button>
                         </div>

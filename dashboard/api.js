@@ -19,6 +19,7 @@ function hideLoginOverlay() {
     const main = document.querySelector(".page-content");
     if (overlay) overlay.style.display = "none";
     if (main) main.style.display = "";
+    if (typeof window.crNavRefresh === "function") window.crNavRefresh();
 }
 
 // Core request — injects JWT, surfaces 401 as a login redirect
@@ -86,6 +87,9 @@ function dashboardLogout() {
     showLoginOverlay();
 }
 
+// Tell the shared nav to use dashboardLogout instead of redirecting to register
+window.crCustomLogout = dashboardLogout;
+
 // Load all dashboard modules in dependency order
 async function initDashboard() {
     try {
@@ -98,6 +102,8 @@ async function initDashboard() {
         if (typeof initPilots === "function") await initPilots();
         // Restore race settings from localStorage
         if (typeof loadRaceSettings === "function") loadRaceSettings();
+        // Populate active race selector
+        if (typeof loadActiveRaceList === "function") loadActiveRaceList();
     } catch (e) {
         console.error("Dashboard init error:", e);
     }
@@ -120,3 +126,9 @@ document.addEventListener("DOMContentLoaded", () => {
         if (e.key === "Enter") dashboardLogin();
     });
 });
+
+// Notify other tabs (e.g. pilot profile) that a data resource has changed
+const crDataChannel = new BroadcastChannel("cr-data");
+function broadcastChange(resource) {
+    crDataChannel.postMessage({ resource });
+}

@@ -1,9 +1,11 @@
 import { Router } from "express";
 import { eq, and } from "drizzle-orm";
 import { db } from "../db/db.js";
-import { race, raceEntry, pilot, team, vehicle, controls } from "../db/schema.js";
+import { race, raceEntry, raceState, pilot, team, vehicle, controls } from "../db/schema.js";
 import { requireAuth } from "../middleware/auth.js";
 import { requireModo } from "../middleware/roles.js";
+import { loadRace, getContext, clearContext, setPilotState, persistState } from "../engine/race-context.js";
+import { emitAll, emitDashboard, broadcastRaceState } from "../socket/emitter.js";
 
 const router = Router();
 
@@ -234,6 +236,164 @@ router.delete("/:raceId/entries/:entryId", requireAuth, async (req, res) => {
 
   await db.delete(raceEntry).where(eq(raceEntry.id, entry.id));
   res.sendStatus(204);
+});
+
+// ---------------------------------------------------------------------------
+// Race lifecycle
+// ---------------------------------------------------------------------------
+
+/**
+ * POST /races/:id/start — admin/modo
+ * Starts a SCHEDULED race (fresh) or resumes a PAUSED race.
+ */
+router.post("/:id/start", ...requireModo, async (req, res) => {
+  const raceId = String(req.params.id);
+  const found = await db.select().from(race).where(eq(race.id, raceId)).get();
+  if (!found) { res.status(404).json({ error: "Race not found" }); return; }
+
+  if (found.status === "SCHEDULED") {
+    // Fresh start
+    const ctx = await loadRace(raceId);
+    ctx.startedAt = new Date().toISOString();
+    await db.update(race).set({ status: "STARTED" }).where(eq(race.id, raceId));
+    await persistState();
+    emitAll("race-restarted");
+    broadcastRaceState(ctx);
+    res.json({ ok: true, status: "STARTED" });
+
+  } else if (found.status === "PAUSED") {
+    // Resume
+    const ctx = getContext();
+    if (!ctx || ctx.raceId !== raceId) {
+      res.status(409).json({ error: "Race context not loaded — restart the server or reload the race" });
+      return;
+    }
+    const pausedAt = ctx.pausedAt ? new Date(ctx.pausedAt).getTime() : Date.now();
+    ctx.totalPausedMs += Date.now() - pausedAt;
+    ctx.pausedAt = null;
+    await db.update(race).set({ status: "STARTED" }).where(eq(race.id, raceId));
+    await persistState();
+    emitAll("race-resumed");
+    broadcastRaceState(ctx);
+    res.json({ ok: true, status: "STARTED" });
+
+  } else {
+    res.status(409).json({ error: `Cannot start a race with status ${found.status}` });
+  }
+});
+
+/**
+ * POST /races/:id/pause — admin/modo
+ */
+router.post("/:id/pause", ...requireModo, async (req, res) => {
+  const raceId = String(req.params.id);
+  const found = await db.select().from(race).where(eq(race.id, raceId)).get();
+  if (!found || found.status !== "STARTED") {
+    res.status(409).json({ error: "Race is not STARTED" });
+    return;
+  }
+
+  const ctx = getContext();
+  if (!ctx || ctx.raceId !== raceId) {
+    res.status(409).json({ error: "Race context not loaded" });
+    return;
+  }
+
+  ctx.pausedAt = new Date().toISOString();
+  await db.update(race).set({ status: "PAUSED" }).where(eq(race.id, raceId));
+  await persistState();
+  broadcastRaceState(ctx);
+  res.json({ ok: true, status: "PAUSED" });
+});
+
+/**
+ * POST /races/:id/resume — admin/modo (alias for start on PAUSED)
+ */
+router.post("/:id/resume", ...requireModo, async (req, res) => {
+  req.params.id = req.params.id; // passthrough
+  const raceId = String(req.params.id);
+  const found = await db.select().from(race).where(eq(race.id, raceId)).get();
+  if (!found || found.status !== "PAUSED") {
+    res.status(409).json({ error: "Race is not PAUSED" });
+    return;
+  }
+
+  const ctx = getContext();
+  if (!ctx || ctx.raceId !== raceId) {
+    res.status(409).json({ error: "Race context not loaded" });
+    return;
+  }
+
+  const pausedAt = ctx.pausedAt ? new Date(ctx.pausedAt).getTime() : Date.now();
+  ctx.totalPausedMs += Date.now() - pausedAt;
+  ctx.pausedAt = null;
+  await db.update(race).set({ status: "STARTED" }).where(eq(race.id, raceId));
+  await persistState();
+  emitAll("race-resumed");
+  broadcastRaceState(ctx);
+  res.json({ ok: true, status: "STARTED" });
+});
+
+/**
+ * POST /races/:id/finish — admin/modo
+ * Force-finishes all still-running pilots and closes the race.
+ */
+router.post("/:id/finish", ...requireModo, async (req, res) => {
+  const raceId = String(req.params.id);
+  const found = await db.select().from(race).where(eq(race.id, raceId)).get();
+  if (!found || !["STARTED", "PAUSED"].includes(found.status)) {
+    res.status(409).json({ error: "Race is not active" });
+    return;
+  }
+
+  const ctx = getContext();
+  if (ctx && ctx.raceId === raceId) {
+    const nowIso = new Date().toISOString();
+    for (const [pilotId, state] of Object.entries(ctx.pilotStates)) {
+      if (state.status === "RUNNING" || state.status === "WARNING_DNF") {
+        setPilotState(pilotId, { status: "FINISHED", frozenTime: nowIso });
+      }
+    }
+    broadcastRaceState(ctx);
+    emitAll("race-event", { type: "race-finished" });
+    await db.update(race).set({ status: "FINISHED" }).where(eq(race.id, raceId));
+    await clearContext();
+  } else {
+    await db.update(race).set({ status: "FINISHED" }).where(eq(race.id, raceId));
+  }
+
+  res.json({ ok: true, status: "FINISHED" });
+});
+
+/**
+ * PATCH /races/:id/tracking-mode — admin/modo
+ * Body: { trackingMode: "manual" | "auto" }
+ */
+router.patch("/:id/tracking-mode", ...requireModo, async (req, res) => {
+  const raceId = String(req.params.id);
+  const { trackingMode } = req.body;
+
+  if (trackingMode !== "manual" && trackingMode !== "auto") {
+    res.status(400).json({ error: 'trackingMode must be "manual" or "auto"' });
+    return;
+  }
+
+  const [updated] = await db
+    .update(race)
+    .set({ trackingMode })
+    .where(eq(race.id, raceId))
+    .returning();
+
+  if (!updated) { res.status(404).json({ error: "Race not found" }); return; }
+
+  // Update in-memory context if loaded
+  const ctx = getContext();
+  if (ctx && ctx.raceId === raceId) {
+    ctx.trackingMode = trackingMode;
+  }
+
+  emitDashboard("tracking-mode-changed", { raceId, trackingMode });
+  res.json(updated);
 });
 
 export default router;

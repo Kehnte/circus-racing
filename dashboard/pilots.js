@@ -89,7 +89,7 @@ function createPilotDisplayRow(pilot) {
         <td>${pilot.name}</td>
         <td><span class="fi fi-${country} fis"></span> (${country.toUpperCase()})</td>
         <td class="team-ext">${team ? team.name : "---"}</td>
-        <td>${vehicle ? `[${vehicle.category || 'ship'}] ${vehicle.model}` : "No vehicle"}</td>
+        <td>${vehicle ? vehicle.model : "No vehicle"}</td>
         <td>${ctrl ? ctrl.type : "Unknown"}</td>
         <td>
           <div class="action-buttons">
@@ -107,7 +107,7 @@ function createPilotEditRow(pilot) {
         .map((t) => `<md-select-option value="${t.id}" ${t.id === pilot.teamId ? "selected" : ""}><div slot="headline">${t.name}</div></md-select-option>`)
         .join("");
     const vehicleOptions = vehicles
-        .map((v) => `<md-select-option value="${v.id}" ${v.id === pilot.shipId ? "selected" : ""}><div slot="headline">[${v.category || 'ship'}] ${v.model}</div></md-select-option>`)
+        .map((v) => `<md-select-option value="${v.id}" ${v.id === pilot.shipId ? "selected" : ""}><div slot="headline">${v.model}</div></md-select-option>`)
         .join("");
     const controlOptions = controlsList
         .map((c) => `<md-select-option value="${c.id}" ${c.id === pilot.controlId ? "selected" : ""}><div slot="headline">${c.type}</div></md-select-option>`)
