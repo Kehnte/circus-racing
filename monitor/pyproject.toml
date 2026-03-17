@@ -1,0 +1,15 @@
+[project]
+name = "circus-racing-monitor"
+version = "0.1.0"
+description = "Monitor your position in a StarCitizen race and send it to the server"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "keyboard>=0.13.5",
+    "mss>=9.0.2",
+    "pyautogui>=0.9.54",
+    "pyinstaller>=6.19.0",
+    "pytesseract>=0.3.13",
+    "pywin32>=311",
+    "requests>=2.32.4",
+]

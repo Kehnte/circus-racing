@@ -1,0 +1,43 @@
+name: Build & Release Monitor
+
+on:
+  push:
+    branches: [main]
+    paths: ["monitor/**"]
+    tags: ["monitor-v*"]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Install dependencies
+        working-directory: monitor
+        run: uv sync
+
+      - name: Download Tesseract runtime
+        working-directory: monitor
+        shell: pwsh
+        run: |
+          $url = "https://github.com/tesseract-ocr/tesseract/releases/download/5.5.0/tesseract-ocr-w64-setup-5.5.0.20241111.exe"
+          $installer = "tesseract-installer.exe"
+          Invoke-WebRequest -Uri $url -OutFile $installer
+          Start-Process -FilePath $installer -ArgumentList "/S", "/D=$PWD\tesseract" -Wait
+          Remove-Item $installer
+
+      - name: Build executable
+        working-directory: monitor
+        run: python build.py
+
+      - uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/monitor-v')
+        with:
+          files: monitor/dist/circus-racing-monitor/**
