@@ -56,11 +56,28 @@ try {
   app.use('/api/ocr',          ocrRouter);
   app.use('/api/race-events',  raceEventsRouter);
 
+  // 500ms broadcast interval — keeps overlays in sync during active races
+  const { getContext }      = require('./src/engine/race-context');
+  const { broadcastRaceState } = require('./src/socket/emitter');
+  setInterval(() => {
+    try {
+      const ctx = getContext();
+      if (ctx && (ctx.raceStatus === 'STARTED' || ctx.raceStatus === 'PAUSED')) {
+        broadcastRaceState(ctx);
+      }
+    } catch { /* ignore */ }
+  }, 500);
+
   console.log('✅ REST API routes loaded');
 } catch (err) {
   console.error('⚠️  Could not load REST API routes:', err.message);
   console.error('   Run "npm run build" or use "npm run dev:ts" for TypeScript support.');
 }
+
+// ---------------------------------------------------------------------------
+// Health check — used by reset.js to wait for server readiness
+// ---------------------------------------------------------------------------
+app.get('/health', (_req, res) => res.json({ ok: true }));
 
 // ---------------------------------------------------------------------------
 // Static files — dashboard, overlays, pilot-app

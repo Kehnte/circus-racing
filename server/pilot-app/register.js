@@ -62,7 +62,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     // Clear field error on input
-    ["field-displayName", "field-email", "field-password", "field-passwordConfirm",
+    ["field-displayName", "field-password", "field-passwordConfirm",
      "field-avatarUrl"].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.addEventListener("input", () => clearFieldError(el));
@@ -143,7 +143,6 @@ async function handleRegister() {
 
     const payload = {
         displayName: fieldValue("field-displayName"),
-        email:       fieldValue("field-email"),
         password:    fieldValue("field-password"),
     };
 
@@ -186,7 +185,6 @@ function validateForm() {
     let valid = true;
 
     const displayName = fieldValue("field-displayName");
-    const email       = fieldValue("field-email");
     const password    = fieldValue("field-password");
     const confirm     = fieldValue("field-passwordConfirm");
 
@@ -195,14 +193,6 @@ function validateForm() {
         valid = false;
     } else if (displayName.length < 2) {
         setFieldError("field-displayName", "At least 2 characters");
-        valid = false;
-    }
-
-    if (!email) {
-        setFieldError("field-email", "Email is required");
-        valid = false;
-    } else if (!email.includes("@")) {
-        setFieldError("field-email", "Enter a valid email address");
         valid = false;
     }
 

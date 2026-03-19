@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Circus Racing — Sign in</title>
+
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap"
+            rel="stylesheet"
+        />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+            rel="stylesheet"
+        />
+
+        <script type="importmap">
+            {
+                "imports": {
+                    "@material/web/": "https://esm.run/@material/web/"
+                }
+            }
+        </script>
+        <script type="module">
+            import "@material/web/all.js";
+            import { styles as typescaleStyles } from "@material/web/typography/md-typescale-styles.js";
+            document.adoptedStyleSheets.push(typescaleStyles.styleSheet);
+        </script>
+
+        <link rel="stylesheet" href="pilot-app.css" />
+        <script src="/shared/nav.js"></script>
+    </head>
+
+    <body>
+
+        <main class="page-content">
+            <div class="register-layout" style="max-width: 480px; margin: 0 auto;">
+
+                <div class="m3-card register-card">
+                    <p class="md-typescale-title-large card-title">Sign in to your account</p>
+
+                    <div class="form-stack">
+                        <md-outlined-text-field
+                            id="field-displayName"
+                            label="Display name"
+                            type="text"
+                            autocomplete="username"
+                            style="width:100%"
+                        ></md-outlined-text-field>
+
+                        <md-outlined-text-field
+                            id="field-password"
+                            label="Password"
+                            type="password"
+                            autocomplete="current-password"
+                            style="width:100%"
+                        ></md-outlined-text-field>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Error banner -->
+            <div id="error-banner" class="error-banner" hidden>
+                <span class="material-symbols-outlined" style="font-size:20px">error</span>
+                <span id="error-text"></span>
+            </div>
+
+            <!-- Submit row -->
+            <div class="submit-row">
+                <md-filled-button id="btn-login" onclick="handleLogin()">
+                    <span class="material-symbols-outlined" slot="icon">login</span>
+                    Sign in
+                </md-filled-button>
+                <p class="md-typescale-body-small" style="color: var(--md-sys-color-on-surface-variant); margin:0">
+                    No account yet? <a href="register.html">Create one</a>
+                </p>
+            </div>
+
+        </main>
+
+        <script src="login.js"></script>
+    </body>
+</html>

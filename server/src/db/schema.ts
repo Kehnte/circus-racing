@@ -1,4 +1,6 @@
-import { integer, sqliteTable, text, real } from "drizzle-orm/sqlite-core";
+// schema.ts — Définition des tables SQLite avec Drizzle ORM.
+// Entités : pilot, team, vehicle, controls, racetrack, race, race_entry, race_state.
+import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
 
 // ---------------------------------------------------------------------------
@@ -41,7 +43,7 @@ export type PilotRole = "ADMIN" | "MODERATOR" | "PILOT";
 export const pilot = sqliteTable("pilot", {
   id:           text().primaryKey().$defaultFn(() => crypto.randomUUID()),
   displayName:  text().notNull().unique(),
-  email:        text().notNull().unique(),
+  email:        text().unique(),
   passwordHash: text().notNull(),
   role:         text().$type<PilotRole>().notNull().default("PILOT"),
   token:        text().notNull().unique(), // OCR auth token + lightweight session id
@@ -86,13 +88,14 @@ export const race = sqliteTable("race", {
 // Race entry (pilot registration for a race)
 // ---------------------------------------------------------------------------
 
-export type RaceEntryStatus = "PENDING" | "VALIDATED" | "DNF" | "FINISHED";
+export type RaceEntryStatus = "PENDING" | "VALIDATED" | "REJECTED" | "REVOKED";
 
 export const raceEntry = sqliteTable("race_entry", {
   id:               text().primaryKey().$defaultFn(() => crypto.randomUUID()),
   raceId:           text().notNull().references(() => race.id, { onDelete: "cascade" }),
   pilotId:          text().notNull().references(() => pilot.id, { onDelete: "cascade" }),
   status:           text().$type<RaceEntryStatus>().notNull().default("PENDING"),
+  gridPosition:     integer(),  // 1-based grid order, set by admin
   // Snapshots saved at validation time (for historical records)
   teamSnapshot:     text({ mode: "json" }).$type<Record<string, unknown>>(),
   vehicleSnapshot:  text({ mode: "json" }).$type<Record<string, unknown>>(),
@@ -110,6 +113,7 @@ export interface PilotState {
   lap: number;
   progress: number;         // 0–1 within current lap
   raceProgress: number;     // overall 0–N (laps + progress)
+  gridPosition: number;     // 1-based explicit rank (manual mode + grid setup)
   lapTimes: number[];       // ms per completed lap
   status: PilotRuntimeStatus;
   frozenTime: string | null;  // ISO timestamp when finished/DNF

@@ -217,7 +217,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Guard: must be logged in
     const jwt = localStorage.getItem("cr_jwt");
     if (!jwt) {
-        window.location.href = "register.html";
+        window.location.href = "login.html";
         return;
     }
 
@@ -229,7 +229,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (err.status === 401) {
             localStorage.removeItem("cr_jwt");
             localStorage.removeItem("cr_pilot");
-            window.location.href = "register.html";
+            window.location.href = "login.html";
         } else {
             showError(err.message || "Failed to load profile");
         }
@@ -586,7 +586,7 @@ async function handleCancelEntry(raceId, entryId, btn) {
 function handleLogout() {
     localStorage.removeItem("cr_jwt");
     localStorage.removeItem("cr_pilot");
-    window.location.href = "register.html";
+    window.location.href = "login.html";
 }
 
 // ---------------------------------------------------------------------------

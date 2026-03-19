@@ -1,3 +1,6 @@
+// emitter.ts — Broadcast Socket.IO : race-state (format unifié spec §7)
+// et race-data (format legacy pour backward compat overlay existants).
+
 import type { Server } from "socket.io";
 import type { RaceContext } from "../engine/race-context.js";
 
@@ -17,9 +20,7 @@ export function emitDashboard(event: string, data?: unknown): void {
 }
 
 // ---------------------------------------------------------------------------
-// buildRaceUpdatePayload
-// Builds the same shape as broadcastRaceUpdate() in dashboard/race.js so that
-// overlays receive identical data regardless of whether the race is MANUAL or AUTO.
+// Helpers chrono
 // ---------------------------------------------------------------------------
 
 function formatTime(ms: number): string {
@@ -61,7 +62,7 @@ function getChronoDisplay(
 
   switch (ctx.chronoDisplayMode) {
     case "leader":
-      return pilotId === ctx.globalFastestLapPilotId || leaderElapsedMs === elapsedMs
+      return elapsedMs === leaderElapsedMs
         ? formatTime(elapsedMs)
         : `+${formatTime(elapsedMs - leaderElapsedMs)}`;
     case "gap":
@@ -79,16 +80,100 @@ function getChronoDisplay(
   }
 }
 
-export function buildRaceUpdatePayload(ctx: RaceContext): object {
-  const now = Date.now();
+// ---------------------------------------------------------------------------
+// Tri des pilotes selon le mode de tracking
+// Manual : par gridPosition asc ; Auto : par raceProgress desc
+// ---------------------------------------------------------------------------
 
-  // Sort pilots: FINISHED/DNF by raceProgress desc, then RUNNING/WARNING_DNF by raceProgress desc
-  const sorted = Object.entries(ctx.pilotStates).sort(([, a], [, b]) => {
+function sortPilots(ctx: RaceContext): [string, import("../db/schema.js").PilotState][] {
+  const entries = Object.entries(ctx.pilotStates) as [string, import("../db/schema.js").PilotState][];
+
+  if (ctx.trackingMode === "manual") {
+    // Active pilots sorted by gridPosition, then finished/dnf at end
+    return entries.sort(([, a], [, b]) => {
+      const aActive = a.status === "RUNNING" || a.status === "WARNING_DNF";
+      const bActive = b.status === "RUNNING" || b.status === "WARNING_DNF";
+      if (aActive !== bActive) return aActive ? -1 : 1;
+      return a.gridPosition - b.gridPosition;
+    });
+  }
+
+  // Auto: sort by raceProgress desc (existing logic)
+  return entries.sort(([, a], [, b]) => {
     const aActive = a.status === "RUNNING" || a.status === "WARNING_DNF";
     const bActive = b.status === "RUNNING" || b.status === "WARNING_DNF";
     if (aActive !== bActive) return aActive ? -1 : 1;
     return b.raceProgress - a.raceProgress;
   });
+}
+
+// ---------------------------------------------------------------------------
+// buildRaceStateBroadcast — format unifié spec §7 (événement race-state)
+// ---------------------------------------------------------------------------
+
+export function buildRaceStateBroadcast(ctx: RaceContext): object {
+  const now = Date.now();
+  const sorted = sortPilots(ctx);
+
+  const leaderElapsedMs = sorted.length > 0
+    ? getPilotElapsedMs(ctx, sorted[0][0], now)
+    : 0;
+
+  const pilots = sorted.map(([pilotId, state], index) => {
+    const profile = ctx.pilotProfiles[pilotId];
+    const team = profile?.teamSnapshot as Record<string, unknown> | null ?? null;
+    const vehicle = profile?.vehicleSnapshot as Record<string, unknown> | null ?? null;
+
+    return {
+      id: pilotId,
+      displayName: profile?.displayName ?? pilotId,
+      country: profile?.country ?? "un",
+      teamSnapshot: team
+        ? { name: team.name as string, color: team.color as string, acronym: team.acronym as string }
+        : null,
+      vehicleSnapshot: vehicle
+        ? { type: vehicle.type as string, manufacturer: (vehicle.manufacturer as string) ?? "", model: vehicle.model as string }
+        : null,
+      position: index + 1,
+      lap: state.lap,
+      lapTimes: state.lapTimes,
+      status: state.status,
+      frozenTime: state.frozenTime,
+    };
+  });
+
+  return {
+    raceId: ctx.raceId,
+    raceName: ctx.raceName,
+    status: ctx.raceStatus,
+    trackingMode: ctx.trackingMode,
+    session: ctx.session,
+    weather: ctx.weather,
+    startType: ctx.startType,
+    sessionMode: ctx.sessionMode,
+    lapCount: ctx.lapCount,
+    sessionDurationMs: ctx.sessionDurationMs,
+    startedAt: ctx.startedAt,
+    pausedAt: ctx.pausedAt,
+    totalPausedMs: ctx.totalPausedMs,
+    globalFastestLapMs: ctx.globalFastestLapMs,
+    globalFastestLapPilotId: ctx.globalFastestLapPilotId,
+    teamDisplayMode: ctx.teamDisplayMode,
+    chronoDisplayMode: ctx.chronoDisplayMode,
+    timingEnabled: ctx.timingEnabled,
+    eventDuration: ctx.eventDuration,
+    pilots,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// buildRaceUpdatePayload — format legacy (événement race-data)
+// Conservé pour backward compat avec les overlays existants.
+// ---------------------------------------------------------------------------
+
+export function buildRaceUpdatePayload(ctx: RaceContext): object {
+  const now = Date.now();
+  const sorted = sortPilots(ctx);
 
   const leaderElapsedMs = sorted.length > 0
     ? getPilotElapsedMs(ctx, sorted[0][0], now)
@@ -125,7 +210,7 @@ export function buildRaceUpdatePayload(ctx: RaceContext): object {
 
   return {
     raceList,
-    teams: [],   // overlays use teamColor/teamAcronym from raceList directly
+    teams: [],
     teamDisplayMode: ctx.teamDisplayMode,
     timingEnabled: ctx.timingEnabled,
     chronoDisplayMode: ctx.chronoDisplayMode,
@@ -145,6 +230,11 @@ export function buildRaceUpdatePayload(ctx: RaceContext): object {
   };
 }
 
+// ---------------------------------------------------------------------------
+// broadcastRaceState — émet race-state (nouveau) + race-data (legacy)
+// ---------------------------------------------------------------------------
+
 export function broadcastRaceState(ctx: RaceContext): void {
+  emitAll("race-state", buildRaceStateBroadcast(ctx));
   emitAll("race-data", buildRaceUpdatePayload(ctx));
 }

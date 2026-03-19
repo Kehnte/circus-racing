@@ -51,16 +51,16 @@ const apiDelete = (path)       => apiRequest("DELETE", path);
 
 // submit the login form and store JWT on success
 async function dashboardLogin() {
-    const email    = document.getElementById("login-email")?.value?.trim();
-    const password = document.getElementById("login-password")?.value;
-    const errorEl  = document.getElementById("login-error");
+    const displayName = document.getElementById("login-displayname")?.value?.trim();
+    const password    = document.getElementById("login-password")?.value;
+    const errorEl     = document.getElementById("login-error");
     if (errorEl) errorEl.textContent = "";
 
     try {
         const res = await fetch("/api/auth/login", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, password }),
+            body: JSON.stringify({ displayName, password }),
         });
         const data = await res.json();
         if (!res.ok) {
@@ -118,6 +118,9 @@ document.addEventListener("DOMContentLoaded", () => {
         initDashboard();
     }
 
+    document.getElementById("login-displayname")?.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") dashboardLogin();
+    });
     document.getElementById("login-password")?.addEventListener("keydown", (e) => {
         if (e.key === "Enter") dashboardLogin();
     });

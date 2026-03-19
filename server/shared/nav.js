@@ -74,7 +74,7 @@
             ? pilot.role === "PILOT"
                 ? "/pilot-app/profile.html"
                 : "/dashboard/"
-            : "/pilot-app/register.html";
+            : "/pilot-app/login.html";
 
         var start =
             '<a class="cr-topbar-brand" href="' + brandHref + '">' +
@@ -119,10 +119,12 @@
                 "</button>" +
                 "</div>";
         } else {
-            // Unauthenticated: show contextual link
-            var isRegister = window.location.pathname.includes("register");
-            var linkHref = isRegister ? "profile.html" : "/pilot-app/register.html";
-            var linkLabel = isRegister ? "Sign in" : "Create account";
+            // Unauthenticated: show contextual link (register ↔ login)
+            var path = window.location.pathname;
+            var isLogin    = path.includes("login");
+            var isRegister = path.includes("register");
+            var linkHref  = isLogin ? "register.html" : isRegister ? "login.html" : "/pilot-app/login.html";
+            var linkLabel = isLogin ? "Create account" : "Sign in";
             end =
                 '<div class="cr-topbar-end">' +
                 '<a class="cr-topbar-action-link" href="' + linkHref + '">' + linkLabel + "</a>" +
@@ -162,7 +164,7 @@
         }
         localStorage.removeItem("cr_jwt");
         localStorage.removeItem("cr_pilot");
-        window.location.href = "/pilot-app/register.html";
+        window.location.href = "/pilot-app/login.html";
     };
 
     // Run as soon as the body is available

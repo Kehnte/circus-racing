@@ -1,22 +1,23 @@
+// races.ts — CRUD courses, gestion des inscriptions, cycle de vie (load/start/pause/resume/finish/reset).
+
 import { Router } from "express";
 import { eq, and } from "drizzle-orm";
 import { db } from "../db/db.js";
 import { race, raceEntry, raceState, pilot, team, vehicle, controls } from "../db/schema.js";
 import { requireAuth } from "../middleware/auth.js";
 import { requireModo } from "../middleware/roles.js";
-import { loadRace, getContext, clearContext, setPilotState, persistState } from "../engine/race-context.js";
+import {
+  loadRace, getContext, clearContext, setPilotState, persistState, setGridOrder,
+} from "../engine/race-context.js";
 import { emitAll, emitDashboard, broadcastRaceState } from "../socket/emitter.js";
 
 const router = Router();
 
 // ---------------------------------------------------------------------------
-// Races
+// Races CRUD
 // ---------------------------------------------------------------------------
 
-/**
- * GET /races — public
- * Returns all races. Optionally filter by status: ?status=PENDING,SCHEDULED
- */
+/** GET /races — public */
 router.get("/", async (req, res) => {
   const all = await db.select().from(race).all();
   const { status } = req.query;
@@ -35,7 +36,7 @@ router.get("/:id", async (req, res) => {
   res.json(found);
 });
 
-/** POST /races — admin/modo */
+/** POST /races — modo+ */
 router.post("/", ...requireModo, async (req, res) => {
   const {
     name, racetrackId, lapCount, session, weather, startType,
@@ -71,26 +72,59 @@ router.post("/", ...requireModo, async (req, res) => {
   res.status(201).json(created);
 });
 
-/** PATCH /races/:id — admin/modo */
+/** PATCH /races/:id — modo+. Bloque trackingMode si STARTED. */
 router.patch("/:id", ...requireModo, async (req, res) => {
+  const raceId = String(req.params.id);
+  const found = await db.select().from(race).where(eq(race.id, raceId)).get();
+  if (!found) { res.status(404).json({ error: "Race not found" }); return; }
+
+  if (req.body.trackingMode !== undefined && found.status === "STARTED") {
+    res.status(409).json({ error: "Cannot change trackingMode while race is STARTED" });
+    return;
+  }
+
   const allowed = [
     "name", "racetrackId", "lapCount", "session", "weather", "startType",
     "trackingMode", "sessionMode", "sessionDurationMs",
-    "teamDisplayMode", "chronoDisplayMode", "timingEnabled", "eventDuration", "status",
+    "teamDisplayMode", "chronoDisplayMode", "timingEnabled", "eventDuration",
   ];
   const patch: Record<string, unknown> = {};
   for (const key of allowed) {
     if (req.body[key] !== undefined) patch[key] = req.body[key];
   }
 
-  const [updated] = await db.update(race).set(patch).where(eq(race.id, String(req.params.id))).returning();
-  if (!updated) { res.status(404).json({ error: "Race not found" }); return; }
+  const [updated] = await db.update(race).set(patch).where(eq(race.id, raceId)).returning();
+
+  // Sync display settings in live context if loaded
+  const ctx = getContext();
+  if (ctx && ctx.raceId === raceId) {
+    if (patch.teamDisplayMode)   ctx.teamDisplayMode   = patch.teamDisplayMode as typeof ctx.teamDisplayMode;
+    if (patch.chronoDisplayMode) ctx.chronoDisplayMode = patch.chronoDisplayMode as typeof ctx.chronoDisplayMode;
+    if (patch.timingEnabled !== undefined) ctx.timingEnabled = patch.timingEnabled as boolean;
+    if (patch.eventDuration)     ctx.eventDuration     = patch.eventDuration as number;
+    if (patch.name)              ctx.raceName          = patch.name as string;
+    if (patch.session)           ctx.session           = patch.session as string;
+    if (patch.weather)           ctx.weather           = patch.weather as string;
+    if (patch.startType)         ctx.startType         = patch.startType as string;
+    if (patch.lapCount)          ctx.lapCount          = patch.lapCount as number;
+    broadcastRaceState(ctx);
+  }
+
   res.json(updated);
 });
 
-/** DELETE /races/:id — admin/modo */
+/** DELETE /races/:id — modo+. Bloqué si STARTED ou PAUSED. */
 router.delete("/:id", ...requireModo, async (req, res) => {
-  await db.delete(race).where(eq(race.id, String(req.params.id)));
+  const raceId = String(req.params.id);
+  const found = await db.select().from(race).where(eq(race.id, raceId)).get();
+  if (!found) { res.status(404).json({ error: "Race not found" }); return; }
+
+  if (found.status === "STARTED" || found.status === "PAUSED") {
+    res.status(409).json({ error: "Cannot delete a race that is STARTED or PAUSED" });
+    return;
+  }
+
+  await db.delete(race).where(eq(race.id, raceId));
   res.sendStatus(204);
 });
 
@@ -98,10 +132,7 @@ router.delete("/:id", ...requireModo, async (req, res) => {
 // Race entries
 // ---------------------------------------------------------------------------
 
-/**
- * GET /races/:id/entries — admin/modo
- * Returns all entries for a race with pilot info joined.
- */
+/** GET /races/:id/entries — modo+ */
 router.get("/:id/entries", ...requireModo, async (req, res) => {
   const entries = await db
     .select()
@@ -109,7 +140,6 @@ router.get("/:id/entries", ...requireModo, async (req, res) => {
     .where(eq(raceEntry.raceId, String(req.params.id)))
     .all();
 
-  // Join pilot display info
   const enriched = await Promise.all(entries.map(async (entry) => {
     const p = await db.select({
       id: pilot.id,
@@ -126,10 +156,7 @@ router.get("/:id/entries", ...requireModo, async (req, res) => {
   res.json(enriched);
 });
 
-/**
- * GET /races/:id/entries/me — authenticated pilot
- * Returns the current pilot's entry for this race if it exists.
- */
+/** GET /races/:id/entries/me — authenticated pilot */
 router.get("/:id/entries/me", requireAuth, async (req, res) => {
   const entry = await db
     .select()
@@ -143,10 +170,7 @@ router.get("/:id/entries/me", requireAuth, async (req, res) => {
   res.json(entry);
 });
 
-/**
- * POST /races/:id/entries — authenticated pilot
- * Register the current pilot to a race. Race must be PENDING or SCHEDULED.
- */
+/** POST /races/:id/entries — authenticated pilot (self-register) */
 router.post("/:id/entries", requireAuth, async (req, res) => {
   const raceId = String(req.params.id);
   const pilotId = req.user!.id;
@@ -158,7 +182,6 @@ router.post("/:id/entries", requireAuth, async (req, res) => {
     return;
   }
 
-  // Prevent duplicate entry
   const existing = await db
     .select()
     .from(raceEntry)
@@ -173,11 +196,7 @@ router.post("/:id/entries", requireAuth, async (req, res) => {
   res.status(201).json(created);
 });
 
-/**
- * POST /races/:id/entries/admin — admin/modo
- * Admin directly adds a pilot to a race as VALIDATED (bypasses self-registration).
- * Body: { pilotId: string }
- */
+/** POST /races/:id/entries/admin — modo+ (ajout direct VALIDATED) */
 router.post("/:id/entries/admin", ...requireModo, async (req, res) => {
   const raceId = String(req.params.id);
   const { pilotId } = req.body;
@@ -204,22 +223,39 @@ router.post("/:id/entries/admin", ...requireModo, async (req, res) => {
   const vehicleSnap  = p.vehicleId  ? await db.select().from(vehicle).where(eq(vehicle.id, p.vehicleId)).get() : null;
   const controlsSnap = p.controlsId ? await db.select().from(controls).where(eq(controls.id, p.controlsId)).get() : null;
 
+  // Assign grid position at end of current list
+  const existingEntries = await db
+    .select({ gridPosition: raceEntry.gridPosition })
+    .from(raceEntry)
+    .where(and(eq(raceEntry.raceId, raceId), eq(raceEntry.status, "VALIDATED")))
+    .all();
+  const maxPos = existingEntries.reduce((m, e) => Math.max(m, e.gridPosition ?? 0), 0);
+
   const [created] = await db.insert(raceEntry).values({
     raceId,
     pilotId,
     status: "VALIDATED",
+    gridPosition: maxPos + 1,
     teamSnapshot:     teamSnap     ? { ...teamSnap }     : null,
     vehicleSnapshot:  vehicleSnap  ? { ...vehicleSnap }  : null,
     controlsSnapshot: controlsSnap ? { ...controlsSnap } : null,
   }).returning();
 
+  try {
+    const ctx = getContext();
+    if (ctx?.raceId === raceId && (ctx.raceStatus === "PENDING" || ctx.raceStatus === "SCHEDULED")) {
+      broadcastRaceState(await loadRace(raceId));
+    }
+  } catch { /* fire-and-forget */ }
+
   res.status(201).json(created);
 });
 
-/**
- * PATCH /races/:raceId/entries/:entryId/validate — admin/modo
- * Validates a PENDING entry → VALIDATED. Saves snapshots.
- */
+// ---------------------------------------------------------------------------
+// Entry status transitions
+// ---------------------------------------------------------------------------
+
+/** PATCH /races/:raceId/entries/:entryId/validate — PENDING → VALIDATED */
 router.patch("/:raceId/entries/:entryId/validate", ...requireModo, async (req, res) => {
   const entry = await db
     .select()
@@ -229,11 +265,10 @@ router.patch("/:raceId/entries/:entryId/validate", ...requireModo, async (req, r
 
   if (!entry) { res.status(404).json({ error: "Entry not found" }); return; }
   if (entry.status !== "PENDING") {
-    res.status(409).json({ error: "Entry is not in PENDING status" });
+    res.status(409).json({ error: "Entry must be PENDING to validate" });
     return;
   }
 
-  // Load pilot + linked entities for snapshots
   const p = await db.select().from(pilot).where(eq(pilot.id, entry.pilotId)).get();
   if (!p) { res.status(404).json({ error: "Pilot not found" }); return; }
 
@@ -241,24 +276,102 @@ router.patch("/:raceId/entries/:entryId/validate", ...requireModo, async (req, r
   const vehicleSnap  = p.vehicleId  ? await db.select().from(vehicle).where(eq(vehicle.id, p.vehicleId)).get() : null;
   const controlsSnap = p.controlsId ? await db.select().from(controls).where(eq(controls.id, p.controlsId)).get() : null;
 
+  // Assign grid position at end of current validated list
+  const validatedEntries = await db
+    .select({ gridPosition: raceEntry.gridPosition })
+    .from(raceEntry)
+    .where(and(eq(raceEntry.raceId, entry.raceId), eq(raceEntry.status, "VALIDATED")))
+    .all();
+  const maxPos = validatedEntries.reduce((m, e) => Math.max(m, e.gridPosition ?? 0), 0);
+
   const [updated] = await db
     .update(raceEntry)
     .set({
-      status:          "VALIDATED",
-      teamSnapshot:    teamSnap     ? { ...teamSnap }     : null,
-      vehicleSnapshot: vehicleSnap  ? { ...vehicleSnap }  : null,
+      status:           "VALIDATED",
+      gridPosition:     maxPos + 1,
+      teamSnapshot:     teamSnap     ? { ...teamSnap }     : null,
+      vehicleSnapshot:  vehicleSnap  ? { ...vehicleSnap }  : null,
       controlsSnapshot: controlsSnap ? { ...controlsSnap } : null,
     })
     .where(eq(raceEntry.id, entry.id))
     .returning();
 
+  // Refresh overlay if race is loaded in pre-race status
+  try {
+    const ctx = getContext();
+    if (ctx?.raceId === entry.raceId && (ctx.raceStatus === "PENDING" || ctx.raceStatus === "SCHEDULED")) {
+      broadcastRaceState(await loadRace(entry.raceId));
+    }
+  } catch { /* fire-and-forget */ }
+
   res.json(updated);
 });
 
-/**
- * DELETE /races/:raceId/entries/:entryId — admin/modo or own pilot
- * Remove a PENDING entry (cancel registration).
- */
+/** PATCH /races/:raceId/entries/:entryId/reject — PENDING → REJECTED */
+router.patch("/:raceId/entries/:entryId/reject", ...requireModo, async (req, res) => {
+  const entry = await db.select().from(raceEntry).where(eq(raceEntry.id, String(req.params.entryId))).get();
+  if (!entry) { res.status(404).json({ error: "Entry not found" }); return; }
+  if (entry.status !== "PENDING") {
+    res.status(409).json({ error: "Entry must be PENDING to reject" }); return;
+  }
+
+  const [updated] = await db.update(raceEntry).set({ status: "REJECTED" }).where(eq(raceEntry.id, entry.id)).returning();
+  res.json(updated);
+});
+
+/** PATCH /races/:raceId/entries/:entryId/revoke — VALIDATED → REVOKED */
+router.patch("/:raceId/entries/:entryId/revoke", ...requireModo, async (req, res) => {
+  const entry = await db.select().from(raceEntry).where(eq(raceEntry.id, String(req.params.entryId))).get();
+  if (!entry) { res.status(404).json({ error: "Entry not found" }); return; }
+  if (entry.status !== "VALIDATED") {
+    res.status(409).json({ error: "Entry must be VALIDATED to revoke" }); return;
+  }
+
+  const [updated] = await db.update(raceEntry).set({ status: "REVOKED", gridPosition: null }).where(eq(raceEntry.id, entry.id)).returning();
+
+  try {
+    const ctx = getContext();
+    if (ctx?.raceId === entry.raceId && (ctx.raceStatus === "PENDING" || ctx.raceStatus === "SCHEDULED")) {
+      broadcastRaceState(await loadRace(entry.raceId));
+    }
+  } catch { /* fire-and-forget */ }
+
+  res.json(updated);
+});
+
+/** PATCH /races/:raceId/entries/:entryId/readmit — REJECTED|REVOKED → VALIDATED */
+router.patch("/:raceId/entries/:entryId/readmit", ...requireModo, async (req, res) => {
+  const entry = await db.select().from(raceEntry).where(eq(raceEntry.id, String(req.params.entryId))).get();
+  if (!entry) { res.status(404).json({ error: "Entry not found" }); return; }
+  if (entry.status !== "REJECTED" && entry.status !== "REVOKED") {
+    res.status(409).json({ error: "Entry must be REJECTED or REVOKED to readmit" }); return;
+  }
+
+  // Assign position at end of validated list
+  const validatedEntries = await db
+    .select({ gridPosition: raceEntry.gridPosition })
+    .from(raceEntry)
+    .where(and(eq(raceEntry.raceId, entry.raceId), eq(raceEntry.status, "VALIDATED")))
+    .all();
+  const maxPos = validatedEntries.reduce((m, e) => Math.max(m, e.gridPosition ?? 0), 0);
+
+  const [updated] = await db
+    .update(raceEntry)
+    .set({ status: "VALIDATED", gridPosition: maxPos + 1 })
+    .where(eq(raceEntry.id, entry.id))
+    .returning();
+
+  try {
+    const ctx = getContext();
+    if (ctx?.raceId === entry.raceId && (ctx.raceStatus === "PENDING" || ctx.raceStatus === "SCHEDULED")) {
+      broadcastRaceState(await loadRace(entry.raceId));
+    }
+  } catch { /* fire-and-forget */ }
+
+  res.json(updated);
+});
+
+/** DELETE /races/:raceId/entries/:entryId — pilote annule sa propre inscription (PENDING) */
 router.delete("/:raceId/entries/:entryId", requireAuth, async (req, res) => {
   const entry = await db
     .select()
@@ -273,12 +386,10 @@ router.delete("/:raceId/entries/:entryId", requireAuth, async (req, res) => {
   const isOwner = entry.pilotId === user.id;
 
   if (!isAdminOrModo && !isOwner) {
-    res.status(403).json({ error: "Forbidden" });
-    return;
+    res.status(403).json({ error: "Forbidden" }); return;
   }
   if (!isAdminOrModo && entry.status !== "PENDING") {
-    res.status(409).json({ error: "Cannot cancel a validated entry" });
-    return;
+    res.status(409).json({ error: "Cannot cancel a validated entry" }); return;
   }
 
   await db.delete(raceEntry).where(eq(raceEntry.id, entry.id));
@@ -286,12 +397,60 @@ router.delete("/:raceId/entries/:entryId", requireAuth, async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// Race registrations open/close
+// ---------------------------------------------------------------------------
+
+/** POST /races/:id/open-registrations — PENDING → SCHEDULED */
+router.post("/:id/open-registrations", ...requireModo, async (req, res) => {
+  const found = await db.select().from(race).where(eq(race.id, String(req.params.id))).get();
+  if (!found) { res.status(404).json({ error: "Race not found" }); return; }
+  if (found.status !== "PENDING") {
+    res.status(409).json({ error: "Race must be PENDING to open registrations" }); return;
+  }
+  const [updated] = await db.update(race).set({ status: "SCHEDULED" }).where(eq(race.id, String(req.params.id))).returning();
+  res.json(updated);
+});
+
+/** POST /races/:id/close-registrations — SCHEDULED → PENDING */
+router.post("/:id/close-registrations", ...requireModo, async (req, res) => {
+  const found = await db.select().from(race).where(eq(race.id, String(req.params.id))).get();
+  if (!found) { res.status(404).json({ error: "Race not found" }); return; }
+  if (found.status !== "SCHEDULED") {
+    res.status(409).json({ error: "Race must be SCHEDULED to close registrations" }); return;
+  }
+  const [updated] = await db.update(race).set({ status: "PENDING" }).where(eq(race.id, String(req.params.id))).returning();
+  res.json(updated);
+});
+
+// ---------------------------------------------------------------------------
 // Race lifecycle
 // ---------------------------------------------------------------------------
 
 /**
- * POST /races/:id/start — admin/modo
- * Starts a SCHEDULED race (fresh) or resumes a PAUSED race.
+ * POST /races/:id/load — modo+
+ * Charge le RaceContext serveur depuis les entries VALIDATED.
+ * Ne démarre pas la course. Prérequis pour grid-order et start.
+ */
+router.post("/:id/load", ...requireModo, async (req, res) => {
+  const raceId = String(req.params.id);
+  const found = await db.select().from(race).where(eq(race.id, raceId)).get();
+  if (!found) { res.status(404).json({ error: "Race not found" }); return; }
+  if (found.status === "FINISHED") {
+    res.status(409).json({ error: "Cannot load a finished race" }); return;
+  }
+
+  try {
+    const ctx = await loadRace(raceId);
+    broadcastRaceState(ctx);
+    res.json({ ok: true, pilots: Object.keys(ctx.pilotStates).length });
+  } catch (err: unknown) {
+    res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+/**
+ * POST /races/:id/start — modo+
+ * Démarre la course (enregistre startedAt). Charge le contexte si nécessaire.
  */
 router.post("/:id/start", ...requireModo, async (req, res) => {
   const raceId = String(req.params.id);
@@ -299,9 +458,13 @@ router.post("/:id/start", ...requireModo, async (req, res) => {
   if (!found) { res.status(404).json({ error: "Race not found" }); return; }
 
   if (found.status === "SCHEDULED" || found.status === "PENDING") {
-    // Fresh start
-    const ctx = await loadRace(raceId);
+    // Fresh start — load context if not already loaded
+    let ctx = getContext();
+    if (!ctx || ctx.raceId !== raceId) {
+      ctx = await loadRace(raceId);
+    }
     ctx.startedAt = new Date().toISOString();
+    ctx.raceStatus = "STARTED";
     await db.update(race).set({ status: "STARTED" }).where(eq(race.id, raceId));
     await persistState();
     emitAll("race-restarted");
@@ -309,15 +472,15 @@ router.post("/:id/start", ...requireModo, async (req, res) => {
     res.json({ ok: true, status: "STARTED" });
 
   } else if (found.status === "PAUSED") {
-    // Resume
     const ctx = getContext();
     if (!ctx || ctx.raceId !== raceId) {
-      res.status(409).json({ error: "Race context not loaded — restart the server or reload the race" });
+      res.status(409).json({ error: "Race context not loaded — call /load first" });
       return;
     }
     const pausedAt = ctx.pausedAt ? new Date(ctx.pausedAt).getTime() : Date.now();
     ctx.totalPausedMs += Date.now() - pausedAt;
     ctx.pausedAt = null;
+    ctx.raceStatus = "STARTED";
     await db.update(race).set({ status: "STARTED" }).where(eq(race.id, raceId));
     await persistState();
     emitAll("race-resumed");
@@ -329,51 +492,44 @@ router.post("/:id/start", ...requireModo, async (req, res) => {
   }
 });
 
-/**
- * POST /races/:id/pause — admin/modo
- */
+/** POST /races/:id/pause — modo+ */
 router.post("/:id/pause", ...requireModo, async (req, res) => {
   const raceId = String(req.params.id);
   const found = await db.select().from(race).where(eq(race.id, raceId)).get();
   if (!found || found.status !== "STARTED") {
-    res.status(409).json({ error: "Race is not STARTED" });
-    return;
+    res.status(409).json({ error: "Race is not STARTED" }); return;
   }
 
   const ctx = getContext();
   if (!ctx || ctx.raceId !== raceId) {
-    res.status(409).json({ error: "Race context not loaded" });
-    return;
+    res.status(409).json({ error: "Race context not loaded" }); return;
   }
 
   ctx.pausedAt = new Date().toISOString();
+  ctx.raceStatus = "PAUSED";
   await db.update(race).set({ status: "PAUSED" }).where(eq(race.id, raceId));
   await persistState();
   broadcastRaceState(ctx);
   res.json({ ok: true, status: "PAUSED" });
 });
 
-/**
- * POST /races/:id/resume — admin/modo (alias for start on PAUSED)
- */
+/** POST /races/:id/resume — modo+ (alias de start sur PAUSED) */
 router.post("/:id/resume", ...requireModo, async (req, res) => {
-  req.params.id = req.params.id; // passthrough
   const raceId = String(req.params.id);
   const found = await db.select().from(race).where(eq(race.id, raceId)).get();
   if (!found || found.status !== "PAUSED") {
-    res.status(409).json({ error: "Race is not PAUSED" });
-    return;
+    res.status(409).json({ error: "Race is not PAUSED" }); return;
   }
 
   const ctx = getContext();
   if (!ctx || ctx.raceId !== raceId) {
-    res.status(409).json({ error: "Race context not loaded" });
-    return;
+    res.status(409).json({ error: "Race context not loaded" }); return;
   }
 
   const pausedAt = ctx.pausedAt ? new Date(ctx.pausedAt).getTime() : Date.now();
   ctx.totalPausedMs += Date.now() - pausedAt;
   ctx.pausedAt = null;
+  ctx.raceStatus = "STARTED";
   await db.update(race).set({ status: "STARTED" }).where(eq(race.id, raceId));
   await persistState();
   emitAll("race-resumed");
@@ -381,16 +537,12 @@ router.post("/:id/resume", ...requireModo, async (req, res) => {
   res.json({ ok: true, status: "STARTED" });
 });
 
-/**
- * POST /races/:id/finish — admin/modo
- * Force-finishes all still-running pilots and closes the race.
- */
+/** POST /races/:id/finish — modo+ */
 router.post("/:id/finish", ...requireModo, async (req, res) => {
   const raceId = String(req.params.id);
   const found = await db.select().from(race).where(eq(race.id, raceId)).get();
   if (!found || !["STARTED", "PAUSED"].includes(found.status)) {
-    res.status(409).json({ error: "Race is not active" });
-    return;
+    res.status(409).json({ error: "Race is not active" }); return;
   }
 
   const ctx = getContext();
@@ -401,6 +553,7 @@ router.post("/:id/finish", ...requireModo, async (req, res) => {
         setPilotState(pilotId, { status: "FINISHED", frozenTime: nowIso });
       }
     }
+    ctx.raceStatus = "FINISHED";
     broadcastRaceState(ctx);
     emitAll("race-event", { type: "race-finished" });
     await db.update(race).set({ status: "FINISHED" }).where(eq(race.id, raceId));
@@ -413,64 +566,33 @@ router.post("/:id/finish", ...requireModo, async (req, res) => {
 });
 
 /**
- * PATCH /races/:id/tracking-mode — admin/modo
- * Body: { trackingMode: "manual" | "auto" }
+ * POST /races/:id/reset — modo+
+ * Remet la course à zéro (pilotStates, chrono). La course repasse en PENDING.
  */
-router.patch("/:id/tracking-mode", ...requireModo, async (req, res) => {
+router.post("/:id/reset", ...requireModo, async (req, res) => {
   const raceId = String(req.params.id);
-  const { trackingMode } = req.body;
-
-  if (trackingMode !== "manual" && trackingMode !== "auto") {
-    res.status(400).json({ error: 'trackingMode must be "manual" or "auto"' });
-    return;
-  }
-
-  const [updated] = await db
-    .update(race)
-    .set({ trackingMode })
-    .where(eq(race.id, raceId))
-    .returning();
-
-  if (!updated) { res.status(404).json({ error: "Race not found" }); return; }
-
-  // Update in-memory context if loaded
-  const ctx = getContext();
-  if (ctx && ctx.raceId === raceId) {
-    ctx.trackingMode = trackingMode;
-  }
-
-  emitDashboard("tracking-mode-changed", { raceId, trackingMode });
-  res.json(updated);
-});
-
-/**
- * POST /races/:id/open-registrations — admin/modo
- * Transitions a PENDING race to SCHEDULED, opening registrations.
- */
-router.post("/:id/open-registrations", ...requireModo, async (req, res) => {
-  const found = await db.select().from(race).where(eq(race.id, String(req.params.id))).get();
+  const found = await db.select().from(race).where(eq(race.id, raceId)).get();
   if (!found) { res.status(404).json({ error: "Race not found" }); return; }
-  if (found.status !== "PENDING") {
-    res.status(409).json({ error: "Race must be PENDING to open registrations" });
-    return;
-  }
-  const [updated] = await db.update(race).set({ status: "SCHEDULED" }).where(eq(race.id, String(req.params.id))).returning();
-  res.json(updated);
-});
 
-/**
- * POST /races/:id/close-registrations — admin/modo
- * Transitions a SCHEDULED race back to PENDING, closing registrations.
- */
-router.post("/:id/close-registrations", ...requireModo, async (req, res) => {
-  const found = await db.select().from(race).where(eq(race.id, String(req.params.id))).get();
-  if (!found) { res.status(404).json({ error: "Race not found" }); return; }
-  if (found.status !== "SCHEDULED") {
-    res.status(409).json({ error: "Race must be SCHEDULED to close registrations" });
-    return;
+  // Reset race status to PENDING
+  await db.update(race).set({ status: "PENDING" }).where(eq(race.id, raceId));
+
+  // Reset raceState in DB
+  await db
+    .update(raceState)
+    .set({ pilotStates: {}, startedAt: null, pausedAt: null, totalPausedMs: 0 })
+    .where(eq(raceState.raceId, raceId));
+
+  // Reload fresh context
+  try {
+    const ctx = await loadRace(raceId);
+    ctx.raceStatus = "PENDING";
+    broadcastRaceState(ctx);
+    res.json({ ok: true, status: "PENDING" });
+  } catch {
+    // If load fails (e.g. no validated entries), still return ok
+    res.json({ ok: true, status: "PENDING" });
   }
-  const [updated] = await db.update(race).set({ status: "PENDING" }).where(eq(race.id, String(req.params.id))).returning();
-  res.json(updated);
 });
 
 export default router;

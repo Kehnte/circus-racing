@@ -9,8 +9,13 @@ let displayTimer = null;
 let currentTeamDisplayMode = "color-bar";
 let currentTimingEnabled = true;
 
-// Keep display mode and timing state in sync with the manager
+// Keep display mode and timing state in sync
 socket.on("race-data", (data) => {
+    if (data.teamDisplayMode !== undefined) currentTeamDisplayMode = data.teamDisplayMode;
+    if (data.timingEnabled !== undefined) currentTimingEnabled = data.timingEnabled;
+});
+
+socket.on("race-state", (data) => {
     if (data.teamDisplayMode !== undefined) currentTeamDisplayMode = data.teamDisplayMode;
     if (data.timingEnabled !== undefined) currentTimingEnabled = data.timingEnabled;
 });
@@ -65,10 +70,10 @@ function showAlert(event) {
 
     const chronoEl = document.querySelector(".event-chrono");
     if (chronoEl) {
-        if (event.type === "incident") {
+        if (event.type === "incident" || event.type === "dnf") {
             chronoEl.textContent = "DNF";
-        } else if (currentTimingEnabled && event.time) {
-            chronoEl.textContent = event.time;
+        } else if (currentTimingEnabled && (event.lapFormatted || event.time)) {
+            chronoEl.textContent = event.lapFormatted || event.time;
         } else {
             chronoEl.textContent = "—";
         }
@@ -91,10 +96,12 @@ function setAlertStatus(type) {
     const label = document.querySelector(".event-label");
     if (!row) return;
 
-    row.setAttribute("data-status", type);
-    if (RACE_ICONS[type]) iconContainer.innerHTML = RACE_ICONS[type];
+    // Map "dnf" to "incident" styling/label
+    const displayType = type === "dnf" ? "incident" : type;
+    row.setAttribute("data-status", displayType);
+    if (RACE_ICONS[displayType]) iconContainer.innerHTML = RACE_ICONS[displayType];
 
-    switch (type) {
+    switch (displayType) {
         case "fastest-lap": label.textContent = "Fastest lap"; break;
         case "incident":    label.textContent = "Incident";    break;
         case "finished":    label.textContent = "Finished";    break;

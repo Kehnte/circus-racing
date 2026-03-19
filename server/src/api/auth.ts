@@ -1,3 +1,4 @@
+// auth.ts — Routes d'authentification : register, login, régénération du token OCR.
 import { Router } from "express";
 import bcrypt from "@node-rs/bcrypt";
 import crypto from "crypto";
@@ -12,23 +13,13 @@ const SALT_ROUNDS = 12;
 
 /**
  * POST /auth/register
- * Body: { displayName, email, password, country?, avatarUrl?, teamId?, vehicleId?, controlsId? }
+ * Body: { displayName, password, country?, avatarUrl?, teamId?, vehicleId?, controlsId? }
  */
 router.post("/register", async (req, res) => {
-  const { displayName, email, password, country, avatarUrl, teamId, vehicleId, controlsId } = req.body;
+  const { displayName, password, country, avatarUrl, teamId, vehicleId, controlsId } = req.body;
 
-  if (!displayName || !email || !password) {
-    res.status(400).json({ error: "displayName, email and password are required" });
-    return;
-  }
-
-  // Check uniqueness
-  const existing = await db.select({ id: pilot.id })
-    .from(pilot)
-    .where(eq(pilot.email, email))
-    .get();
-  if (existing) {
-    res.status(409).json({ error: "Email already in use" });
+  if (!displayName || !password) {
+    res.status(400).json({ error: "displayName and password are required" });
     return;
   }
 
@@ -50,7 +41,6 @@ router.post("/register", async (req, res) => {
 
   const [created] = await db.insert(pilot).values({
     displayName,
-    email,
     passwordHash,
     role,
     token,
@@ -72,17 +62,17 @@ router.post("/register", async (req, res) => {
 
 /**
  * POST /auth/login
- * Body: { email, password }
+ * Body: { displayName, password }
  */
 router.post("/login", async (req, res) => {
-  const { email, password } = req.body;
+  const { displayName, password } = req.body;
 
-  if (!email || !password) {
-    res.status(400).json({ error: "email and password are required" });
+  if (!displayName || !password) {
+    res.status(400).json({ error: "displayName and password are required" });
     return;
   }
 
-  const found = await db.select().from(pilot).where(eq(pilot.email, email)).get();
+  const found = await db.select().from(pilot).where(eq(pilot.displayName, displayName)).get();
   if (!found) {
     res.status(401).json({ error: "Invalid credentials" });
     return;

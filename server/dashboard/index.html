@@ -42,7 +42,7 @@
                 <h2 class="m3-card-title" style="text-align: center; margin-bottom: 8px;">🏁 Circus Racing</h2>
                 <p class="md-typescale-body-medium" style="text-align: center; margin-bottom: 24px; color: var(--md-sys-color-on-surface-variant);">Admin / Moderator access only</p>
                 <div style="display: flex; flex-direction: column; gap: 16px;">
-                    <md-outlined-text-field id="login-email" label="Email" type="email" style="width: 100%;"></md-outlined-text-field>
+                    <md-outlined-text-field id="login-displayname" label="Display name" type="text" style="width: 100%;"></md-outlined-text-field>
                     <md-outlined-text-field id="login-password" label="Password" type="password" style="width: 100%;"></md-outlined-text-field>
                     <p id="login-error" style="color: var(--md-sys-color-error); font-size: 14px; margin: 0; min-height: 20px;"></p>
                     <md-filled-button onclick="dashboardLogin()" style="width: 100%;">Sign in</md-filled-button>
@@ -643,8 +643,11 @@
         <script src="controls.js"></script>
         <script src="pilots.js"></script>
         <script src="racetracks.js"></script>
-        <script src="race.js"></script>
-        <script src="shortcuts.js"></script>
+        <script src="race-api.js"></script>
+        <script src="race-socket.js"></script>
+        <script src="race-render.js"></script>
+        <script src="race-controls.js"></script>
+        <script src="race-settings.js"></script>
         <script src="database.js"></script>
         <script src="registrations.js"></script>
 
@@ -663,53 +666,7 @@
                         document.getElementById("color-selected-hex").textContent = color;
                     });
                 });
-
-                const teamDisplaySelect = document.getElementById("setting-team-display");
-                if (teamDisplaySelect) {
-                    setTimeout(() => {
-                        if (typeof teamDisplayMode !== "undefined") teamDisplaySelect.value = teamDisplayMode;
-                    }, 100);
-                    teamDisplaySelect.addEventListener("change", () => {
-                        if (typeof onTeamDisplayModeChange === "function") onTeamDisplayModeChange(teamDisplaySelect.value);
-                    });
-                }
-
-                const chronoSelect = document.getElementById("setting-chrono-display");
-                if (chronoSelect) {
-                    setTimeout(() => {
-                        if (typeof chronoDisplayMode !== "undefined") chronoSelect.value = chronoDisplayMode;
-                    }, 150);
-                    chronoSelect.addEventListener("change", () => {
-                        if (typeof onChronoDisplayModeChange === "function") onChronoDisplayModeChange(chronoSelect.value);
-                    });
-                }
-
-                setTimeout(() => {
-                    updateChronoButton();
-                    updateChronoSelectVisibility(typeof timingEnabled !== "undefined" ? timingEnabled : true);
-                }, 100);
             });
-
-            // toggle timing on/off via the filter chip
-            function toggleChrono() {
-                const chip = document.getElementById("btn-chrono-toggle");
-                const on = chip ? chip.selected : timingEnabled;
-                updateChronoSelectVisibility(on);
-                if (typeof onTimingEnabledChange === "function") onTimingEnabledChange(on);
-            }
-
-            // sync the chrono chip state with the current timingEnabled value
-            function updateChronoButton() {
-                const chip = document.getElementById("btn-chrono-toggle");
-                if (!chip) return;
-                chip.selected = typeof timingEnabled !== "undefined" ? timingEnabled : true;
-            }
-
-            // show or hide the chrono mode selector based on enabled state
-            function updateChronoSelectVisibility(enabled) {
-                const chronoSelect = document.getElementById("setting-chrono-display");
-                if (chronoSelect) chronoSelect.style.display = enabled ? "" : "none";
-            }
         </script>
     </body>
 </html>

@@ -1,4 +1,5 @@
-// leaderboard.js
+// leaderboard.js — Overlay OBS du classement en temps réel.
+// Écoute l'événement "race-state" via Socket.IO et met à jour le tableau des pilotes.
 
 const socket = io();
 
@@ -29,6 +30,170 @@ let pageTimer = null;
 let sessionCountdownInterval = null;
 let sessionCountdownEndTime = null;
 let sessionCountdownExpired = false;
+
+// Phase 4/5: race-state unified format
+let lastRaceState = null;
+let chronoTicker = null;
+let currentCountdown = null;
+
+// ---------------------------------------------------------------------------
+// Chrono computation helpers — race-state format (phase 4/5)
+// ---------------------------------------------------------------------------
+
+function lbFormatTime(ms) {
+    if (ms < 0) ms = 0;
+    const totalSec = Math.floor(ms / 1000);
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    const millis = ms % 1000;
+    return `${m}:${String(s).padStart(2, "0")}.${String(millis).padStart(3, "0")}`;
+}
+
+function computePilotElapsed(pilot, raceState, now) {
+    if (!raceState.startedAt) return 0;
+    if (pilot.frozenTime) {
+        return new Date(pilot.frozenTime).getTime() - new Date(raceState.startedAt).getTime() - raceState.totalPausedMs;
+    }
+    const pauseOffset = raceState.pausedAt
+        ? raceState.totalPausedMs + (now - new Date(raceState.pausedAt).getTime())
+        : raceState.totalPausedMs;
+    return Math.max(0, now - new Date(raceState.startedAt).getTime() - pauseOffset);
+}
+
+function computeRaceElapsed(raceState, now) {
+    if (!raceState.startedAt) return 0;
+    const pauseOffset = raceState.pausedAt
+        ? raceState.totalPausedMs + (now - new Date(raceState.pausedAt).getTime())
+        : raceState.totalPausedMs;
+    return Math.max(0, now - new Date(raceState.startedAt).getTime() - pauseOffset);
+}
+
+function computeChronoDisplay(pilot, raceState, leaderElapsedMs, now) {
+    const isDnf = pilot.status === "DNF" || pilot.status === "WARNING_DNF";
+    if (!raceState.startedAt || isDnf) return "";
+    const elapsedMs = computePilotElapsed(pilot, raceState, now);
+    switch (raceState.chronoDisplayMode) {
+        case "leader":
+            return elapsedMs === leaderElapsedMs
+                ? lbFormatTime(elapsedMs)
+                : `+${lbFormatTime(Math.max(0, elapsedMs - leaderElapsedMs))}`;
+        case "gap":
+            return lbFormatTime(elapsedMs);
+        case "best-lap": {
+            const best = pilot.lapTimes.length ? Math.min(...pilot.lapTimes) : null;
+            return best !== null ? lbFormatTime(best) : "--:--.---";
+        }
+        case "last-lap": {
+            const times = pilot.lapTimes;
+            const last = times.length ? times[times.length - 1] : null;
+            return last !== null ? lbFormatTime(last) : "--:--.---";
+        }
+        default:
+            return lbFormatTime(elapsedMs);
+    }
+}
+
+// Converts a race-state broadcast to the legacy format expected by updateLeaderboard
+function adaptRaceState(raceState) {
+    const now = Date.now();
+    const statusMap = {
+        PENDING: "standby", SCHEDULED: "standby",
+        STARTED: "running", PAUSED: "paused", FINISHED: "finished",
+    };
+    const raceStatus = statusMap[raceState.status] || "standby";
+
+    const activePilots = raceState.pilots.filter(p => p.status === "RUNNING" || p.status === "WARNING_DNF");
+    const leaderPilot = activePilots[0] ?? raceState.pilots[0];
+    const leaderElapsedMs = leaderPilot ? computePilotElapsed(leaderPilot, raceState, now) : 0;
+
+    const raceList = raceState.pilots.map(pilot => ({
+        id: pilot.id,
+        name: pilot.displayName,
+        country: pilot.country,
+        teamColor: pilot.teamSnapshot ? pilot.teamSnapshot.color : null,
+        teamAcronym: pilot.teamSnapshot ? pilot.teamSnapshot.acronym : null,
+        shipModel: pilot.vehicleSnapshot ? pilot.vehicleSnapshot.model : null,
+        position: pilot.position,
+        laps: pilot.lap,
+        lapTimes: pilot.lapTimes,
+        finished: pilot.status === "FINISHED",
+        dnf: pilot.status === "DNF" || pilot.status === "WARNING_DNF",
+        frozenTime: pilot.frozenTime,
+        chronoDisplay: computeChronoDisplay(pilot, raceState, leaderElapsedMs, now),
+    }));
+
+    let sessionCountdown = null;
+    if (raceState.sessionMode === "timed" && raceState.sessionDurationMs) {
+        if (raceStatus === "standby") {
+            sessionCountdown = { active: false, remainingMs: raceState.sessionDurationMs, expired: false };
+        } else if (raceStatus === "finished") {
+            sessionCountdown = { active: false, remainingMs: 0, expired: true };
+        } else if (raceState.startedAt) {
+            const elapsed = computeRaceElapsed(raceState, now);
+            const remaining = Math.max(0, raceState.sessionDurationMs - elapsed);
+            sessionCountdown = { active: raceStatus === "running", remainingMs: remaining, expired: remaining <= 0 };
+        }
+    }
+
+    return {
+        raceList,
+        teams: [],
+        teamDisplayMode: raceState.teamDisplayMode,
+        timingEnabled: raceState.timingEnabled,
+        chronoDisplayMode: raceState.chronoDisplayMode,
+        globalFastestLap: raceState.globalFastestLapMs,
+        globalFastestLapPilotId: raceState.globalFastestLapPilotId,
+        raceStatus,
+        countdown: currentCountdown || { active: false, remainingMs: 0 },
+        sessionMode: raceState.sessionMode,
+        sessionCountdown,
+        settings: {
+            raceName: raceState.raceName,
+            session: raceState.session,
+            weather: raceState.weather,
+            startType: raceState.startType,
+            totalLaps: String(raceState.lapCount ?? 0),
+        },
+    };
+}
+
+// 200ms ticker that refreshes only chrono cells (smooth display between server broadcasts)
+function startChronoTicker() {
+    stopChronoTicker();
+    chronoTicker = setInterval(refreshChronos, 200);
+}
+
+function stopChronoTicker() {
+    if (chronoTicker) { clearInterval(chronoTicker); chronoTicker = null; }
+}
+
+function refreshChronos() {
+    if (!lastRaceState || !lastRaceState.startedAt || lastRaceState.status !== "STARTED") return;
+    const raceState = lastRaceState;
+    const now = Date.now();
+
+    if (raceState.sessionMode === "timed" && raceState.sessionDurationMs) {
+        const elapsed = computeRaceElapsed(raceState, now);
+        setLapContainerToCountdown(Math.max(0, raceState.sessionDurationMs - elapsed), elapsed >= raceState.sessionDurationMs);
+    }
+
+    const activePilots = raceState.pilots.filter(p => p.status === "RUNNING" || p.status === "WARNING_DNF");
+    const leaderPilot = activePilots[0] ?? raceState.pilots[0];
+    const leaderElapsedMs = leaderPilot ? computePilotElapsed(leaderPilot, raceState, now) : 0;
+
+    pilotElements.forEach((els, pilotId) => {
+        const pilot = raceState.pilots.find(p => p.id === pilotId);
+        if (!pilot || !els.rowEl) return;
+        const isDnf = pilot.status === "DNF" || pilot.status === "WARNING_DNF";
+        if (!raceState.timingEnabled || isDnf) return;
+        const pilotIdx = raceState.pilots.indexOf(pilot);
+        if (pilotIdx === 0 && !pilot.frozenTime) return; // leader shows static label
+        const chronoEl = els.rowEl.querySelector(".pilot-chrono");
+        if (!chronoEl) return;
+        const str = computeChronoDisplay(pilot, raceState, leaderElapsedMs, now);
+        if (str) chronoEl.textContent = str;
+    });
+}
 
 // Layout helpers
 
@@ -409,9 +574,8 @@ function buildPage(pageSlice, teams, start, chronoDisplayMode, timingEnabled, to
 
     pageSlice.forEach((pilot, index) => {
         const globalIndex = start + index;
-        const team = teams.find((t) => t.id === pilot.teamId);
-        const teamColor = team ? team.color : "#ffffff";
-        const teamAcronym = team ? team.acronym : "";
+        const teamColor = pilot.teamColor || "#ffffff";
+        const teamAcronym = pilot.teamAcronym || "";
         const dnfClass = pilot.dnf ? " dnf-row" : "";
         const rankClass = globalIndex === 0 ? " rank-first" : "";
         const safeCountry = pilot.country ? pilot.country.toLowerCase() : "un";
@@ -471,9 +635,8 @@ function updatePage(pageSlice, teams, start, chronoDisplayMode, timingEnabled, t
         if (!els) return;
 
         const globalIndex = start + index;
-        const team = teams.find((t) => t.id === pilot.teamId);
-        const teamColor = team ? team.color : "#ffffff";
-        const teamAcronym = team ? team.acronym : "";
+        const teamColor = pilot.teamColor || "#ffffff";
+        const teamAcronym = pilot.teamAcronym || "";
         const displayLaps = totalLapsVal > 0 ? Math.min(pilot.laps, totalLapsVal) : pilot.laps;
         const safeCountry = pilot.country ? pilot.country.toLowerCase() : "un";
         const { chronoContent, chronoExtraClass } = buildChronoCell(pilot, globalIndex, chronoDisplayMode, timingEnabled);
@@ -686,13 +849,39 @@ function updateLeaderboard(data) {
 
 // Socket events
 
-socket.on("race-data", (data) => {
-    updateLeaderboard(data);
+socket.on("race-state", (data) => {
+    lastRaceState = data;
+    updateLeaderboard(adaptRaceState(data));
+    if (data.status === "STARTED") {
+        startChronoTicker();
+    } else {
+        stopChronoTicker();
+    }
+});
+
+socket.on("race-event", (event) => {
+    if (event.type === "countdown") {
+        currentCountdown = { active: true, remainingMs: event.seconds * 1000 };
+        startCountdownDisplay(event.seconds * 1000);
+        if (lastRaceState) {
+            const adapted = adaptRaceState(lastRaceState);
+            updateRaceStatusBlock("standby", currentCountdown, adapted.settings);
+        }
+    } else if (event.type === "countdown-stop") {
+        currentCountdown = null;
+        stopCountdownDisplay();
+        if (lastRaceState) {
+            const adapted = adaptRaceState(lastRaceState);
+            updateRaceStatusBlock(adapted.raceStatus, null, adapted.settings);
+        }
+    }
 });
 
 socket.on("race-restarted", () => {
     wipeInReset();
+    stopChronoTicker();
     stopSessionCountdownDisplay();
+    currentCountdown = null;
     currentPage = 0;
     totalPages = 1;
     fastestLapPilotId = null;
