@@ -1,3 +1,4 @@
+// teams.ts — CRUD routes for teams (name, acronym, color).
 import { Router } from "express";
 import { eq } from "drizzle-orm";
 import { db } from "../db/db.js";

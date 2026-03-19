@@ -1,5 +1,5 @@
-// ships.js
-// the API uses "type" for vehicle category; mapped to "category" internally
+// ships.js — Vehicle CRUD and dropdown management.
+// The API uses "type" for vehicle category; mapped to "category" internally.
 
 let vehicles        = [];
 let editingVehicleId = null;

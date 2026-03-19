@@ -1,4 +1,4 @@
-// race.js
+// race.js — Legacy race dashboard logic (Socket.IO state, controls, chrono display).
 
 const socket = io("/?role=dashboard");
 
@@ -380,7 +380,7 @@ function updateAddPilotSelect() {
     const select = document.getElementById("add-pilot-select");
     if (!select) return;
     const inRace = new Set(raceList.map(p => p.id));
-    select.innerHTML = '<option value="">— Sélectionner un pilote —</option>';
+    select.innerHTML = '<option value="">— Select a pilot —</option>';
     pilots.forEach(p => {
         if (inRace.has(p.id)) return;
         const opt = document.createElement("option");
@@ -392,10 +392,10 @@ function updateAddPilotSelect() {
 
 // admin direct-adds a pilot to the current race (creates VALIDATED entry)
 async function adminAddPilot() {
-    if (!activeRaceId) { alert("Charger une course d'abord"); return; }
+    if (!activeRaceId) { alert("Load a race first"); return; }
     const select = document.getElementById("add-pilot-select");
     const pilotId = select?.value;
-    if (!pilotId) { alert("Sélectionner un pilote"); return; }
+    if (!pilotId) { alert("Select a pilot"); return; }
     try {
         await apiRequest("POST", `/api/races/${activeRaceId}/entries/admin`, { pilotId });
         await loadActiveRace(activeRaceId);
@@ -835,9 +835,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (pilotsChip) pilotsChip.setAttribute("selected", "");
 });
 
-// ---------------------------------------------------------------------------
-// Create race form
-// ---------------------------------------------------------------------------
+// create race form
 
 let _createRaceFormVisible = false;
 let _pendingCircuitCheckpoints = null; // checkpoints parsed from JSON file
@@ -902,9 +900,9 @@ async function submitCreateRace() {
     const lapCount     = parseInt(document.getElementById("new-race-lap-count")?.value) || 3;
     const durationMin  = parseFloat(document.getElementById("new-race-duration")?.value) || 30;
 
-    if (!name) { if (errorEl) errorEl.textContent = "Le nom est requis."; return; }
+    if (!name) { if (errorEl) errorEl.textContent = "Name is required."; return; }
     if (trackingMode === "auto" && !racetrackId) {
-        if (errorEl) errorEl.textContent = "Un circuit est requis pour le mode Auto (OCR).";
+        if (errorEl) errorEl.textContent = "A racetrack is required for Auto (OCR) mode.";
         return;
     }
 
@@ -929,9 +927,7 @@ async function submitCreateRace() {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Race status bar: open/close registrations
-// ---------------------------------------------------------------------------
+// race status bar: open/close registrations
 
 let _loadedRaceStatus = null; // track the DB status of the currently loaded race
 
@@ -949,7 +945,7 @@ function updateStatusBar(status) {
     }
 
     bar.style.display = "flex";
-    const labels = { PENDING: "En attente", SCHEDULED: "Inscriptions ouvertes", STARTED: "En cours", PAUSED: "En pause", FINISHED: "Terminée" };
+    const labels = { PENDING: "Pending", SCHEDULED: "Registrations open", STARTED: "In progress", PAUSED: "Paused", FINISHED: "Finished" };
     if (chip) chip.textContent = labels[status] ?? status;
 
     if (btnOpen)  btnOpen.style.display  = status === "PENDING"   ? ""     : "none";
@@ -974,16 +970,12 @@ async function closeRegistrations() {
     } catch (e) { alert(e.message); }
 }
 
-// ---------------------------------------------------------------------------
-// load open/active races into the race selector dropdown
-// ---------------------------------------------------------------------------
-
 // load open/active races into the race selector dropdown
 async function loadActiveRaceList() {
     const races  = await apiRequest("GET", "/api/races?status=PENDING,SCHEDULED,STARTED,PAUSED");
     const select = document.getElementById("active-race-select");
     if (!select) return;
-    select.innerHTML = '<option value="">— Sélectionner une course —</option>';
+    select.innerHTML = '<option value="">— Select a race —</option>';
     races.forEach(r => {
         const opt       = document.createElement("option");
         opt.value       = r.id;
@@ -1054,7 +1046,7 @@ function updateTrackingModeUI() {
 
 // toggle between manual and auto tracking modes via API
 async function toggleTrackingMode() {
-    if (!activeRaceId) { alert("Charger une course d'abord"); return; }
+    if (!activeRaceId) { alert("Load a race first"); return; }
     const newMode = trackingMode === "manual" ? "auto" : "manual";
     await apiRequest("PATCH", `/api/races/${activeRaceId}/tracking-mode`, { trackingMode: newMode });
     trackingMode = newMode;
@@ -1082,9 +1074,9 @@ function renderDnfWarningPanel() {
         const pilot = raceList.find(p => p.id === pilotId);
         const name  = pilot?.name ?? pilotId;
         return `<div class="dnf-warning-row">
-            <span>⚠️ <strong>${name}</strong> hors zone circuit</span>
-            <button onclick="confirmDnf('${pilotId}')">Confirmer DNF</button>
-            <button onclick="ignoreDnf('${pilotId}')">Ignorer</button>
+            <span>⚠️ <strong>${name}</strong> out of track zone</span>
+            <button onclick="confirmDnf('${pilotId}')">Confirm DNF</button>
+            <button onclick="ignoreDnf('${pilotId}')">Ignore</button>
         </div>`;
     }).join("");
 }

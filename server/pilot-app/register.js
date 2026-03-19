@@ -1,9 +1,6 @@
-// register.js
+// register.js — Pilot registration form (displayName, password, optional profile fields).
 
-// ---------------------------------------------------------------------------
-// Country list — ISO 3166-1 alpha-2 codes with display names
-// Kept intentionally concise; extend as needed.
-// ---------------------------------------------------------------------------
+// ISO 3166-1 alpha-2 country list (concise subset; extend as needed)
 const COUNTRIES = [
     { code: "un", name: "— Unknown —" },
     { code: "at", name: "Austria" },
@@ -43,9 +40,7 @@ const COUNTRIES = [
     { code: "za", name: "South Africa" },
 ];
 
-// ---------------------------------------------------------------------------
-// DOM initialisation
-// ---------------------------------------------------------------------------
+// DOM initialization
 document.addEventListener("DOMContentLoaded", async () => {
     populateCountrySelect();
     await Promise.all([
@@ -69,9 +64,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 });
 
-// ---------------------------------------------------------------------------
-// Populate country <md-outlined-select>
-// ---------------------------------------------------------------------------
+// populate country <md-outlined-select>
 function populateCountrySelect() {
     const select = document.getElementById("field-country");
     COUNTRIES.forEach(({ code, name }) => {
@@ -83,9 +76,7 @@ function populateCountrySelect() {
     });
 }
 
-// ---------------------------------------------------------------------------
-// Load reference data from API
-// ---------------------------------------------------------------------------
+// load reference data from API
 async function loadTeams() {
     try {
         const data = await apiFetch("/api/teams");
@@ -131,9 +122,7 @@ async function loadControls() {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Form submission
-// ---------------------------------------------------------------------------
+// form submission
 async function handleRegister() {
     hideError();
     if (!validateForm()) return;
@@ -178,9 +167,7 @@ async function handleRegister() {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Validation
-// ---------------------------------------------------------------------------
+// validation
 function validateForm() {
     let valid = true;
 
@@ -221,9 +208,7 @@ function validateForm() {
     return valid;
 }
 
-// ---------------------------------------------------------------------------
-// Field error helpers (md-outlined-text-field uses `error` + `error-text`)
-// ---------------------------------------------------------------------------
+// field error helpers (md-outlined-text-field uses `error` + `error-text`)
 function setFieldError(id, message) {
     const el = document.getElementById(id);
     if (!el) return;
@@ -236,9 +221,7 @@ function clearFieldError(el) {
     el.removeAttribute("error-text");
 }
 
-// ---------------------------------------------------------------------------
-// Error banner
-// ---------------------------------------------------------------------------
+// error banner
 function showError(message) {
     const banner = document.getElementById("error-banner");
     document.getElementById("error-text").textContent = message;
@@ -249,9 +232,7 @@ function hideError() {
     document.getElementById("error-banner").hidden = true;
 }
 
-// ---------------------------------------------------------------------------
-// Utilities
-// ---------------------------------------------------------------------------
+// utilities
 function fieldValue(id) {
     return (document.getElementById(id)?.value ?? "").trim();
 }

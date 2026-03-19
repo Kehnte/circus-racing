@@ -1,5 +1,5 @@
-// race-context.ts — Singleton serveur qui maintient l'état complet
-// de la course active (pilotStates, chrono, metadata).
+// race-context.ts — Server singleton that holds the complete state
+// of the active race (pilotStates, chrono, metadata).
 
 import { eq, and } from "drizzle-orm";
 import { db } from "../db/db.js";
@@ -11,9 +11,7 @@ import {
 
 export const CHECKPOINT_RADIUS = parseInt(process.env.CHECKPOINT_RADIUS ?? "50");
 
-// ---------------------------------------------------------------------------
 // Types
-// ---------------------------------------------------------------------------
 
 export interface PilotProfile {
   displayName: string;
@@ -51,18 +49,14 @@ export interface RaceContext {
   startType: string;
 }
 
-// ---------------------------------------------------------------------------
 // Singleton
-// ---------------------------------------------------------------------------
 
 let _ctx: RaceContext | null = null;
 
 export function getContext(): RaceContext | null { return _ctx; }
 export function hasContext(): boolean { return _ctx !== null; }
 
-// ---------------------------------------------------------------------------
 // loadRace — builds fresh context from DB (does NOT start the race)
-// ---------------------------------------------------------------------------
 
 export async function loadRace(raceId: string): Promise<RaceContext> {
   const raceRow = await db.select().from(race).where(eq(race.id, raceId)).get();
@@ -184,9 +178,7 @@ export async function loadRace(raceId: string): Promise<RaceContext> {
   return _ctx;
 }
 
-// ---------------------------------------------------------------------------
 // setPilotState — in-memory patch only
-// ---------------------------------------------------------------------------
 
 export function setPilotState(pilotId: string, patch: Partial<PilotState>): void {
   if (!_ctx) return;
@@ -194,9 +186,7 @@ export function setPilotState(pilotId: string, patch: Partial<PilotState>): void
   _ctx.pilotStates[pilotId] = { ..._ctx.pilotStates[pilotId], ...patch };
 }
 
-// ---------------------------------------------------------------------------
 // persistState — async, fire-and-forget
-// ---------------------------------------------------------------------------
 
 export async function persistState(): Promise<void> {
   if (!_ctx) return;
@@ -211,19 +201,15 @@ export async function persistState(): Promise<void> {
     .where(eq(raceState.raceId, _ctx.raceId));
 }
 
-// ---------------------------------------------------------------------------
 // clearContext — final persist then null
-// ---------------------------------------------------------------------------
 
 export async function clearContext(): Promise<void> {
   await persistState();
   _ctx = null;
 }
 
-// ---------------------------------------------------------------------------
 // Manual mode — grid ordering helpers
 // Returns sorted list of all pilot IDs by gridPosition ascending.
-// ---------------------------------------------------------------------------
 
 function getPilotsSortedByGrid(): string[] {
   if (!_ctx) return [];
@@ -240,9 +226,7 @@ function reindexGrid(pilotIds: string[]): void {
   }
 }
 
-// ---------------------------------------------------------------------------
 // setGridOrder — define the complete grid order at once
-// ---------------------------------------------------------------------------
 
 export function setGridOrder(pilotIds: string[]): void {
   if (!_ctx) return;
@@ -252,9 +236,7 @@ export function setGridOrder(pilotIds: string[]): void {
   }
 }
 
-// ---------------------------------------------------------------------------
 // setManualPosition — insert pilot at targetPos (1-based), shift others
-// ---------------------------------------------------------------------------
 
 export function setManualPosition(pilotId: string, targetPos: number): void {
   if (!_ctx) return;
@@ -269,9 +251,7 @@ export function setManualPosition(pilotId: string, targetPos: number): void {
   reindexGrid(pilots);
 }
 
-// ---------------------------------------------------------------------------
 // reorderPilot — move pilot up or down one position
-// ---------------------------------------------------------------------------
 
 export function reorderPilot(pilotId: string, direction: "up" | "down"): void {
   if (!_ctx) return;
@@ -289,9 +269,7 @@ export function reorderPilot(pilotId: string, direction: "up" | "down"): void {
   reindexGrid(pilots);
 }
 
-// ---------------------------------------------------------------------------
 // toggleDnf — toggle pilot between RUNNING and DNF (manual mode)
-// ---------------------------------------------------------------------------
 
 export function toggleDnf(pilotId: string): void {
   if (!_ctx) return;
@@ -309,10 +287,8 @@ export function toggleDnf(pilotId: string): void {
   }
 }
 
-// ---------------------------------------------------------------------------
 // incrementLap — +1 or -1 lap for a pilot (manual mode)
 // Returns engine-like events (fastest-lap, finished, race-finished).
-// ---------------------------------------------------------------------------
 
 function formatLapTime(ms: number): string {
   const totalSec = Math.floor(ms / 1000);

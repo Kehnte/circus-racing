@@ -1,22 +1,22 @@
-// race-socket.js — Connexion Socket.IO dashboard, réception du broadcast race-state,
-// stockage de l'état courant, délégation au rendu.
+// race-socket.js — Socket.IO dashboard connection, receives race-state broadcast,
+// stores current state, delegates to rendering.
 
 const raceSocket = io("/?role=dashboard");
 
-/** État courant de la course, mis à jour à chaque broadcast race-state. */
+// current race state, updated on each race-state broadcast
 window.currentRaceState = null;
 
-/** Socket exposé pour les modules qui émettent (ex: toggle-pilots-visibility). */
+// exposed socket for modules that emit (e.g. toggle-pilots-visibility)
 window.raceSocket = raceSocket;
 
-/** Ensemble des pilotIds avec WARNING_DNF actif. */
+// set of pilotIds with active WARNING_DNF
 const _dnfWarningPilots = new Set();
 window._dnfWarningPilots = _dnfWarningPilots;
 
 raceSocket.on("race-state", (state) => {
     window.currentRaceState = state;
 
-    // Synchroniser le set DNF à partir de l'état pilots
+    // sync DNF set from pilot states
     _dnfWarningPilots.clear();
     if (state.pilots) {
         state.pilots.forEach((p) => {
@@ -28,7 +28,7 @@ raceSocket.on("race-state", (state) => {
     if (typeof renderDnfWarningPanel === "function") renderDnfWarningPanel();
 });
 
-// Compat arrière : pilots.js lit isTeamManagementActive
+// backward compat: pilots.js reads isTeamManagementActive
 Object.defineProperty(window, "isTeamManagementActive", {
     get: () => window.currentRaceState?.teamDisplayMode !== "hidden",
     configurable: true,

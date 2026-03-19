@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-// simulate-manual.js — Simule une course MANUEL complète via l'API REST.
-// Nécessite le serveur démarré et une DB seedée (scripts/seed.js).
+// simulate-manual.js — Simulate a full MANUAL race via the REST API.
+// Requires a running server and seeded DB (scripts/seed.js).
 //
-// Usage :
-//   node scripts/simulate-manual.js              # mode rapide (tout enchaîné)
-//   node scripts/simulate-manual.js --interactive # pause entre chaque action
+// Usage:
+//   node scripts/simulate-manual.js              # fast mode (all chained)
+//   node scripts/simulate-manual.js --interactive # pause between each action
 //   node scripts/simulate-manual.js --base-url http://localhost:3000
 
 'use strict';
@@ -15,9 +15,7 @@ const BASE_URL = (() => {
 })();
 const INTERACTIVE = process.argv.includes('--interactive');
 
-// ---------------------------------------------------------------------------
 // Helpers
-// ---------------------------------------------------------------------------
 
 async function api(method, path, body, token) {
   const headers = { 'Content-Type': 'application/json' };
@@ -49,39 +47,37 @@ async function step(label, fn) {
 
 function log(msg) { console.log(`\n${msg}`); }
 
-// ---------------------------------------------------------------------------
 // Simulation
-// ---------------------------------------------------------------------------
 
 async function simulate() {
-  log('🏁 Simulation course MANUEL');
-  console.log(`   Serveur : ${BASE_URL}`);
-  console.log(`   Mode    : ${INTERACTIVE ? 'interactif' : 'rapide'}\n`);
+  log('🏁 MANUAL race simulation');
+  console.log(`   Server : ${BASE_URL}`);
+  console.log(`   Mode   : ${INTERACTIVE ? 'interactive' : 'fast'}\n`);
 
-  // --- 1. Login admin ---
-  log('1. Authentification admin');
+  // 1. Login admin
+  log('1. Admin authentication');
   const loginRes = await step('Login', () =>
     api('POST', '/api/auth/login', { email: 'admin@circus.local', password: 'admin123' })
   );
   const jwt = loginRes.token; // response: { token (JWT), ocrToken, pilot }
 
-  // --- 2. Find MANUAL race ---
-  log('2. Sélection de la course MANUEL');
+  // 2. Find MANUAL race
+  log('2. Selecting MANUAL race');
   const races = await step('GET /api/races', () => api('GET', '/api/races', null, jwt));
   const race = races.find(r => r.trackingMode === 'manual');
-  if (!race) throw new Error('Aucune course MANUEL trouvée. Lancez seed.js d\'abord.');
-  console.log(`   Course : "${race.name}" [${race.id}]`);
+  if (!race) throw new Error('No MANUAL race found. Run seed.js first.');
+  console.log(`   Race : "${race.name}" [${race.id}]`);
 
-  // --- 3. Open registrations ---
-  log('3. Ouverture des inscriptions');
+  // 3. Open registrations
+  log('3. Opening registrations');
   if (race.status === 'PENDING') {
     await step('open-registrations', () =>
       api('POST', `/api/races/${race.id}/open-registrations`, null, jwt)
     );
   }
 
-  // --- 4. Register & validate 6 pilots ---
-  log('4. Inscriptions et validations');
+  // 4. Register & validate 6 pilots
+  log('4. Registrations and validations');
   const allPilots = await api('GET', '/api/pilots', null, jwt);
   const pilots = allPilots.filter(p => p.role !== 'ADMIN').slice(0, 6);
 
@@ -103,8 +99,8 @@ async function simulate() {
     );
   }
 
-  // --- 5. Load + set grid order ---
-  log('5. Chargement du contexte + ordre de grille');
+  // 5. Load + set grid order
+  log('5. Loading context + grid order');
   await step('Load race', () => api('POST', `/api/races/${race.id}/load`, null, jwt));
 
   const validatedEntries = (await api('GET', `/api/races/${race.id}/entries`, null, jwt))
@@ -117,8 +113,8 @@ async function simulate() {
     }, jwt)
   );
 
-  // --- 6. Countdown + Start ---
-  log('6. Countdown + Départ');
+  // 6. Countdown + Start
+  log('6. Countdown + Start');
   await step('Countdown 5s', () =>
     api('POST', `/api/race-events/races/${race.id}/countdown`, { seconds: 5 }, jwt)
   );
@@ -128,8 +124,8 @@ async function simulate() {
   );
   await step('Start race', () => api('POST', `/api/races/${race.id}/start`, null, jwt));
 
-  // --- 7. Simulate laps ---
-  log('7. Simulation des tours');
+  // 7. Simulate laps
+  log('7. Lap simulation');
   const LAP_COUNT = 3;
   const pilotIds = validatedEntries.map(e => e.pilotId);
 
@@ -179,7 +175,7 @@ async function simulate() {
     // Simulate pause in the middle (lap 2 of leader)
     if (lapsDone[0] === 2 && !lapsDone._paused) {
       lapsDone._paused = true;
-      log('   [Pause de 2 secondes]');
+      log('   [2-second pause]');
       await step('Pause race', () => api('POST', `/api/races/${race.id}/pause`, null, jwt));
       await sleep(INTERACTIVE ? 3000 : 500);
       await step('Resume race', () => api('POST', `/api/races/${race.id}/resume`, null, jwt));
@@ -188,14 +184,14 @@ async function simulate() {
     await sleep(50);
   }
 
-  // --- 8. Finish ---
-  log('8. Fin de course');
+  // 8. Finish
+  log('8. Race finish');
   await step('Finish race', () => api('POST', `/api/races/${race.id}/finish`, null, jwt));
 
-  log('✅ Simulation MANUEL terminée avec succès.\n');
+  log('✅ MANUAL simulation completed successfully.\n');
 }
 
 simulate().catch(err => {
-  console.error('\n❌ Simulation échouée:', err.message);
+  console.error('\n❌ Simulation failed:', err.message);
   process.exit(1);
 });

@@ -1,3 +1,4 @@
+// Express + Socket.IO server: REST API, static file serving, and real-time overlay communication.
 'use strict';
 
 require('dotenv').config();
@@ -11,15 +12,11 @@ const app    = express();
 const server = http.createServer(app);
 const io     = new Server(server);
 
-// ---------------------------------------------------------------------------
 // Body parsing
-// ---------------------------------------------------------------------------
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ---------------------------------------------------------------------------
 // CORS — allow overlays served from a different port / OBS browser source
-// ---------------------------------------------------------------------------
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
@@ -28,10 +25,8 @@ app.use((req, res, next) => {
   next();
 });
 
-// ---------------------------------------------------------------------------
 // REST API — routes from src/ (TypeScript compiled to dist/ in prod,
 // loaded with tsx/ts-node in dev via "npm run dev:ts")
-// ---------------------------------------------------------------------------
 try {
   const { initEmitter }  = require('./src/socket/emitter');
   initEmitter(io);
@@ -74,19 +69,13 @@ try {
   console.error('   Run "npm run build" or use "npm run dev:ts" for TypeScript support.');
 }
 
-// ---------------------------------------------------------------------------
 // Health check — used by reset.js to wait for server readiness
-// ---------------------------------------------------------------------------
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
-// ---------------------------------------------------------------------------
 // Static files — dashboard, overlays, pilot-app
-// ---------------------------------------------------------------------------
 app.use(express.static(path.join(__dirname)));
 
-// ---------------------------------------------------------------------------
-// Socket.IO — real-time overlay communication (unchanged from v1)
-// ---------------------------------------------------------------------------
+// Socket.IO — real-time overlay communication
 io.on('connection', (socket) => {
   console.log('Socket connected:', socket.id);
 
@@ -124,9 +113,7 @@ io.on('connection', (socket) => {
   });
 });
 
-// ---------------------------------------------------------------------------
 // Global error handler
-// ---------------------------------------------------------------------------
 app.use((err, req, res, _next) => {
   console.error(err.stack);
   res.status(err.status ?? 500).json({
@@ -134,9 +121,7 @@ app.use((err, req, res, _next) => {
   });
 });
 
-// ---------------------------------------------------------------------------
 // Start
-// ---------------------------------------------------------------------------
 const PORT = parseInt(process.env.PORT ?? '3000', 10);
 
 server.listen(PORT, () => {

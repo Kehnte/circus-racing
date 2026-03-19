@@ -1,5 +1,5 @@
-// race-events.ts — Commandes admin en direct : contrôles manuels, grille,
-// countdown, DNF AUTO, override position AUTO.
+// race-events.ts — Live admin commands: manual controls, grid order,
+// countdown, AUTO DNF, AUTO position override.
 
 import { Router } from "express";
 import { eq } from "drizzle-orm";
@@ -14,9 +14,7 @@ import { emitAll, broadcastRaceState } from "../socket/emitter.js";
 
 const router = Router();
 
-// ---------------------------------------------------------------------------
-// Helper — vérifie que le contexte est chargé pour la course donnée
-// ---------------------------------------------------------------------------
+// Helper — verifies the context is loaded for the given race
 
 function requireContext(raceId: string | string[], res: Parameters<Parameters<typeof router.post>[1]>[1]) {
   raceId = String(raceId);
@@ -28,10 +26,8 @@ function requireContext(raceId: string | string[], res: Parameters<Parameters<ty
   return ctx;
 }
 
-// ---------------------------------------------------------------------------
 // POST /race-events/races/:id/manual-lap — modo+
 // Body: { pilotId, delta: 1 | -1 }
-// ---------------------------------------------------------------------------
 
 router.post("/races/:id/manual-lap", ...requireModo, async (req, res) => {
   const ctx = requireContext(req.params.id, res);
@@ -90,10 +86,8 @@ router.post("/races/:id/manual-lap", ...requireModo, async (req, res) => {
   res.json({ ok: true, lap: ctx.pilotStates[pilotId]?.lap });
 });
 
-// ---------------------------------------------------------------------------
 // POST /race-events/races/:id/manual-position — modo+
 // Body: { pilotId, position: number }
-// ---------------------------------------------------------------------------
 
 router.post("/races/:id/manual-position", ...requireModo, async (req, res) => {
   const ctx = requireContext(req.params.id, res);
@@ -123,10 +117,8 @@ router.post("/races/:id/manual-position", ...requireModo, async (req, res) => {
   res.json({ ok: true, gridPosition: ctx.pilotStates[pilotId].gridPosition });
 });
 
-// ---------------------------------------------------------------------------
 // POST /race-events/races/:id/manual-reorder — modo+
 // Body: { pilotId, direction: "up" | "down" }
-// ---------------------------------------------------------------------------
 
 router.post("/races/:id/manual-reorder", ...requireModo, async (req, res) => {
   const ctx = requireContext(req.params.id, res);
@@ -157,10 +149,8 @@ router.post("/races/:id/manual-reorder", ...requireModo, async (req, res) => {
   res.json({ ok: true });
 });
 
-// ---------------------------------------------------------------------------
 // POST /race-events/races/:id/manual-dnf — modo+
 // Body: { pilotId }  — toggle DNF / RUNNING
-// ---------------------------------------------------------------------------
 
 router.post("/races/:id/manual-dnf", ...requireModo, async (req, res) => {
   const ctx = requireContext(req.params.id, res);
@@ -198,10 +188,8 @@ router.post("/races/:id/manual-dnf", ...requireModo, async (req, res) => {
   res.json({ ok: true, status: state.status });
 });
 
-// ---------------------------------------------------------------------------
 // POST /race-events/races/:id/grid-order — modo+
 // Body: { pilotIds: string[] }
-// ---------------------------------------------------------------------------
 
 router.post("/races/:id/grid-order", ...requireModo, async (req, res) => {
   const ctx = requireContext(req.params.id, res);
@@ -228,10 +216,8 @@ router.post("/races/:id/grid-order", ...requireModo, async (req, res) => {
   res.json({ ok: true });
 });
 
-// ---------------------------------------------------------------------------
 // POST /race-events/races/:id/countdown — modo+
 // Body: { seconds: number }
-// ---------------------------------------------------------------------------
 
 router.post("/races/:id/countdown", ...requireModo, async (req, res) => {
   const { seconds } = req.body;
@@ -244,19 +230,15 @@ router.post("/races/:id/countdown", ...requireModo, async (req, res) => {
   res.json({ ok: true });
 });
 
-// ---------------------------------------------------------------------------
 // POST /race-events/races/:id/countdown-stop — modo+
-// ---------------------------------------------------------------------------
 
 router.post("/races/:id/countdown-stop", ...requireModo, async (req, res) => {
   emitAll("race-event", { type: "countdown-stop" });
   res.json({ ok: true });
 });
 
-// ---------------------------------------------------------------------------
 // POST /race-events/races/:id/confirm-dnf/:pilotId — modo+ (AUTO)
-// Confirme un WARNING_DNF → DNF officiel.
-// ---------------------------------------------------------------------------
+// Confirms a WARNING_DNF as official DNF.
 
 router.post("/races/:id/confirm-dnf/:pilotId", ...requireModo, async (req, res) => {
   const raceId  = String(req.params.id);
@@ -290,10 +272,8 @@ router.post("/races/:id/confirm-dnf/:pilotId", ...requireModo, async (req, res) 
   res.json({ ok: true });
 });
 
-// ---------------------------------------------------------------------------
 // POST /race-events/races/:id/ignore-dnf/:pilotId — modo+ (AUTO)
-// Faux positif : efface le WARNING_DNF.
-// ---------------------------------------------------------------------------
+// False positive: clears the WARNING_DNF.
 
 router.post("/races/:id/ignore-dnf/:pilotId", ...requireModo, async (req, res) => {
   const raceId  = String(req.params.id);
@@ -310,10 +290,8 @@ router.post("/races/:id/ignore-dnf/:pilotId", ...requireModo, async (req, res) =
   res.json({ ok: true });
 });
 
-// ---------------------------------------------------------------------------
 // POST /race-events/races/:id/override-position — modo+ (AUTO)
-// Body: { pilotId, position: number } — forcer un rang en mode AUTO
-// ---------------------------------------------------------------------------
+// Body: { pilotId, position: number } — force a rank in AUTO mode
 
 router.post("/races/:id/override-position", ...requireModo, async (req, res) => {
   const ctx = requireContext(req.params.id, res);

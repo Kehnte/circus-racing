@@ -1,4 +1,4 @@
-// login.js — Logique de connexion pilote (displayName + password)
+// login.js — Pilot login logic (displayName + password).
 
 document.addEventListener("DOMContentLoaded", () => {
     // Already logged in → go straight to profile
@@ -45,9 +45,7 @@ async function handleLogin() {
     }
 }
 
-// ---------------------------------------------------------------------------
 // UI helpers
-// ---------------------------------------------------------------------------
 function showError(msg) {
     document.getElementById("error-text").textContent = msg;
     document.getElementById("error-banner").hidden = false;

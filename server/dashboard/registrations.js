@@ -1,5 +1,5 @@
-// registrations.js — Gestion des inscriptions : validation, rejet, révocation,
-// réadmission et ajout direct par l'admin.
+// registrations.js — Registration management: validate, reject, revoke,
+// readmit, and direct admin add.
 
 let _registrationsRaces = [];
 
@@ -89,9 +89,9 @@ async function loadRegistrations() {
                 <td><span style="font-weight:500">${escReg(p?.displayName ?? "—")}</span>
                     ${p?.country ? `<span class="fi fi-${escReg(p.country)}" style="margin-left:6px;"></span>` : ""}
                 </td>
-                <td>${escReg(p?.teamId     ? "Lié" : "—")}</td>
-                <td>${escReg(p?.vehicleId  ? "Lié" : "—")}</td>
-                <td>${escReg(p?.controlsId ? "Lié" : "—")}</td>
+                <td>${escReg(p?.teamId     ? "Linked" : "—")}</td>
+                <td>${escReg(p?.vehicleId  ? "Linked" : "—")}</td>
+                <td>${escReg(p?.controlsId ? "Linked" : "—")}</td>
                 <td>
                     <div style="display:flex;gap:8px;align-items:center;">
                         <md-filled-button
@@ -173,7 +173,7 @@ async function loadRegistrations() {
     }
 
     // --- ADMIN ADD ---
-    html += `<p class="registrations-group-label">Ajouter un pilote directement</p>`;
+    html += `<p class="registrations-group-label">Add a pilot directly</p>`;
     html += `<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:20px;">
         ${_buildAdminAddSelect(entries, raceId)}
     </div>`;
@@ -181,9 +181,7 @@ async function loadRegistrations() {
     content.innerHTML = html;
 }
 
-// ---------------------------------------------------------------------------
-// Actions sur les entrées
-// ---------------------------------------------------------------------------
+// entry actions
 
 async function validateEntry(raceId, entryId) {
     const btn = document.getElementById(`btn-validate-${entryId}`);
@@ -198,7 +196,7 @@ async function validateEntry(raceId, entryId) {
 }
 
 async function rejectEntry(raceId, entryId) {
-    if (!confirm("Rejeter cette inscription ?")) return;
+    if (!confirm("Reject this registration?")) return;
     const btn = document.getElementById(`btn-reject-${entryId}`);
     if (btn) btn.disabled = true;
     try {
@@ -211,7 +209,7 @@ async function rejectEntry(raceId, entryId) {
 }
 
 async function revokeEntry(raceId, entryId) {
-    if (!confirm("Révoquer cette inscription validée ?")) return;
+    if (!confirm("Revoke this validated registration?")) return;
     try {
         await apiPatch(`/races/${raceId}/entries/${entryId}/revoke`);
         await loadRegistrations();
@@ -232,7 +230,7 @@ async function readmitEntry(raceId, entryId) {
 async function adminDirectAdd(raceId) {
     const select  = document.getElementById(`reg-admin-add-select-${raceId}`);
     const pilotId = select?.value;
-    if (!pilotId) { alert("Sélectionner un pilote"); return; }
+    if (!pilotId) { alert("Select a pilot"); return; }
     try {
         await apiPost(`/races/${raceId}/entries/admin`, { pilotId });
         await loadRegistrations();
@@ -241,9 +239,7 @@ async function adminDirectAdd(raceId) {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+// helpers
 
 function _avatarCell(p, containerColor = "primary") {
     if (p?.avatarUrl) {
@@ -259,13 +255,13 @@ function _buildAdminAddSelect(entries, raceId) {
     const available  = allPilots.filter(p => !inRace.has(p.id));
 
     let selectHtml = `<select id="reg-admin-add-select-${raceId}" style="flex:1;min-width:200px;padding:8px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline);background:var(--md-sys-color-surface-container);color:var(--md-sys-color-on-surface);font-size:14px;">
-        <option value="">— Sélectionner un pilote —</option>`;
+        <option value="">— Select a pilot —</option>`;
     available.forEach(p => {
         selectHtml += `<option value="${escReg(p.id)}">${escReg(p.displayName ?? p.name ?? p.id)}</option>`;
     });
     selectHtml += `</select>`;
     selectHtml += `<md-filled-button onclick="adminDirectAdd('${raceId}')">
-        <span class="material-symbols-outlined" slot="icon">person_add</span>Ajouter
+        <span class="material-symbols-outlined" slot="icon">person_add</span>Add
     </md-filled-button>`;
     return selectHtml;
 }

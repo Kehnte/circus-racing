@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// reset.js — Supprime la base de données SQLite et relance seed.js.
-// Destructif — toutes les données existantes sont perdues.
-// Usage : node scripts/reset.js [--base-url http://localhost:3000]
+// reset.js — Delete the SQLite database and re-run seed.js.
+// Destructive — all existing data is lost.
+// Usage: node scripts/reset.js [--base-url http://localhost:3000]
 
 'use strict';
 
@@ -21,17 +21,13 @@ const baseUrlIdx = process.argv.indexOf('--base-url');
 const BASE_URL   = baseUrlIdx !== -1 ? process.argv[baseUrlIdx + 1] : 'http://localhost:3000';
 const HEALTH_URL = `${BASE_URL}/health`;
 
-console.log('\n⚠️  RESET — toutes les données vont être supprimées.\n');
-
-// ---------------------------------------------------------------------------
-// 1. Delete DB file
-// ---------------------------------------------------------------------------
+console.log('\n⚠️  RESET — all data will be deleted.\n');
 if (DB_PATH) {
   if (fs.existsSync(DB_PATH)) {
     fs.unlinkSync(DB_PATH);
-    console.log(`🗑️  Base supprimée : ${DB_PATH}`);
+    console.log(`🗑️  Database deleted: ${DB_PATH}`);
   } else {
-    console.log(`ℹ️  Pas de base existante : ${DB_PATH}`);
+    console.log(`ℹ️  No existing database: ${DB_PATH}`);
   }
   for (const ext of ['-wal', '-shm']) {
     const p = DB_PATH + ext;
@@ -39,20 +35,16 @@ if (DB_PATH) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// 2. Recreate schema
-// ---------------------------------------------------------------------------
-console.log('\n📐 Recréation du schéma (drizzle-kit push)...');
+// recreate schema
+console.log('\n📐 Recreating schema (drizzle-kit push)...');
 try {
   execSync('npm run db:push', { cwd: SERVER_DIR, stdio: 'inherit' });
 } catch {
-  console.error('❌ drizzle-kit push a échoué. Vérifiez la config.');
+  console.error('❌ drizzle-kit push failed. Check your config.');
   process.exit(1);
 }
 
-// ---------------------------------------------------------------------------
-// 3. Start server (unless already running)
-// ---------------------------------------------------------------------------
+// start server (unless already running)
 async function isServerReady() {
   try {
     const res = await fetch(HEALTH_URL);
@@ -77,9 +69,9 @@ async function waitForServer(childProc, timeoutMs = 30_000) {
   const alreadyRunning = await isServerReady();
 
   if (alreadyRunning) {
-    console.log('\n🟢 Serveur déjà actif — seed direct.\n');
+    console.log('\n🟢 Server already running — seeding directly.\n');
   } else {
-    console.log('\n🚀 Démarrage du serveur...\n');
+    console.log('\n🚀 Starting server...\n');
     serverChild = spawn('npm', ['run', 'dev:ts'], {
       cwd: SERVER_DIR,
       stdio: 'inherit',
@@ -91,23 +83,21 @@ async function waitForServer(childProc, timeoutMs = 30_000) {
 
     const ready = await waitForServer(serverChild);
     if (!ready) {
-      console.error('❌ Le serveur n\'a pas démarré dans les 30 secondes.');
+      console.error('❌ Server did not start within 30 seconds.');
       process.exit(1);
     }
-    console.log('\n✅ Serveur prêt.\n');
+    console.log('\n✅ Server ready.\n');
   }
 
-  // -------------------------------------------------------------------------
-  // 4. Run seed
-  // -------------------------------------------------------------------------
-  console.log('🌱 Lancement du seed...\n');
+  // run seed
+  console.log('🌱 Running seed...\n');
   const seedArgs = process.argv.slice(2).join(' ');
   try {
     execSync(`node "${path.join(__dirname, 'seed.js')}" ${seedArgs}`, {
       stdio: 'inherit',
     });
   } catch {
-    console.error('❌ Seed a échoué.');
+    console.error('❌ Seed failed.');
     process.exit(1);
   }
 })();

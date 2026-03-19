@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// seed.js — Préremplir la DB avec un jeu de données de test complet.
-// Nécessite que le serveur soit démarré (npm run dev:ts dans /server).
-// Usage : node scripts/seed.js [--base-url http://localhost:3000]
+// seed.js — Pre-fill the DB with a complete test dataset.
+// Requires the server to be running (npm run dev:ts in /server).
+// Usage: node scripts/seed.js [--base-url http://localhost:3000]
 
 'use strict';
 
@@ -10,9 +10,7 @@ const BASE_URL = (() => {
   return i !== -1 ? process.argv[i + 1] : 'http://localhost:3000';
 })();
 
-// ---------------------------------------------------------------------------
 // HTTP helpers
-// ---------------------------------------------------------------------------
 
 async function api(method, path, body, token) {
   const headers = { 'Content-Type': 'application/json' };
@@ -33,9 +31,7 @@ async function api(method, path, body, token) {
   return ct.includes('application/json') ? res.json() : null;
 }
 
-// ---------------------------------------------------------------------------
-// Seed data
-// ---------------------------------------------------------------------------
+// seed data
 
 const TEAMS = [
   { name: 'Cirque Lisoir',  color: '#E91E63', acronym: 'CIRC' },
@@ -57,7 +53,7 @@ const CONTROLS = [
   { type: 'Gamepad' },
 ];
 
-// Le PREMIER pilote enregistré devient automatiquement ADMIN (logique dans auth.ts).
+// the FIRST registered pilot automatically becomes ADMIN (see auth.ts)
 const PILOTS = [
   { displayName: 'Kehnte',     password: 'kehnteazerty',  country: 'fr', teamIdx: 0, vehicleIdx: 0, controlsIdx: 0 },
   { displayName: 'Neoscris',     password: 'pilot123',  country: 'uk', teamIdx: 0, vehicleIdx: 0, controlsIdx: 0 },
@@ -69,7 +65,7 @@ const PILOTS = [
   { displayName: 'Lapaixduslip',    password: 'pilot123',  country: 'br', teamIdx: 2, vehicleIdx: 1, controlsIdx: 0 },
 ];
 
-// Circuit de test : ovale simple avec 6 checkpoints (coordonnées fictives)
+// test racetrack: simple oval with 6 checkpoints (fictitious coordinates)
 const RACETRACK = {
   name: 'The Icebreaker',
   checkpoints: [
@@ -83,15 +79,13 @@ const RACETRACK = {
   bufferRadius: 500,
 };
 
-// ---------------------------------------------------------------------------
-// Main
-// ---------------------------------------------------------------------------
+// main
 
 async function seed() {
   console.log(`\n🌱 Seeding ${BASE_URL} ...\n`);
 
   // --- 1. Register all pilots (first = ADMIN automatically) ---
-  console.log('1. Enregistrement des pilotes');
+  console.log('1. Registering pilots');
   const pilotTokens = {}; // displayName → { jwt, ocrToken, pilotId }
 
   for (let i = 0; i < PILOTS.length; i++) {
@@ -110,7 +104,7 @@ async function seed() {
   const adminJwt = pilotTokens[PILOTS[0].displayName].jwt;
 
   // --- 2. Create teams, vehicles, controls (admin JWT) ---
-  console.log('\n2. Création des entités');
+  console.log('\n2. Creating entities');
 
   const teams = [];
   for (const t of TEAMS) {
@@ -134,7 +128,7 @@ async function seed() {
   }
 
   // --- 3. Update pilot profiles (admin patches all via /api/pilots/:id) ---
-  console.log('\n3. Mise à jour des profils pilotes');
+  console.log('\n3. Updating pilot profiles');
   for (const p of PILOTS) {
     const { pilotId } = pilotTokens[p.displayName];
     await api('PATCH', `/api/pilots/${pilotId}`, {
@@ -146,12 +140,12 @@ async function seed() {
   }
 
   // --- 4. Racetrack ---
-  console.log('\n4. Création du circuit');
+  console.log('\n4. Creating racetrack');
   const track = await api('POST', '/api/racetracks', RACETRACK, adminJwt);
   console.log(`  ✓ "${RACETRACK.name}" (${RACETRACK.checkpoints.length} checkpoints) [${track.id}]`);
 
   // --- 5. Races ---
-  console.log('\n5. Création des courses');
+  console.log('\n5. Creating races');
   const raceManual = await api('POST', '/api/races', {
     name:         'Test Race MANUEL',
     trackingMode: 'manual',
@@ -177,21 +171,21 @@ async function seed() {
 
   // --- Summary ---
   console.log('\n' + '═'.repeat(64));
-  console.log('✅ Seed terminé !\n');
-  console.log('COMPTES (displayName / password) :');
+  console.log('✅ Seed complete!\n');
+  console.log('ACCOUNTS (displayName / password):');
   for (let i = 0; i < PILOTS.length; i++) {
     const p = PILOTS[i];
     const role = i === 0 ? 'ADMIN' : 'PILOT';
     console.log(`  [${role.padEnd(9)}] ${p.displayName.padEnd(12)} / ${p.password}`);
   }
-  console.log(`\nCOURSES :`);
-  console.log(`  MANUEL : ${raceManual.id}`);
+  console.log(`\nRACES:`);
+  console.log(`  MANUAL : ${raceManual.id}`);
   console.log(`  AUTO   : ${raceAuto.id}`);
-  console.log(`\nCIRCUIT : ${track.id}`);
+  console.log(`\nRACETRACK: ${track.id}`);
   console.log('═'.repeat(64) + '\n');
 }
 
 seed().catch(err => {
-  console.error('\n❌ Seed échoué :', err.message);
+  console.error('\n❌ Seed failed:', err.message);
   process.exit(1);
 });

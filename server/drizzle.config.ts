@@ -1,3 +1,4 @@
+// drizzle.config.ts — Drizzle Kit configuration for SQLite migrations.
 import { defineConfig } from "drizzle-kit";
 import { config } from "dotenv";
 

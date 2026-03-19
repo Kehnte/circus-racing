@@ -1,4 +1,4 @@
-// races.ts — CRUD courses, gestion des inscriptions, cycle de vie (load/start/pause/resume/finish/reset).
+// races.ts — Race CRUD, registration management, lifecycle (load/start/pause/resume/finish/reset).
 
 import { Router } from "express";
 import { eq, and } from "drizzle-orm";
@@ -13,9 +13,7 @@ import { emitAll, emitDashboard, broadcastRaceState } from "../socket/emitter.js
 
 const router = Router();
 
-// ---------------------------------------------------------------------------
 // Races CRUD
-// ---------------------------------------------------------------------------
 
 /** GET /races — public */
 router.get("/", async (req, res) => {
@@ -72,7 +70,7 @@ router.post("/", ...requireModo, async (req, res) => {
   res.status(201).json(created);
 });
 
-/** PATCH /races/:id — modo+. Bloque trackingMode si STARTED. */
+/** PATCH /races/:id — modo+. Blocks trackingMode if STARTED. */
 router.patch("/:id", ...requireModo, async (req, res) => {
   const raceId = String(req.params.id);
   const found = await db.select().from(race).where(eq(race.id, raceId)).get();
@@ -113,7 +111,7 @@ router.patch("/:id", ...requireModo, async (req, res) => {
   res.json(updated);
 });
 
-/** DELETE /races/:id — modo+. Bloqué si STARTED ou PAUSED. */
+/** DELETE /races/:id — modo+. Blocked if STARTED or PAUSED. */
 router.delete("/:id", ...requireModo, async (req, res) => {
   const raceId = String(req.params.id);
   const found = await db.select().from(race).where(eq(race.id, raceId)).get();
@@ -128,9 +126,7 @@ router.delete("/:id", ...requireModo, async (req, res) => {
   res.sendStatus(204);
 });
 
-// ---------------------------------------------------------------------------
 // Race entries
-// ---------------------------------------------------------------------------
 
 /** GET /races/:id/entries — modo+ */
 router.get("/:id/entries", ...requireModo, async (req, res) => {
@@ -196,7 +192,7 @@ router.post("/:id/entries", requireAuth, async (req, res) => {
   res.status(201).json(created);
 });
 
-/** POST /races/:id/entries/admin — modo+ (ajout direct VALIDATED) */
+/** POST /races/:id/entries/admin — modo+ (direct add as VALIDATED) */
 router.post("/:id/entries/admin", ...requireModo, async (req, res) => {
   const raceId = String(req.params.id);
   const { pilotId } = req.body;
@@ -251,9 +247,7 @@ router.post("/:id/entries/admin", ...requireModo, async (req, res) => {
   res.status(201).json(created);
 });
 
-// ---------------------------------------------------------------------------
 // Entry status transitions
-// ---------------------------------------------------------------------------
 
 /** PATCH /races/:raceId/entries/:entryId/validate — PENDING → VALIDATED */
 router.patch("/:raceId/entries/:entryId/validate", ...requireModo, async (req, res) => {
@@ -371,7 +365,7 @@ router.patch("/:raceId/entries/:entryId/readmit", ...requireModo, async (req, re
   res.json(updated);
 });
 
-/** DELETE /races/:raceId/entries/:entryId — pilote annule sa propre inscription (PENDING) */
+/** DELETE /races/:raceId/entries/:entryId — pilot cancels their own registration (PENDING) */
 router.delete("/:raceId/entries/:entryId", requireAuth, async (req, res) => {
   const entry = await db
     .select()
@@ -396,9 +390,7 @@ router.delete("/:raceId/entries/:entryId", requireAuth, async (req, res) => {
   res.sendStatus(204);
 });
 
-// ---------------------------------------------------------------------------
 // Race registrations open/close
-// ---------------------------------------------------------------------------
 
 /** POST /races/:id/open-registrations — PENDING → SCHEDULED */
 router.post("/:id/open-registrations", ...requireModo, async (req, res) => {
@@ -422,14 +414,12 @@ router.post("/:id/close-registrations", ...requireModo, async (req, res) => {
   res.json(updated);
 });
 
-// ---------------------------------------------------------------------------
 // Race lifecycle
-// ---------------------------------------------------------------------------
 
 /**
  * POST /races/:id/load — modo+
- * Charge le RaceContext serveur depuis les entries VALIDATED.
- * Ne démarre pas la course. Prérequis pour grid-order et start.
+ * Loads the server RaceContext from VALIDATED entries.
+ * Does not start the race. Required before grid-order and start.
  */
 router.post("/:id/load", ...requireModo, async (req, res) => {
   const raceId = String(req.params.id);
@@ -450,7 +440,7 @@ router.post("/:id/load", ...requireModo, async (req, res) => {
 
 /**
  * POST /races/:id/start — modo+
- * Démarre la course (enregistre startedAt). Charge le contexte si nécessaire.
+ * Starts the race (records startedAt). Loads context if needed.
  */
 router.post("/:id/start", ...requireModo, async (req, res) => {
   const raceId = String(req.params.id);
@@ -513,7 +503,7 @@ router.post("/:id/pause", ...requireModo, async (req, res) => {
   res.json({ ok: true, status: "PAUSED" });
 });
 
-/** POST /races/:id/resume — modo+ (alias de start sur PAUSED) */
+/** POST /races/:id/resume — modo+ (alias of start on PAUSED) */
 router.post("/:id/resume", ...requireModo, async (req, res) => {
   const raceId = String(req.params.id);
   const found = await db.select().from(race).where(eq(race.id, raceId)).get();
@@ -567,7 +557,7 @@ router.post("/:id/finish", ...requireModo, async (req, res) => {
 
 /**
  * POST /races/:id/reset — modo+
- * Remet la course à zéro (pilotStates, chrono). La course repasse en PENDING.
+ * Resets the race to zero (pilotStates, chrono). Race goes back to PENDING.
  */
 router.post("/:id/reset", ...requireModo, async (req, res) => {
   const raceId = String(req.params.id);

@@ -1,9 +1,5 @@
-// race-render.js — Rendu du tableau de course à partir de l'état reçu du serveur.
-// Aucun calcul de logique course ici ; uniquement la mise en forme et le DOM.
-
-// ---------------------------------------------------------------------------
-// Formatage du temps
-// ---------------------------------------------------------------------------
+// race-render.js — Race table rendering from server state.
+// No race logic here; only formatting and DOM manipulation.
 
 function formatTime(ms) {
     if (ms === null || ms === undefined || isNaN(ms) || ms < 0) return "—";
@@ -19,11 +15,7 @@ function formatDelta(ms) {
     return `+${formatTime(ms)}`;
 }
 
-// ---------------------------------------------------------------------------
-// Calcul du chrono à partir de l'état serveur
-// ---------------------------------------------------------------------------
-
-/** Retourne le temps écoulé en ms pour la course globale. */
+// returns elapsed ms for the overall race
 function computeRaceElapsedMs(state) {
     if (!state.startedAt) return null;
     const start = Date.parse(state.startedAt);
@@ -33,7 +25,7 @@ function computeRaceElapsedMs(state) {
     return Date.now() - start - (state.totalPausedMs ?? 0);
 }
 
-/** Retourne le temps personnel d'un pilote (tient compte du frozenTime). */
+// returns a pilot's personal elapsed time (accounts for frozenTime)
 function computePilotElapsedMs(state, pilot) {
     if (!state.startedAt) return null;
     const start = Date.parse(state.startedAt);
@@ -43,7 +35,7 @@ function computePilotElapsedMs(state, pilot) {
     return computeRaceElapsedMs(state);
 }
 
-/** Retourne la chaîne de chrono selon le mode d'affichage. */
+// returns the chrono display string based on the display mode
 function getChronoDisplay(state, pilot, index) {
     if (!state.timingEnabled) return "";
     if (pilot.status === "DNF" || pilot.status === "WARNING_DNF") return "DNF";
@@ -78,9 +70,7 @@ function getChronoDisplay(state, pilot, index) {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Rendu principal du tableau
-// ---------------------------------------------------------------------------
+// main table rendering
 
 function renderRaceTable(state) {
     const tableBody    = document.getElementById("race-list");
@@ -123,15 +113,15 @@ function renderRaceTable(state) {
             ? "--md-icon-button-icon-color: var(--md-sys-color-tertiary);"
             : "--md-icon-button-icon-color: var(--md-sys-color-error);";
 
-        // Contrôles manuels lap
+        // manual lap controls
         const lapDisabled = (!isRunning || isFinished || !isManual) ? "disabled" : "";
 
-        // Contrôles reorder/position
+        // reorder/position controls
         const reorderDisabled = !canReorder ? "disabled" : "";
         const upDisabled      = (!canReorder || index === 0) ? "disabled" : "";
         const downDisabled    = (!canReorder || index === pilots.length - 1) ? "disabled" : "";
 
-        // DNF uniquement en mode manuel
+        // DNF only in manual mode
         const dnfDisabled = (!isManual || isFinished) ? "disabled" : "";
 
         const row = `
@@ -195,9 +185,7 @@ function renderRaceTable(state) {
     updateTrackingModeUI(state.trackingMode, state.status);
 }
 
-// ---------------------------------------------------------------------------
-// Chrono live (mise à jour des cellules sans re-render complet)
-// ---------------------------------------------------------------------------
+// live chrono update (patch cells without full re-render)
 
 setInterval(() => {
     const state = window.currentRaceState;
@@ -211,9 +199,7 @@ setInterval(() => {
     });
 }, 100);
 
-// ---------------------------------------------------------------------------
-// Boutons et UI
-// ---------------------------------------------------------------------------
+// buttons and UI state
 
 function updateControlButtons(state) {
     const btnStart  = document.getElementById("btn-start");
@@ -259,9 +245,7 @@ function updateTrackingModeUI(trackingMode, status) {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Panel avertissements DNF (mode AUTO)
-// ---------------------------------------------------------------------------
+// DNF warning panel (AUTO mode)
 
 function renderDnfWarningPanel() {
     const panel = document.getElementById("dnf-warning-panel");
@@ -275,16 +259,14 @@ function renderDnfWarningPanel() {
         const pilot = state?.pilots?.find(p => p.id === pilotId);
         const name  = pilot ? escHtml(pilot.displayName) : pilotId;
         return `<div class="dnf-warning-row">
-            <span>⚠️ <strong>${name}</strong> hors zone circuit</span>
-            <button onclick="confirmDnf('${pilotId}')">Confirmer DNF</button>
-            <button onclick="ignoreDnf('${pilotId}')">Ignorer</button>
+            <span>⚠️ <strong>${name}</strong> out of track zone</span>
+            <button onclick="confirmDnf('${pilotId}')">Confirm DNF</button>
+            <button onclick="ignoreDnf('${pilotId}')">Ignore</button>
         </div>`;
     }).join("");
 }
 
-// ---------------------------------------------------------------------------
-// Barre de statut (open/close registrations)
-// ---------------------------------------------------------------------------
+// status bar (open/close registrations)
 
 function updateStatusBar(status) {
     const bar      = document.getElementById("race-status-bar");
@@ -297,20 +279,18 @@ function updateStatusBar(status) {
 
     bar.style.display = "flex";
     const labels = {
-        PENDING:   "En attente",
-        SCHEDULED: "Inscriptions ouvertes",
-        STARTED:   "En cours",
-        PAUSED:    "En pause",
-        FINISHED:  "Terminée",
+        PENDING:   "Pending",
+        SCHEDULED: "Registrations open",
+        STARTED:   "In progress",
+        PAUSED:    "Paused",
+        FINISHED:  "Finished",
     };
     if (chip) chip.textContent = labels[status] ?? status;
     if (btnOpen)  btnOpen.style.display  = status === "PENDING"   ? "" : "none";
     if (btnClose) btnClose.style.display = status === "SCHEDULED" ? "" : "none";
 }
 
-// ---------------------------------------------------------------------------
-// Utilitaire XSS
-// ---------------------------------------------------------------------------
+// XSS escaping utility
 
 function escHtml(str) {
     return String(str ?? "")

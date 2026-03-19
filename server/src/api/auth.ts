@@ -1,4 +1,4 @@
-// auth.ts — Routes d'authentification : register, login, régénération du token OCR.
+// auth.ts — Authentication routes: register, login, OCR token regeneration.
 import { Router } from "express";
 import bcrypt from "@node-rs/bcrypt";
 import crypto from "crypto";
@@ -103,9 +103,7 @@ router.post("/regenerate-token", ...([requireAuth] as any), async (req, res) => 
   res.json({ ocrToken: newToken });
 });
 
-// ---------------------------------------------------------------------------
 // Helpers
-// ---------------------------------------------------------------------------
 
 function generateOcrToken(): string {
   return crypto.randomBytes(32).toString("hex");

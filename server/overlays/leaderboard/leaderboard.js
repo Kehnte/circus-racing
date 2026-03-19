@@ -1,5 +1,5 @@
-// leaderboard.js — Overlay OBS du classement en temps réel.
-// Écoute l'événement "race-state" via Socket.IO et met à jour le tableau des pilotes.
+// leaderboard.js — Real-time OBS leaderboard overlay.
+// Listens to "race-state" via Socket.IO and updates the pilot standings.
 
 const socket = io();
 
@@ -36,9 +36,7 @@ let lastRaceState = null;
 let chronoTicker = null;
 let currentCountdown = null;
 
-// ---------------------------------------------------------------------------
-// Chrono computation helpers — race-state format (phase 4/5)
-// ---------------------------------------------------------------------------
+// chrono computation helpers — race-state format
 
 function lbFormatTime(ms) {
     if (ms < 0) ms = 0;

@@ -1,4 +1,4 @@
-// teams.js
+// teams.js — Team CRUD, color picker, and dropdown management.
 
 let teams         = [];
 let editingTeamId = null;

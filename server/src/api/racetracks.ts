@@ -1,3 +1,4 @@
+// racetracks.ts — CRUD routes for racetracks and their checkpoints.
 import { Router } from "express";
 import { eq } from "drizzle-orm";
 import { db } from "../db/db.js";

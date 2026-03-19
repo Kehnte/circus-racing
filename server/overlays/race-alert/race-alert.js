@@ -1,4 +1,4 @@
-// race-alert.js
+// race-alert.js — OBS overlay for race events (fastest lap, incident, finished).
 
 const socket = io();
 

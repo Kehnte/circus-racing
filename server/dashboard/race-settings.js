@@ -1,20 +1,14 @@
-// race-settings.js — Gestion des paramètres de course (édition à chaud, sélecteur de course,
-// création de course, inscriptions) et cycle de vie (open/close registrations).
+// race-settings.js — Race settings management (live editing, race selector,
+// race creation, registrations) and lifecycle (open/close registrations).
 
-/** ID de la course actuellement chargée dans le dashboard. */
+// currently loaded race ID in the dashboard
 window.activeRaceId = null;
-
-// ---------------------------------------------------------------------------
-// Init (appelé par initDashboard dans api.js)
-// ---------------------------------------------------------------------------
 
 async function loadRaceSettings() {
     await loadActiveRaceList();
 }
 
-// ---------------------------------------------------------------------------
-// Sélecteur de course
-// ---------------------------------------------------------------------------
+// race selector
 
 async function loadActiveRaceList() {
     try {
@@ -22,7 +16,7 @@ async function loadActiveRaceList() {
         const select = document.getElementById("active-race-select");
         if (!select) return;
         const prev = select.value;
-        select.innerHTML = '<option value="">— Sélectionner une course —</option>';
+        select.innerHTML = '<option value="">— Select a race —</option>';
         races.forEach(r => {
             const opt       = document.createElement("option");
             opt.value       = r.id;
@@ -35,7 +29,7 @@ async function loadActiveRaceList() {
     }
 }
 
-/** Charge une course et peuple les champs de paramètres. */
+// load a race and populate settings fields
 async function loadActiveRace(raceId) {
     if (!raceId) {
         window.activeRaceId = null;
@@ -66,7 +60,7 @@ async function loadActiveRace(raceId) {
         if (typeof updateChronoSelectVisibility === "function") updateChronoSelectVisibility(r.timingEnabled ?? true);
         if (typeof updateAddPilotSelect === "function") updateAddPilotSelect();
 
-        // Charger le contexte serveur pour obtenir le broadcast race-state
+        // load server context to get the race-state broadcast
         await raceLoad(r.id);
     } catch (e) {
         console.error("loadActiveRace:", e.message);
@@ -77,17 +71,15 @@ function _setField(id, value) {
     if (value === null || value === undefined) return;
     const el = document.getElementById(id);
     if (!el) return;
-    // md-* components et selects natifs
+    // md-* components and native selects
     el.value = value;
 }
 
-// ---------------------------------------------------------------------------
-// Paramètres — envoi PATCH à chaud
-// ---------------------------------------------------------------------------
+// settings — live PATCH on change
 
 async function onTeamDisplayModeChange(value) {
     const id = window.activeRaceId;
-    // Mise à jour UI immédiate
+    // immediate UI update
     const teamSection = document.getElementById("teams-manager-section");
     if (teamSection) teamSection.style.display = value !== "hidden" ? "block" : "none";
     if (typeof displayPilots === "function") displayPilots();
@@ -122,7 +114,7 @@ function updateSessionModeUI(mode) {
     if (timedField) timedField.style.display = mode === "timed" ? "" : "none";
 }
 
-// Debounced patch pour les champs texte (nom, session, météo…)
+// debounced patch for text fields (name, session, weather…)
 let _patchDebounceTimer = null;
 function _debouncedPatch(field, value) {
     const id = window.activeRaceId;
@@ -133,9 +125,7 @@ function _debouncedPatch(field, value) {
     }, 600);
 }
 
-// ---------------------------------------------------------------------------
-// Inscriptions — open / close
-// ---------------------------------------------------------------------------
+// registrations — open / close
 
 async function openRegistrations() {
     const id = window.activeRaceId;
@@ -157,16 +147,14 @@ async function closeRegistrations() {
     } catch (e) { alert(e.message); }
 }
 
-// ---------------------------------------------------------------------------
-// Tracking mode toggle
-// ---------------------------------------------------------------------------
+// tracking mode toggle
 
 async function toggleTrackingMode() {
     const id    = window.activeRaceId;
     const state = window.currentRaceState;
-    if (!id)    { alert("Charger une course d'abord"); return; }
+    if (!id)    { alert("Load a race first"); return; }
     if (state?.status === "STARTED" || state?.status === "PAUSED") {
-        alert("Le mode de tracking ne peut pas être changé pendant la course.");
+        alert("Tracking mode cannot be changed while the race is running.");
         return;
     }
     const newMode = state?.trackingMode === "auto" ? "manual" : "auto";
@@ -175,9 +163,7 @@ async function toggleTrackingMode() {
     } catch (e) { alert(e.message); }
 }
 
-// ---------------------------------------------------------------------------
-// Formulaire création de course
-// ---------------------------------------------------------------------------
+// race creation form
 
 let _createRaceFormVisible    = false;
 
@@ -237,9 +223,9 @@ async function submitCreateRace() {
     const lapCount    = parseInt(document.getElementById("new-race-lap-count")?.value) || 3;
     const durationMin = parseFloat(document.getElementById("new-race-duration")?.value) || 30;
 
-    if (!name) { if (errorEl) errorEl.textContent = "Le nom est requis."; return; }
+    if (!name) { if (errorEl) errorEl.textContent = "Name is required."; return; }
     if (tracking === "auto" && !racetrackId) {
-        if (errorEl) errorEl.textContent = "Un circuit est requis pour le mode Auto (OCR).";
+        if (errorEl) errorEl.textContent = "A racetrack is required for Auto (OCR) mode.";
         return;
     }
 
@@ -261,9 +247,7 @@ async function submitCreateRace() {
     }
 }
 
-// ---------------------------------------------------------------------------
-// DOMContentLoaded — event listeners sur les champs de paramètres
-// ---------------------------------------------------------------------------
+// DOMContentLoaded — attach event listeners to settings fields
 
 document.addEventListener("DOMContentLoaded", () => {
     // Team display
@@ -284,14 +268,14 @@ document.addEventListener("DOMContentLoaded", () => {
         sessionModeSelect.addEventListener("change", () => onSessionModeChange(sessionModeSelect.value));
     }
 
-    // Champs texte/select à patcher en live
+    // text/select fields to live-patch
     const patchMap = {
         "setting-race-name":  "name",
         "setting-session":    "session",
         "setting-weather":    "weather",
         "setting-start-type": "startType",
         "total-laps":         "lapCount",
-        "timed-duration":     null, // géré séparément (conversion min→ms)
+        "timed-duration":     null, // handled separately (min→ms conversion)
         "event-duration":     "eventDuration",
     };
     Object.entries(patchMap).forEach(([id, field]) => {
@@ -302,7 +286,7 @@ document.addEventListener("DOMContentLoaded", () => {
         el.addEventListener("input",  handler);
     });
 
-    // Durée timed (conversion min → ms)
+    // timed duration (min → ms conversion)
     const timedDurEl = document.getElementById("timed-duration");
     if (timedDurEl) {
         const handler = () => {
@@ -313,10 +297,10 @@ document.addEventListener("DOMContentLoaded", () => {
         timedDurEl.addEventListener("input",  handler);
     }
 
-    // Initialiser la UI session mode
+    // initialize session mode UI
     updateSessionModeUI("laps");
 
-    // Chip pilots-toggle : état initial
+    // pilots-toggle chip: initial state
     const pilotsChip = document.getElementById("btn-pilots-toggle");
     if (pilotsChip) pilotsChip.setAttribute("selected", "");
 });

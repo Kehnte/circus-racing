@@ -1,11 +1,9 @@
-// schema.ts — Définition des tables SQLite avec Drizzle ORM.
-// Entités : pilot, team, vehicle, controls, racetrack, race, race_entry, race_state.
+// schema.ts — SQLite table definitions with Drizzle ORM.
+// Entities: pilot, team, vehicle, controls, racetrack, race, race_entry, race_state.
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
 
-// ---------------------------------------------------------------------------
 // Reference entities (managed by admin/modo)
-// ---------------------------------------------------------------------------
 
 export const team = sqliteTable("team", {
   id:      text().primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -34,9 +32,7 @@ export const racetrack = sqliteTable("racetrack", {
   bufferRadius: integer(), // override for DNF_BUFFER_RADIUS env
 });
 
-// ---------------------------------------------------------------------------
 // Pilot (permanent account)
-// ---------------------------------------------------------------------------
 
 export type PilotRole = "ADMIN" | "MODERATOR" | "PILOT";
 
@@ -55,9 +51,7 @@ export const pilot = sqliteTable("pilot", {
   createdAt:    text().notNull().default(sql`(datetime('now'))`),
 });
 
-// ---------------------------------------------------------------------------
 // Race
-// ---------------------------------------------------------------------------
 
 export type RaceStatus = "PENDING" | "SCHEDULED" | "STARTED" | "PAUSED" | "FINISHED";
 export type TrackingMode = "manual" | "auto";
@@ -84,9 +78,7 @@ export const race = sqliteTable("race", {
   createdAt:         text().notNull().default(sql`(datetime('now'))`),
 });
 
-// ---------------------------------------------------------------------------
 // Race entry (pilot registration for a race)
-// ---------------------------------------------------------------------------
 
 export type RaceEntryStatus = "PENDING" | "VALIDATED" | "REJECTED" | "REVOKED";
 
@@ -102,9 +94,7 @@ export const raceEntry = sqliteTable("race_entry", {
   controlsSnapshot: text({ mode: "json" }).$type<Record<string, unknown>>(),
 });
 
-// ---------------------------------------------------------------------------
 // Race state (runtime — persisted for crash recovery)
-// ---------------------------------------------------------------------------
 
 export type PilotRuntimeStatus = "RUNNING" | "FINISHED" | "DNF" | "WARNING_DNF";
 
@@ -130,9 +120,7 @@ export const raceState = sqliteTable("race_state", {
   totalPausedMs: integer().notNull().default(0),
 });
 
-// ---------------------------------------------------------------------------
 // Inferred types
-// ---------------------------------------------------------------------------
 
 export type Team       = typeof team.$inferSelect;
 export type Vehicle    = typeof vehicle.$inferSelect;

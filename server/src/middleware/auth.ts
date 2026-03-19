@@ -1,3 +1,4 @@
+// auth.ts — JWT authentication middleware (extracts user from Bearer token).
 import jwt from "jsonwebtoken";
 import type { Request, Response, NextFunction } from "express";
 import type { PilotRole } from "../db/schema.js";

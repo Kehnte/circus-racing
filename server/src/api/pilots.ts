@@ -1,3 +1,4 @@
+// pilots.ts — Pilot CRUD routes, profile updates, and config file download.
 import { Router } from "express";
 import { eq } from "drizzle-orm";
 import { randomBytes } from "crypto";

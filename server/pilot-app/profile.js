@@ -1,8 +1,6 @@
-// profile.js
+// profile.js — Pilot profile page (identity, race config, token, race enrollment).
 
-// ---------------------------------------------------------------------------
-// Country list — all ISO 3166-1 alpha-2 countries supported by flag-icons
-// ---------------------------------------------------------------------------
+// all ISO 3166-1 alpha-2 countries supported by flag-icons
 const COUNTRIES = [
     { code: "af", name: "Afghanistan" },
     { code: "al", name: "Albania" },
@@ -204,15 +202,10 @@ function resolveCountry(value) {
     return COUNTRIES.find(c => c.code === v || c.name.toLowerCase() === v) ?? null;
 }
 
-// ---------------------------------------------------------------------------
-// State
-// ---------------------------------------------------------------------------
 let currentPilot = null;
 let isLocked     = false; // true when pilot has a VALIDATED entry
 
-// ---------------------------------------------------------------------------
-// Boot
-// ---------------------------------------------------------------------------
+// boot
 document.addEventListener("DOMContentLoaded", async () => {
     // Guard: must be logged in
     const jwt = localStorage.getItem("cr_jwt");
@@ -246,9 +239,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     initCountryCombobox();
 });
 
-// ---------------------------------------------------------------------------
-// Load profile from API
-// ---------------------------------------------------------------------------
+// load profile from API
 async function loadProfile() {
     const pilot = await apiFetch("/api/pilots/me");
     currentPilot = pilot;
@@ -303,9 +294,7 @@ function applyLockState() {
     if (saveBtn) saveBtn.disabled = true;
 }
 
-// ---------------------------------------------------------------------------
-// Load reference data
-// ---------------------------------------------------------------------------
+// load reference data
 async function loadTeams() {
     try {
         const data = await apiFetch("/api/teams");
@@ -345,9 +334,7 @@ async function loadControls() {
     } catch { /* non-blocking */ }
 }
 
-// ---------------------------------------------------------------------------
-// Open races + enrollment
-// ---------------------------------------------------------------------------
+// open races + enrollment
 async function loadOpenRaces() {
     const container = document.getElementById("open-races-list");
 
@@ -436,9 +423,7 @@ function renderRaceAction(race, entry) {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Save handlers
-// ---------------------------------------------------------------------------
+// save handlers
 async function handleSaveIdentity() {
     hideError(); hideSuccess();
     const btn = document.getElementById("btn-save-identity");
@@ -519,9 +504,7 @@ async function handleSaveRaceConfig() {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Token
-// ---------------------------------------------------------------------------
+// token
 async function handleRegenerateToken() {
     hideError(); hideSuccess();
     const btn = document.getElementById("btn-regen-token");
@@ -551,9 +534,7 @@ async function copyToken() {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Race registration
-// ---------------------------------------------------------------------------
+// race registration
 async function handleRegisterToRace(raceId, btn) {
     btn.disabled = true;
     hideError(); hideSuccess();
@@ -580,18 +561,14 @@ async function handleCancelEntry(raceId, entryId, btn) {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Logout
-// ---------------------------------------------------------------------------
+// logout
 function handleLogout() {
     localStorage.removeItem("cr_jwt");
     localStorage.removeItem("cr_pilot");
     window.location.href = "login.html";
 }
 
-// ---------------------------------------------------------------------------
-// Country combobox
-// ---------------------------------------------------------------------------
+// country combobox
 let countryDropdownIndex = -1;
 
 function filterCountries(query) {
@@ -663,9 +640,7 @@ function initCountryCombobox() {
     });
 }
 
-// ---------------------------------------------------------------------------
 // UI helpers
-// ---------------------------------------------------------------------------
 function showError(msg) {
     document.getElementById("error-text").textContent = msg;
     document.getElementById("error-banner").hidden = false;
@@ -690,11 +665,7 @@ function escHtml(str) {
         .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-// ---------------------------------------------------------------------------
-// API helper — injects JWT automatically
-// ---------------------------------------------------------------------------
-// Monitor download handlers
-// ---------------------------------------------------------------------------
+// monitor download handlers
 async function handleDownloadConfig() {
     const jwt = localStorage.getItem("cr_jwt");
     const res = await fetch("/api/pilots/me/config", {
@@ -712,7 +683,7 @@ function handleDownloadMonitor() {
     window.open("https://github.com/Kehnte/circus-racing/releases/latest", "_blank");
 }
 
-// ---------------------------------------------------------------------------
+// API helper — injects JWT automatically
 async function apiFetch(path, options = {}) {
     const jwt = localStorage.getItem("cr_jwt");
     const headers = { ...(options.headers ?? {}) };

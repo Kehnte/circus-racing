@@ -1,3 +1,4 @@
+// roles.ts — Role-based access middleware (requireModo, requireAdmin).
 import type { Request, Response, NextFunction } from "express";
 import { requireAuth } from "./auth.js";
 

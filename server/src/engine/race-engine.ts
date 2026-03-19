@@ -1,3 +1,4 @@
+// race-engine.ts — AUTO mode race engine (checkpoint detection, lap counting, DNF warnings).
 import { distance3D, distanceToSegment3D, type Vec3 } from "./math.js";
 import {
   getContext, setPilotState, CHECKPOINT_RADIUS,
@@ -5,9 +6,7 @@ import {
 } from "./race-context.js";
 import type { PilotState } from "../db/schema.js";
 
-// ---------------------------------------------------------------------------
 // Event types returned by processPosition
-// ---------------------------------------------------------------------------
 
 export type EngineEvent =
   | { type: "fastest-lap"; pilotId: string; lapMs: number; lapFormatted: string }
@@ -21,9 +20,7 @@ export interface ProcessPositionResult {
   events: EngineEvent[];
 }
 
-// ---------------------------------------------------------------------------
 // Helpers
-// ---------------------------------------------------------------------------
 
 function formatLapTime(ms: number): string {
   const totalSec = Math.floor(ms / 1000);
@@ -39,9 +36,7 @@ function allDone(ctx: RaceContext): boolean {
   );
 }
 
-// ---------------------------------------------------------------------------
 // processPosition
-// ---------------------------------------------------------------------------
 
 export function processPosition(
   pilotId: string,
@@ -63,10 +58,7 @@ export function processPosition(
   // Update position
   state.position = position;
 
-  // -------------------------------------------------------------------------
   // Checkpoint detection
-  // -------------------------------------------------------------------------
-
   if (cpLen > 0) {
     const nextIdx = state.nextCheckpointOrder % cpLen;
     const nextCP = cps[nextIdx];
@@ -120,10 +112,7 @@ export function processPosition(
     }
   }
 
-  // -------------------------------------------------------------------------
   // DNF buffer detection (only when RUNNING or WARNING_DNF)
-  // -------------------------------------------------------------------------
-
   if (
     (state.status === "RUNNING" || state.status === "WARNING_DNF") &&
     cpLen >= 2

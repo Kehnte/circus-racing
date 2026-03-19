@@ -1,3 +1,4 @@
+// controls.ts — CRUD routes for control schemes (keyboard, gamepad, etc.).
 import { Router } from "express";
 import { eq } from "drizzle-orm";
 import { db } from "../db/db.js";

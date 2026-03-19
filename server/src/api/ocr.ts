@@ -1,3 +1,4 @@
+// ocr.ts — OCR position ingestion endpoint (receives monitor position data).
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { eq } from "drizzle-orm";
 import { db } from "../db/db.js";
@@ -8,9 +9,7 @@ import { emitAll, emitDashboard, broadcastRaceState } from "../socket/emitter.js
 
 const router = Router();
 
-// ---------------------------------------------------------------------------
 // Token auth middleware — reads x-token header, looks up pilot.token
-// ---------------------------------------------------------------------------
 
 async function requireOcrToken(req: Request, res: Response, next: NextFunction): Promise<void> {
   const token = req.headers["x-token"] as string | undefined;
@@ -33,10 +32,8 @@ async function requireOcrToken(req: Request, res: Response, next: NextFunction):
   next();
 }
 
-// ---------------------------------------------------------------------------
 // PUT /ocr/position
 // Body: { x: number, y: number, z: number }
-// ---------------------------------------------------------------------------
 
 router.put("/position", requireOcrToken, async (req, res) => {
   const { x, y, z } = req.body;

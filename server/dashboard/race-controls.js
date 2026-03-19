@@ -1,16 +1,12 @@
-// race-controls.js — Handlers des boutons de course (appelle race-api.js).
-// Toutes les actions envoient une commande REST ; le serveur broadcast l'état mis à jour.
+// race-controls.js — Button handlers for race actions (calls race-api.js).
+// All actions send a REST command; the server broadcasts the updated state.
 
 let _countdownActive = false;
-
-// ---------------------------------------------------------------------------
-// Cycle de vie
-// ---------------------------------------------------------------------------
 
 async function startRace() {
     const id     = window.activeRaceId;
     const status = window.currentRaceState?.status;
-    if (!id) { alert("Charger une course d'abord"); return; }
+    if (!id) { alert("Load a race first"); return; }
     try {
         if (status === "PAUSED") {
             await raceResume(id);
@@ -35,7 +31,7 @@ async function endRaceManually() {
 async function resetRace() {
     const id = window.activeRaceId;
     if (!id) return;
-    if (!confirm("Remettre la course à zéro ?")) return;
+    if (!confirm("Reset the race to zero?")) return;
     try {
         stopCountdown(false);
         await raceReset(id);
@@ -44,13 +40,9 @@ async function resetRace() {
 
 async function reloadPilots() {
     const id = window.activeRaceId;
-    if (!id) { alert("Charger une course d'abord"); return; }
+    if (!id) { alert("Load a race first"); return; }
     try { await raceLoad(id); } catch (e) { alert(e.message); }
 }
-
-// ---------------------------------------------------------------------------
-// Contrôles manuels (mode MANUEL)
-// ---------------------------------------------------------------------------
 
 async function changeLap(pilotId, delta) {
     const id     = window.activeRaceId;
@@ -74,7 +66,7 @@ async function jumpToPosition(pilotId, newPosValue) {
     if (isNaN(position) || position < 1) return;
     try { await manualPosition(id, pilotId, position); } catch (e) {
         alert(e.message);
-        // Forcer un re-render pour remettre la valeur
+        // force a re-render to restore the value
         if (typeof renderRaceTable === "function" && window.currentRaceState) {
             renderRaceTable(window.currentRaceState);
         }
@@ -88,29 +80,27 @@ async function toggleDNF(pilotId) {
     try { await manualDnf(id, pilotId); } catch (e) { alert(e.message); }
 }
 
-// ---------------------------------------------------------------------------
-// Admin direct-add
-// ---------------------------------------------------------------------------
+// admin direct-add
 
 async function adminAddPilot() {
     const id      = window.activeRaceId;
     const select  = document.getElementById("add-pilot-select");
     const pilotId = select?.value;
-    if (!id)      { alert("Charger une course d'abord"); return; }
-    if (!pilotId) { alert("Sélectionner un pilote"); return; }
+    if (!id)      { alert("Load a race first"); return; }
+    if (!pilotId) { alert("Select a pilot"); return; }
     try {
         await adminAddEntryRequest(id, pilotId);
-        await reloadPilots(); // recharge le contexte depuis les entrées validées
+        await reloadPilots(); // reload context from validated entries
         updateAddPilotSelect();
     } catch (e) { alert(e.message); }
 }
 
-/** Peuple le select "ajouter un pilote" avec ceux qui ne sont pas déjà dans la course. */
+// populate the "add pilot" select with pilots not already in the race
 function updateAddPilotSelect() {
     const select = document.getElementById("add-pilot-select");
     if (!select) return;
     const inRace = new Set((window.currentRaceState?.pilots ?? []).map(p => p.id));
-    select.innerHTML = '<option value="">— Sélectionner un pilote —</option>';
+    select.innerHTML = '<option value="">— Select a pilot —</option>';
     const allPilots  = typeof pilots !== "undefined" ? pilots : [];
     allPilots.forEach(p => {
         if (inRace.has(p.id)) return;
@@ -121,17 +111,15 @@ function updateAddPilotSelect() {
     });
 }
 
-// ---------------------------------------------------------------------------
-// Countdown
-// ---------------------------------------------------------------------------
+// countdown
 
 async function startCountdown() {
     const id          = window.activeRaceId;
     const status      = window.currentRaceState?.status;
     const durationSec = parseInt(document.getElementById("countdown-duration")?.value) || 0;
-    if (!id) { alert("Charger une course d'abord"); return; }
+    if (!id) { alert("Load a race first"); return; }
     if (status === "STARTED" || status === "PAUSED" || status === "FINISHED") {
-        alert("Le countdown ne peut être lancé qu'avant la course.");
+        alert("Countdown can only be started before the race.");
         return;
     }
     if (durationSec <= 0) { startRace(); return; }
@@ -160,9 +148,7 @@ function updateCountdownUI() {
     if (stopBtn) stopBtn.style.display = _countdownActive ? "" : "none";
 }
 
-// ---------------------------------------------------------------------------
-// Mode AUTO — gestion des warnings DNF
-// ---------------------------------------------------------------------------
+// AUTO mode — DNF warning management
 
 async function confirmDnf(pilotId) {
     const id = window.activeRaceId;
@@ -184,9 +170,7 @@ async function ignoreDnf(pilotId) {
     } catch (e) { alert(e.message); }
 }
 
-// ---------------------------------------------------------------------------
-// Overlay pilots visibility
-// ---------------------------------------------------------------------------
+// overlay pilots visibility
 
 function togglePilotsVisibility() {
     const chip = document.getElementById("btn-pilots-toggle");
@@ -194,9 +178,7 @@ function togglePilotsVisibility() {
     if (window.raceSocket) window.raceSocket.emit("toggle-pilots-visibility", { visible });
 }
 
-// ---------------------------------------------------------------------------
-// Chrono toggle (chip dans index.html)
-// ---------------------------------------------------------------------------
+// chrono toggle (chip in index.html)
 
 async function toggleChrono() {
     const chip = document.getElementById("btn-chrono-toggle");

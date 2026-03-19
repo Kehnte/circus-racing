@@ -1,3 +1,4 @@
+// vehicles.ts — CRUD routes for vehicles (model, type, image).
 import { Router } from "express";
 import { eq } from "drizzle-orm";
 import { db } from "../db/db.js";

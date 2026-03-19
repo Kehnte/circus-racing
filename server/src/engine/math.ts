@@ -1,3 +1,4 @@
+// math.ts — 3D geometry helpers (distance, segment projection) for checkpoint detection.
 export type Vec3 = [number, number, number];
 
 export function distance3D(a: Vec3, b: Vec3): number {

@@ -1,5 +1,5 @@
-// emitter.ts — Broadcast Socket.IO : race-state (format unifié spec §7)
-// et race-data (format legacy pour backward compat overlay existants).
+// emitter.ts — Socket.IO broadcast: race-state (unified format)
+// and race-data (legacy format for backward-compatible overlays).
 
 import type { Server } from "socket.io";
 import type { RaceContext } from "../engine/race-context.js";
@@ -19,9 +19,7 @@ export function emitDashboard(event: string, data?: unknown): void {
   _io?.to("dashboard").emit(event, data);
 }
 
-// ---------------------------------------------------------------------------
-// Helpers chrono
-// ---------------------------------------------------------------------------
+// Chrono helpers
 
 function formatTime(ms: number): string {
   const totalSec = Math.floor(ms / 1000);
@@ -80,10 +78,8 @@ function getChronoDisplay(
   }
 }
 
-// ---------------------------------------------------------------------------
-// Tri des pilotes selon le mode de tracking
-// Manual : par gridPosition asc ; Auto : par raceProgress desc
-// ---------------------------------------------------------------------------
+// Sort pilots according to tracking mode.
+// Manual: by gridPosition asc — Auto: by raceProgress desc.
 
 function sortPilots(ctx: RaceContext): [string, import("../db/schema.js").PilotState][] {
   const entries = Object.entries(ctx.pilotStates) as [string, import("../db/schema.js").PilotState][];
@@ -107,9 +103,7 @@ function sortPilots(ctx: RaceContext): [string, import("../db/schema.js").PilotS
   });
 }
 
-// ---------------------------------------------------------------------------
-// buildRaceStateBroadcast — format unifié spec §7 (événement race-state)
-// ---------------------------------------------------------------------------
+// buildRaceStateBroadcast — unified format per spec §7 (race-state event).
 
 export function buildRaceStateBroadcast(ctx: RaceContext): object {
   const now = Date.now();
@@ -166,10 +160,8 @@ export function buildRaceStateBroadcast(ctx: RaceContext): object {
   };
 }
 
-// ---------------------------------------------------------------------------
-// buildRaceUpdatePayload — format legacy (événement race-data)
-// Conservé pour backward compat avec les overlays existants.
-// ---------------------------------------------------------------------------
+// buildRaceUpdatePayload — legacy format (race-data event).
+// Kept for backward compatibility with existing overlays.
 
 export function buildRaceUpdatePayload(ctx: RaceContext): object {
   const now = Date.now();
@@ -230,9 +222,7 @@ export function buildRaceUpdatePayload(ctx: RaceContext): object {
   };
 }
 
-// ---------------------------------------------------------------------------
-// broadcastRaceState — émet race-state (nouveau) + race-data (legacy)
-// ---------------------------------------------------------------------------
+// broadcastRaceState — emits race-state (new) + race-data (legacy).
 
 export function broadcastRaceState(ctx: RaceContext): void {
   emitAll("race-state", buildRaceStateBroadcast(ctx));

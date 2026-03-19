@@ -67,33 +67,33 @@
                         id="active-race-select"
                         style="flex: 1; min-width: 220px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--md-sys-color-outline); background: var(--md-sys-color-surface-container); color: var(--md-sys-color-on-surface); font-size: 14px;"
                         onchange="loadActiveRace(this.value)"
-                        title="Sélectionner la course active"
+                        title="Select the active race"
                     >
-                        <option value="">— Sélectionner une course —</option>
+                        <option value="">— Select a race —</option>
                     </select>
-                    <md-outlined-button onclick="loadActiveRaceList()" title="Rafraîchir la liste des courses">
+                    <md-outlined-button onclick="loadActiveRaceList()" title="Refresh the race list">
                         <md-icon slot="icon">refresh</md-icon>
-                        Rafraîchir
+                        Refresh
                     </md-outlined-button>
-                    <md-filled-button onclick="toggleCreateRaceForm()" title="Créer une nouvelle course">
+                    <md-filled-button onclick="toggleCreateRaceForm()" title="Create a new race">
                         <md-icon slot="icon">add</md-icon>
-                        Nouvelle course
+                        New race
                     </md-filled-button>
-                    <md-outlined-button id="btn-tracking-mode" onclick="toggleTrackingMode()" title="Basculer entre mode MANUEL et AUTO">
-                        Mode MANUEL
+                    <md-outlined-button id="btn-tracking-mode" onclick="toggleTrackingMode()" title="Toggle between MANUAL and AUTO mode">
+                        MANUAL mode
                     </md-outlined-button>
                 </div>
 
                 <!-- create race form (collapsible) -->
                 <div id="create-race-form" style="display: none; margin: 12px 0; padding: 16px 20px; border-radius: 12px; background: var(--md-sys-color-surface-container); border: 1px solid var(--md-sys-color-outline-variant);">
-                    <h3 class="md-typescale-title-small" style="margin: 0 0 16px 0;">Nouvelle course</h3>
+                    <h3 class="md-typescale-title-small" style="margin: 0 0 16px 0;">New race</h3>
                     <div class="form-row" style="margin-bottom: 12px;">
-                        <md-outlined-text-field id="new-race-name" label="Nom de la course" style="flex: 2; min-width: 200px;"></md-outlined-text-field>
-                        <md-outlined-select id="new-race-racetrack" label="Circuit" style="flex: 2; min-width: 200px;">
-                            <md-select-option value=""><div slot="headline">— Sans circuit (mode manuel) —</div></md-select-option>
+                        <md-outlined-text-field id="new-race-name" label="Race name" style="flex: 2; min-width: 200px;"></md-outlined-text-field>
+                        <md-outlined-select id="new-race-racetrack" label="Racetrack" style="flex: 2; min-width: 200px;">
+                            <md-select-option value=""><div slot="headline">— No racetrack (manual mode) —</div></md-select-option>
                         </md-outlined-select>
                         <md-outlined-select id="new-race-tracking-mode" label="Tracking" style="min-width: 160px;" onchange="onNewRaceTrackingModeChange(this.value)">
-                            <md-select-option value="manual" selected><div slot="headline">Manuel</div></md-select-option>
+                            <md-select-option value="manual" selected><div slot="headline">Manual</div></md-select-option>
                             <md-select-option value="auto"><div slot="headline">Auto (OCR)</div></md-select-option>
                         </md-outlined-select>
                     </div>
@@ -103,7 +103,7 @@
                             <md-select-option value="Qualifying"><div slot="headline">Qualifying</div></md-select-option>
                             <md-select-option value="Race" selected><div slot="headline">Race</div></md-select-option>
                         </md-outlined-select>
-                        <md-outlined-select id="new-race-weather" label="Météo" style="flex: 1;">
+                        <md-outlined-select id="new-race-weather" label="Weather" style="flex: 1;">
                             <md-select-option value="Clear" selected><div slot="headline">Clear</div></md-select-option>
                             <md-select-option value="Cloudy"><div slot="headline">Cloudy</div></md-select-option>
                             <md-select-option value="Fog"><div slot="headline">Fog</div></md-select-option>
@@ -111,7 +111,7 @@
                             <md-select-option value="Storm"><div slot="headline">Storm</div></md-select-option>
                             <md-select-option value="Snow"><div slot="headline">Snow</div></md-select-option>
                         </md-outlined-select>
-                        <md-outlined-select id="new-race-start-type" label="Départ" style="flex: 1;">
+                        <md-outlined-select id="new-race-start-type" label="Start type" style="flex: 1;">
                             <md-select-option value="Grid Start" selected><div slot="headline">Grid start</div></md-select-option>
                             <md-select-option value="Rolling Start"><div slot="headline">Rolling start</div></md-select-option>
                         </md-outlined-select>
@@ -119,30 +119,30 @@
                             <md-select-option value="laps" selected><div slot="headline">Laps</div></md-select-option>
                             <md-select-option value="timed"><div slot="headline">Timed</div></md-select-option>
                         </md-outlined-select>
-                        <md-outlined-text-field id="new-race-lap-count" label="Nb tours" type="number" value="3" min="1" style="width: 100px; flex-shrink: 0;"></md-outlined-text-field>
-                        <md-outlined-text-field id="new-race-duration" label="Durée (min)" type="number" value="30" min="1" style="width: 130px; flex-shrink: 0; display: none;"></md-outlined-text-field>
+                        <md-outlined-text-field id="new-race-lap-count" label="Lap count" type="number" value="3" min="1" style="width: 100px; flex-shrink: 0;"></md-outlined-text-field>
+                        <md-outlined-text-field id="new-race-duration" label="Duration (min)" type="number" value="30" min="1" style="width: 130px; flex-shrink: 0; display: none;"></md-outlined-text-field>
                     </div>
                     <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
                         <md-filled-button onclick="submitCreateRace()">
                             <md-icon slot="icon">add</md-icon>
-                            Créer la course
+                            Create race
                         </md-filled-button>
-                        <md-text-button onclick="toggleCreateRaceForm()">Annuler</md-text-button>
+                        <md-text-button onclick="toggleCreateRaceForm()">Cancel</md-text-button>
                         <span id="create-race-error" style="color: var(--md-sys-color-error); font-size: 13px;"></span>
                     </div>
                 </div>
 
                 <!-- race status + lifecycle buttons -->
                 <div id="race-status-bar" style="display: none; align-items: center; gap: 8px; flex-wrap: wrap; padding: 4px 0 8px 0;">
-                    <span class="md-typescale-label-medium" style="color: var(--md-sys-color-on-surface-variant);">Statut :</span>
+                    <span class="md-typescale-label-medium" style="color: var(--md-sys-color-on-surface-variant);">Status:</span>
                     <span id="race-status-chip" style="display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 16px; font-size: 12px; font-weight: 600; background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container);"></span>
                     <md-outlined-button id="btn-open-regs" onclick="openRegistrations()" style="display: none;">
                         <md-icon slot="icon">how_to_reg</md-icon>
-                        Ouvrir inscriptions
+                        Open registrations
                     </md-outlined-button>
                     <md-outlined-button id="btn-close-regs" onclick="closeRegistrations()" style="display: none;">
                         <md-icon slot="icon">lock</md-icon>
-                        Fermer inscriptions
+                        Close registrations
                     </md-outlined-button>
                 </div>
 
@@ -266,7 +266,7 @@
                     </md-outlined-select>
 
 
-                    <md-filter-chip id="btn-pilots-toggle" label="Noms overlay" selected onclick="togglePilotsVisibility()" title="Afficher/masquer les noms des pilotes sur l'overlay leaderboard"></md-filter-chip>
+                    <md-filter-chip id="btn-pilots-toggle" label="Overlay names" selected onclick="togglePilotsVisibility()" title="Show/hide pilot names on the leaderboard overlay"></md-filter-chip>
                 </div>
 
                 <!-- race action buttons + pilot count -->
@@ -276,7 +276,7 @@
                         <md-outlined-button onclick="pauseRace()" id="btn-pause" disabled>Pause race</md-outlined-button>
                         <md-outlined-button onclick="endRaceManually()" id="btn-finish" disabled>Finish race</md-outlined-button>
                         <md-text-button onclick="resetRace()">Reset race</md-text-button>
-                        <md-text-button onclick="reloadPilots()" title="Recharge tous les pilotes du système dans la course (mode rapide)">Tout recharger</md-text-button>
+                        <md-text-button onclick="reloadPilots()" title="Reload all system pilots into the race (quick mode)">Reload all</md-text-button>
                     </div>
 
                     <div class="pilot-count-chip">
@@ -288,11 +288,11 @@
                 <!-- add pilot to race (admin direct-add) -->
                 <div class="race-controls-bar" style="gap: 8px; flex-wrap: wrap; padding: 4px 0;">
                     <select id="add-pilot-select" style="flex: 1; min-width: 200px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--md-sys-color-outline); background: var(--md-sys-color-surface-container); color: var(--md-sys-color-on-surface); font-size: 14px;">
-                        <option value="">— Sélectionner un pilote —</option>
+                        <option value="">— Select a pilot —</option>
                     </select>
-                    <md-outlined-button onclick="adminAddPilot()" title="Ajouter ce pilote à la course (entrée validée directement)">
+                    <md-outlined-button onclick="adminAddPilot()" title="Add this pilot to the race (entry validated directly)">
                         <md-icon slot="icon">person_add</md-icon>
-                        Ajouter
+                        Add
                     </md-outlined-button>
                 </div>
 
@@ -529,17 +529,17 @@
                     <h2 class="m3-card-title" style="margin-bottom:0">Circuits</h2>
                     <md-outlined-button onclick="toggleCreateCircuitForm()">
                         <md-icon slot="icon">add</md-icon>
-                        Nouveau circuit
+                        New racetrack
                     </md-outlined-button>
                 </div>
 
                 <!-- create circuit form (collapsible) -->
                 <div id="create-circuit-form" style="display: none; margin-bottom: 16px; padding: 16px 20px; border-radius: 12px; background: var(--md-sys-color-surface-container); border: 1px solid var(--md-sys-color-outline-variant);">
-                    <h3 class="md-typescale-title-small" style="margin: 0 0 16px 0;">Nouveau circuit</h3>
+                    <h3 class="md-typescale-title-small" style="margin: 0 0 16px 0;">New racetrack</h3>
                     <div class="form-row" style="margin-bottom: 12px; align-items: flex-start;">
-                        <md-outlined-text-field id="new-circuit-name" label="Nom du circuit" style="flex: 2; min-width: 200px;"></md-outlined-text-field>
+                        <md-outlined-text-field id="new-circuit-name" label="Racetrack name" style="flex: 2; min-width: 200px;"></md-outlined-text-field>
                         <div style="display: flex; flex-direction: column; gap: 6px;">
-                            <label class="md-typescale-label-small" style="color: var(--md-sys-color-on-surface-variant);">Importer les checkpoints (JSON)</label>
+                            <label class="md-typescale-label-small" style="color: var(--md-sys-color-on-surface-variant);">Import checkpoints (JSON)</label>
                             <input type="file" id="circuit-json-input" accept=".json" onchange="onCircuitJsonSelected(event)" style="font-size: 13px;" />
                             <span id="circuit-json-preview" style="font-size: 12px; color: var(--md-sys-color-on-surface-variant);"></span>
                         </div>
@@ -547,9 +547,9 @@
                     <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
                         <md-filled-button onclick="submitCreateCircuit()">
                             <md-icon slot="icon">save</md-icon>
-                            Enregistrer le circuit
+                            Save racetrack
                         </md-filled-button>
-                        <md-text-button onclick="toggleCreateCircuitForm()">Annuler</md-text-button>
+                        <md-text-button onclick="toggleCreateCircuitForm()">Cancel</md-text-button>
                         <span id="create-circuit-error" style="color: var(--md-sys-color-error); font-size: 13px;"></span>
                     </div>
                 </div>
@@ -558,7 +558,7 @@
                     <table class="m3-table">
                         <thead>
                             <tr>
-                                <th class="col-grow">Nom</th>
+                                <th class="col-grow">Name</th>
                                 <th class="col-shrink" style="text-align: center;">Checkpoints</th>
                                 <th class="col-shrink">Actions</th>
                             </tr>

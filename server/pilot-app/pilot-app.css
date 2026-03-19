@@ -1,9 +1,7 @@
 /* pilot-app.css — shared styles for register.html and profile.html
    Material Design 3 dark theme, consistent with dashboard.css */
 
-/* ---------------------------------------------------------------------------
-   M3 Design tokens — dark theme (mirrors dashboard.css)
-   --------------------------------------------------------------------------- */
+/* M3 design tokens — dark theme (mirrors dashboard.css) */
 :root {
     --md-sys-color-primary:                  #D0BCFF;
     --md-sys-color-on-primary:               #381E72;
@@ -91,9 +89,7 @@ html, body {
     min-height: 100vh;
 }
 
-/* ---------------------------------------------------------------------------
-   Page header
-   --------------------------------------------------------------------------- */
+/* Page header */
 .page-header {
     background-color: var(--md-sys-color-surface-container-high);
     padding: 16px 24px;
@@ -120,9 +116,7 @@ html, body {
 }
 .header-link:hover { text-decoration: underline; }
 
-/* ---------------------------------------------------------------------------
-   Page content
-   --------------------------------------------------------------------------- */
+/* Page content */
 .page-content {
     padding: 24px;
     max-width: 1000px;
@@ -132,9 +126,7 @@ html, body {
     gap: 16px;
 }
 
-/* ---------------------------------------------------------------------------
-   Cards
-   --------------------------------------------------------------------------- */
+/* Cards */
 .m3-card {
     background-color: var(--md-sys-color-surface-container);
     border-radius: var(--md-sys-shape-corner-medium);
@@ -147,9 +139,7 @@ html, body {
     color: var(--md-sys-color-on-surface);
 }
 
-/* ---------------------------------------------------------------------------
-   Register layout: two columns on wide screens
-   --------------------------------------------------------------------------- */
+/* Register layout: two columns on wide screens */
 .register-layout {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -167,9 +157,7 @@ html, body {
     flex-direction: column;
 }
 
-/* ---------------------------------------------------------------------------
-   Form helpers
-   --------------------------------------------------------------------------- */
+/* Form helpers */
 .form-stack {
     display: flex;
     flex-direction: column;
@@ -238,9 +226,7 @@ html, body {
     border-radius: 2px;
 }
 
-/* ---------------------------------------------------------------------------
-   Submit row
-   --------------------------------------------------------------------------- */
+/* Submit row */
 .submit-row {
     display: flex;
     align-items: center;
@@ -248,9 +234,7 @@ html, body {
     flex-wrap: wrap;
 }
 
-/* ---------------------------------------------------------------------------
-   Error banner
-   --------------------------------------------------------------------------- */
+/* Error banner */
 .error-banner {
     display: flex;
     align-items: center;
@@ -264,9 +248,7 @@ html, body {
 
 .error-banner[hidden] { display: none; }
 
-/* ---------------------------------------------------------------------------
-   Success banner
-   --------------------------------------------------------------------------- */
+/* Success banner */
 .success-banner {
     display: flex;
     align-items: center;
@@ -280,9 +262,7 @@ html, body {
 
 .success-banner[hidden] { display: none; }
 
-/* ---------------------------------------------------------------------------
-   Profile layout (used by profile.html)
-   --------------------------------------------------------------------------- */
+/* Profile layout (used by profile.html) */
 .profile-layout {
     display: grid;
     grid-template-columns: 280px 1fr;

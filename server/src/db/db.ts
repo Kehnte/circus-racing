@@ -1,3 +1,4 @@
+// db.ts — Drizzle ORM database instance (libSQL/SQLite).
 import { drizzle } from "drizzle-orm/libsql/node";
 import * as schema from "./schema.js";
 import { config } from "dotenv";

@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-// simulate-auto.js — Simule une course AUTO en envoyant de fausses positions OCR.
-// Chaque pilote est interpolé entre les checkpoints du circuit.
-// Un pilote dévie du tracé pour déclencher un WARNING_DNF.
+// simulate-auto.js — Simulate an AUTO race by sending fake OCR positions.
+// Each pilot is interpolated between racetrack checkpoints.
+// One pilot deviates from the track to trigger a WARNING_DNF.
 //
-// Usage :
-//   node scripts/simulate-auto.js              # mode rapide
-//   node scripts/simulate-auto.js --interactive # pause entre actions
+// Usage:
+//   node scripts/simulate-auto.js              # fast mode
+//   node scripts/simulate-auto.js --interactive # pause between actions
 //   node scripts/simulate-auto.js --base-url http://localhost:3000
 
 'use strict';
@@ -17,9 +17,7 @@ const BASE_URL = (() => {
 const INTERACTIVE = process.argv.includes('--interactive');
 const OCR_INTERVAL_MS = 2000; // interval between OCR position pushes
 
-// ---------------------------------------------------------------------------
 // Helpers
-// ---------------------------------------------------------------------------
 
 async function api(method, path, body, token) {
   const headers = { 'Content-Type': 'application/json' };
@@ -67,36 +65,34 @@ function lerp3(a, b, t) {
   ];
 }
 
-// ---------------------------------------------------------------------------
 // Simulation
-// ---------------------------------------------------------------------------
 
 async function simulate() {
-  log('🏁 Simulation course AUTO');
-  console.log(`   Serveur : ${BASE_URL}`);
-  console.log(`   Mode    : ${INTERACTIVE ? 'interactif' : 'rapide'}\n`);
+  log('🏁 AUTO race simulation');
+  console.log(`   Server : ${BASE_URL}`);
+  console.log(`   Mode   : ${INTERACTIVE ? 'interactive' : 'fast'}\n`);
 
-  // --- 1. Login admin ---
-  log('1. Authentification admin');
+  // 1. Login admin
+  log('1. Admin authentication');
   const loginRes = await step('Login', () =>
     api('POST', '/api/auth/login', { displayName: 'Admin', password: 'admin123' })
   );
   const jwt = loginRes.jwt;
 
-  // --- 2. Find AUTO race ---
-  log('2. Sélection de la course AUTO');
+  // 2. Find AUTO race
+  log('2. Selecting AUTO race');
   const races = await api('GET', '/api/races', null, jwt);
   const race = races.find(r => r.trackingMode === 'auto');
-  if (!race) throw new Error('Aucune course AUTO trouvée. Lancez seed.js d\'abord.');
-  console.log(`   Course : "${race.name}" [${race.id}]`);
+  if (!race) throw new Error('No AUTO race found. Run seed.js first.');
+  console.log(`   Race   : "${race.name}" [${race.id}]`);
 
-  // --- 3. Fetch racetrack checkpoints ---
+  // 3. Fetch racetrack checkpoints
   const trackData = await api('GET', `/api/racetracks/${race.racetrackId}`, null, jwt);
   const checkpoints = trackData.checkpoints;
-  console.log(`   Circuit: "${trackData.name}" (${checkpoints.length} checkpoints)`);
+  console.log(`   Track  : "${trackData.name}" (${checkpoints.length} checkpoints)`);
 
-  // --- 4. Open, register, validate ---
-  log('3. Inscriptions');
+  // 4. Open, register, validate
+  log('3. Registrations');
   if (race.status === 'PENDING') {
     await step('open-registrations', () =>
       api('POST', `/api/races/${race.id}/open-registrations`, null, jwt)
@@ -122,8 +118,8 @@ async function simulate() {
     );
   }
 
-  // --- 5. Get OCR tokens for each pilot ---
-  log('4. Récupération des tokens OCR');
+  // 5. Get OCR tokens for each pilot
+  log('4. Fetching OCR tokens');
   const pilotTokenMap = {}; // pilotId → ocrToken
   for (const p of pilots) {
     const pilotLogin = await api('POST', '/api/auth/login', {
@@ -134,12 +130,12 @@ async function simulate() {
     console.log(`  ✓ ${p.displayName} token: ${me.token.slice(0, 8)}...`);
   }
 
-  // --- 6. Load + start ---
-  log('5. Chargement + départ');
+  // 6. Load + start
+  log('5. Loading + starting');
   await step('Load race', () => api('POST', `/api/races/${race.id}/load`, null, jwt));
   await step('Start race', () => api('POST', `/api/races/${race.id}/start`, null, jwt));
 
-  // --- 7. Simulate OCR positions ---
+  // 7. Simulate OCR positions
   log('6. Simulation positions OCR\n');
 
   const LAP_COUNT = race.lapCount ?? 3;
@@ -193,7 +189,7 @@ async function simulate() {
           nextPos[1] + 500,
           nextPos[2] + 2000,
         ];
-        console.log(`  ⚠️  ${ps.name} dévie du tracé (tick ${tick})`);
+        console.log(`  ⚠️  ${ps.name} deviates from track (tick ${tick})`);
 
         await pushOcrPosition(ps.token, pos[0], pos[1], pos[2]);
         await sleep(OCR_INTERVAL_MS);
@@ -222,7 +218,7 @@ async function simulate() {
         // Completed a full lap when wrapping past checkpoint 0
         if (ps.cpIdx === 0) {
           ps.lapsDone++;
-          console.log(`  🏎  ${ps.name.padEnd(12)} — Tour ${ps.lapsDone}/${LAP_COUNT} terminé`);
+          console.log(`  🏎  ${ps.name.padEnd(12)} — Lap ${ps.lapsDone}/${LAP_COUNT} completed`);
         }
       }
 
@@ -234,14 +230,14 @@ async function simulate() {
     await sleep(OCR_INTERVAL_MS);
   }
 
-  // --- 8. Finish ---
-  log('7. Fin de course');
+  // 8. Finish
+  log('7. Race finish');
   await step('Finish race', () => api('POST', `/api/races/${race.id}/finish`, null, jwt));
 
-  log('✅ Simulation AUTO terminée avec succès.\n');
+  log('✅ AUTO simulation completed successfully.\n');
 }
 
 simulate().catch(err => {
-  console.error('\n❌ Simulation échouée:', err.message);
+  console.error('\n❌ Simulation failed:', err.message);
   process.exit(1);
 });

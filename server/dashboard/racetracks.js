@@ -1,4 +1,4 @@
-// racetracks.js
+// racetracks.js — Racetrack CRUD, JSON checkpoint import, and circuit management.
 
 let _racetracks = [];
 let _createCircuitFormVisible = false;
@@ -23,7 +23,7 @@ function renderRacetracks() {
     tbody.innerHTML = "";
 
     if (_racetracks.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: var(--md-sys-color-on-surface-variant); padding: 20px;">Aucun circuit enregistré.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: var(--md-sys-color-on-surface-variant); padding: 20px;">No racetracks registered.</td></tr>`;
         return;
     }
 
@@ -39,7 +39,7 @@ function renderRacetracks() {
                 </span>
             </td>
             <td>
-                <md-icon-button onclick="deleteCircuit('${escCircuit(track.id)}')" title="Supprimer le circuit" style="--md-icon-button-icon-color: var(--md-sys-color-error);">
+                <md-icon-button onclick="deleteCircuit('${escCircuit(track.id)}')" title="Delete racetrack" style="--md-icon-button-icon-color: var(--md-sys-color-error);">
                     <md-icon>delete</md-icon>
                 </md-icon-button>
             </td>`;
@@ -73,10 +73,10 @@ function onCircuitJsonSelected(event) {
         try {
             const raw = JSON.parse(e.target.result);
             _pendingCircuitCheckpoints = parseCheckpoints(raw);
-            if (preview) preview.textContent = `✓ ${_pendingCircuitCheckpoints.length} checkpoint(s) détectés`;
+            if (preview) preview.textContent = `✓ ${_pendingCircuitCheckpoints.length} checkpoint(s) detected`;
         } catch (err) {
             _pendingCircuitCheckpoints = null;
-            if (preview) preview.textContent = `✗ JSON invalide : ${err.message}`;
+            if (preview) preview.textContent = `✗ Invalid JSON:${err.message}`;
         }
     };
     reader.readAsText(file);
@@ -84,7 +84,7 @@ function onCircuitJsonSelected(event) {
 
 // normalise various JSON formats into [{ order, position: [x,y,z] }]
 function parseCheckpoints(raw) {
-    if (!Array.isArray(raw)) throw new Error("Le fichier doit contenir un tableau JSON");
+    if (!Array.isArray(raw)) throw new Error("File must contain a JSON array");
 
     return raw.map((item, i) => {
         if (Array.isArray(item) && item.length >= 3) {
@@ -101,7 +101,7 @@ function parseCheckpoints(raw) {
                 return { order: i, position: [Number(item.position[0]), Number(item.position[1]), Number(item.position[2])] };
             }
         }
-        throw new Error(`Format non reconnu à l'index ${i}`);
+        throw new Error(`Unrecognized format at index ${i}`);
     });
 }
 
@@ -110,7 +110,7 @@ async function submitCreateCircuit() {
     if (errorEl) errorEl.textContent = "";
 
     const name = document.getElementById("new-circuit-name")?.value?.trim();
-    if (!name) { if (errorEl) errorEl.textContent = "Le nom est requis."; return; }
+    if (!name) { if (errorEl) errorEl.textContent = "Name is required."; return; }
 
     const body = { name, checkpoints: _pendingCircuitCheckpoints ?? [] };
 
@@ -124,12 +124,12 @@ async function submitCreateCircuit() {
 }
 
 async function deleteCircuit(id) {
-    if (!confirm("Supprimer ce circuit ? Cette action est irréversible.")) return;
+    if (!confirm("Delete this racetrack? This action is irreversible.")) return;
     try {
         await apiDelete(`/racetracks/${id}`);
         await loadRacetracks();
     } catch (e) {
-        alert(`Erreur : ${e.message}`);
+        alert(`Error: ${e.message}`);
     }
 }
 
