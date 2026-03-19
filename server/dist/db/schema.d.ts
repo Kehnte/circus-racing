@@ -365,7 +365,7 @@ export declare const pilot: import("drizzle-orm/sqlite-core").SQLiteTableWithCol
             columnType: "SQLiteText";
             data: string;
             driverParam: string;
-            notNull: true;
+            notNull: false;
             hasDefault: false;
             isPrimaryKey: false;
             isAutoincrement: false;
@@ -865,7 +865,7 @@ export declare const race: import("drizzle-orm/sqlite-core").SQLiteTableWithColu
     };
     dialect: "sqlite";
 }>;
-export type RaceEntryStatus = "PENDING" | "VALIDATED" | "DNF" | "FINISHED";
+export type RaceEntryStatus = "PENDING" | "VALIDATED" | "REJECTED" | "REVOKED";
 export declare const raceEntry: import("drizzle-orm/sqlite-core").SQLiteTableWithColumns<{
     name: "race_entry";
     schema: undefined;
@@ -947,6 +947,23 @@ export declare const raceEntry: import("drizzle-orm/sqlite-core").SQLiteTableWit
             length: undefined;
             $type: RaceEntryStatus;
         }>;
+        gridPosition: import("drizzle-orm/sqlite-core").SQLiteColumn<{
+            name: "gridPosition";
+            tableName: "race_entry";
+            dataType: "number";
+            columnType: "SQLiteInteger";
+            data: number;
+            driverParam: number;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         teamSnapshot: import("drizzle-orm/sqlite-core").SQLiteColumn<{
             name: "teamSnapshot";
             tableName: "race_entry";
@@ -1013,6 +1030,7 @@ export interface PilotState {
     lap: number;
     progress: number;
     raceProgress: number;
+    gridPosition: number;
     lapTimes: number[];
     status: PilotRuntimeStatus;
     frozenTime: string | null;

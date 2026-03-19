@@ -69,7 +69,7 @@
                         onchange="loadActiveRace(this.value)"
                         title="Select the active race"
                     >
-                        <option value="">— Select a race —</option>
+                        <option value="">Select a race</option>
                     </select>
                     <md-outlined-button onclick="loadActiveRaceList()" title="Refresh the race list">
                         <md-icon slot="icon">refresh</md-icon>
@@ -79,9 +79,22 @@
                         <md-icon slot="icon">add</md-icon>
                         New race
                     </md-filled-button>
-                    <md-outlined-button id="btn-tracking-mode" onclick="toggleTrackingMode()" title="Toggle between MANUAL and AUTO mode">
-                        MANUAL mode
+                    <md-outlined-button id="btn-race-settings" onclick="toggleRaceSettingsPanel()" title="Edit race settings" style="display: none;">
+                        <md-icon slot="icon">settings</md-icon>
+                        Settings
                     </md-outlined-button>
+                    <md-filled-tonal-button id="btn-race-settings-active" onclick="toggleRaceSettingsPanel()" title="Edit race settings" style="display: none;">
+                        <md-icon slot="icon">settings</md-icon>
+                        Settings
+                    </md-filled-tonal-button>
+                    <div id="tracking-mode-toggle" class="segmented-toggle">
+                        <button class="seg-btn selected" data-value="manual" onclick="setTrackingMode('manual')" title="Manual tracking mode">
+                            <md-icon>touch_app</md-icon> manual
+                        </button>
+                        <button class="seg-btn" data-value="auto" onclick="setTrackingMode('auto')" title="Auto OCR tracking mode">
+                            <md-icon>smart_toy</md-icon> auto
+                        </button>
+                    </div>
                 </div>
 
                 <!-- create race form (collapsible) -->
@@ -90,7 +103,7 @@
                     <div class="form-row" style="margin-bottom: 12px;">
                         <md-outlined-text-field id="new-race-name" label="Race name" style="flex: 2; min-width: 200px;"></md-outlined-text-field>
                         <md-outlined-select id="new-race-racetrack" label="Racetrack" style="flex: 2; min-width: 200px;">
-                            <md-select-option value=""><div slot="headline">— No racetrack (manual mode) —</div></md-select-option>
+                            <md-select-option value=""><div slot="headline">No racetrack (manual mode)</div></md-select-option>
                         </md-outlined-select>
                         <md-outlined-select id="new-race-tracking-mode" label="Tracking" style="min-width: 160px;" onchange="onNewRaceTrackingModeChange(this.value)">
                             <md-select-option value="manual" selected><div slot="headline">Manual</div></md-select-option>
@@ -147,66 +160,71 @@
                 </div>
 
                 <!-- DNF warning panel (AUTO mode) -->
-                <div id="dnf-warning-panel" hidden style="margin: 8px 0; padding: 12px 16px; border-radius: 8px; background: var(--md-sys-color-error-container); color: var(--md-sys-color-on-error-container); display: flex; flex-direction: column; gap: 8px;">
+                <div id="dnf-warning-panel" hidden style="margin: 8px 0; padding: 12px 16px; border-radius: 8px; background: var(--md-sys-color-error-container); color: var(--md-sys-color-on-error-container); flex-direction: column; gap: 8px;">
                 </div>
 
-                <div class="form-row">
-                    <md-outlined-text-field
-                        id="setting-race-name"
-                        label="Race name"
-                        style="flex: 2; min-width: 200px;"
-                    ></md-outlined-text-field>
+                <!-- race settings panel (collapsible) -->
+                <div id="race-settings-panel" style="display: none; margin: 12px 0; padding: 16px 20px; border-radius: 12px; background: var(--md-sys-color-surface-container); border: 1px solid var(--md-sys-color-outline-variant);">
+                    <h3 class="md-typescale-title-small" style="margin: 0 0 16px 0;">Race settings</h3>
+                    <div class="form-row" style="margin-bottom: 12px;">
+                        <md-outlined-text-field
+                            id="setting-race-name"
+                            label="Race name"
+                            style="flex: 2; min-width: 200px;"
+                        ></md-outlined-text-field>
 
-                    <md-outlined-select id="setting-session" label="Session">
-                        <md-select-option value="Practice"><div slot="headline">Practice</div></md-select-option>
-                        <md-select-option value="Qualifying"><div slot="headline">Qualifying</div></md-select-option>
-                        <md-select-option value="Race"><div slot="headline">Race</div></md-select-option>
-                    </md-outlined-select>
+                        <md-outlined-select id="setting-session" label="Session">
+                            <md-select-option value="Practice"><div slot="headline">Practice</div></md-select-option>
+                            <md-select-option value="Qualifying"><div slot="headline">Qualifying</div></md-select-option>
+                            <md-select-option value="Race"><div slot="headline">Race</div></md-select-option>
+                        </md-outlined-select>
 
-                    <md-outlined-select id="setting-weather" label="Weather">
-                        <md-select-option value="Clear"><div slot="headline">Clear</div></md-select-option>
-                        <md-select-option value="Cloudy"><div slot="headline">Cloudy</div></md-select-option>
-                        <md-select-option value="Fog"><div slot="headline">Fog</div></md-select-option>
-                        <md-select-option value="Rain"><div slot="headline">Rain</div></md-select-option>
-                        <md-select-option value="Storm"><div slot="headline">Storm</div></md-select-option>
-                        <md-select-option value="Snow"><div slot="headline">Snow</div></md-select-option>
-                    </md-outlined-select>
+                        <md-outlined-select id="setting-weather" label="Weather">
+                            <md-select-option value="Clear"><div slot="headline">Clear</div></md-select-option>
+                            <md-select-option value="Cloudy"><div slot="headline">Cloudy</div></md-select-option>
+                            <md-select-option value="Fog"><div slot="headline">Fog</div></md-select-option>
+                            <md-select-option value="Rain"><div slot="headline">Rain</div></md-select-option>
+                            <md-select-option value="Storm"><div slot="headline">Storm</div></md-select-option>
+                            <md-select-option value="Snow"><div slot="headline">Snow</div></md-select-option>
+                        </md-outlined-select>
 
-                    <md-outlined-select id="setting-start-type" label="Start type">
-                        <md-select-option value="Grid Start"><div slot="headline">Grid start</div></md-select-option>
-                        <md-select-option value="Rolling Start"><div slot="headline">Rolling start</div></md-select-option>
-                    </md-outlined-select>
+                        <md-outlined-select id="setting-start-type" label="Start type">
+                            <md-select-option value="Grid Start"><div slot="headline">Grid start</div></md-select-option>
+                            <md-select-option value="Rolling Start"><div slot="headline">Rolling start</div></md-select-option>
+                        </md-outlined-select>
+                    </div>
+                    <div class="race-controls-bar" style="border-radius: var(--md-sys-shape-corner-medium);">
+                        <md-outlined-select
+                            id="setting-session-mode"
+                            label="Session mode"
+                            style="width: 140px; flex-shrink: 0;"
+                        >
+                            <md-select-option value="laps"><div slot="headline">Laps</div></md-select-option>
+                            <md-select-option value="timed"><div slot="headline">Timed</div></md-select-option>
+                        </md-outlined-select>
+
+                        <md-outlined-text-field
+                            id="total-laps"
+                            label="Total laps"
+                            type="number"
+                            value="3"
+                            min="1"
+                            style="width: 100px; flex-shrink: 0;"
+                        ></md-outlined-text-field>
+
+                        <md-outlined-text-field
+                            id="timed-duration"
+                            label="Duration (min)"
+                            type="number"
+                            value="30"
+                            min="1"
+                            style="width: 130px; flex-shrink: 0; display: none;"
+                        ></md-outlined-text-field>
+                    </div>
                 </div>
 
-                <!-- row 1: session settings -->
-                <div class="race-controls-bar race-controls-session">
-                    <md-outlined-select
-                        id="setting-session-mode"
-                        label="Session mode"
-                        style="width: 140px; flex-shrink: 0;"
-                    >
-                        <md-select-option value="laps"><div slot="headline">Laps</div></md-select-option>
-                        <md-select-option value="timed"><div slot="headline">Timed</div></md-select-option>
-                    </md-outlined-select>
-
-                    <md-outlined-text-field
-                        id="total-laps"
-                        label="Total laps"
-                        type="number"
-                        value="3"
-                        min="1"
-                        style="width: 100px; flex-shrink: 0;"
-                    ></md-outlined-text-field>
-
-                    <md-outlined-text-field
-                        id="timed-duration"
-                        label="Duration (min)"
-                        type="number"
-                        value="30"
-                        min="1"
-                        style="width: 130px; flex-shrink: 0; display: none;"
-                    ></md-outlined-text-field>
-
+                <!-- display / overlay toolbar -->
+                <div class="race-controls-bar race-controls-display">
                     <md-outlined-text-field
                         id="event-duration"
                         label="Alert duration (s)"
@@ -235,10 +253,6 @@
                         onclick="stopCountdown(true)"
                         style="display:none; --md-text-button-label-text-color: var(--md-sys-color-error);"
                     >Stop countdown</md-text-button>
-                </div>
-
-                <!-- row 2: display / overlay settings -->
-                <div class="race-controls-bar race-controls-display">
 
                     <md-outlined-select
                         id="setting-team-display"
@@ -250,9 +264,7 @@
                         <md-select-option value="hidden"><div slot="headline">Hidden</div></md-select-option>
                     </md-outlined-select>
 
-
                     <md-filter-chip id="btn-chrono-toggle" label="Chrono" selected onclick="toggleChrono()"></md-filter-chip>
-
 
                     <md-outlined-select
                         id="setting-chrono-display"
@@ -264,7 +276,6 @@
                         <md-select-option value="best-lap"><div slot="headline">Best lap</div></md-select-option>
                         <md-select-option value="last-lap"><div slot="headline">Last lap</div></md-select-option>
                     </md-outlined-select>
-
 
                     <md-filter-chip id="btn-pilots-toggle" label="Overlay names" selected onclick="togglePilotsVisibility()" title="Show/hide pilot names on the leaderboard overlay"></md-filter-chip>
                 </div>
@@ -285,17 +296,6 @@
                     </div>
                 </div>
 
-                <!-- add pilot to race (admin direct-add) -->
-                <div class="race-controls-bar" style="gap: 8px; flex-wrap: wrap; padding: 4px 0;">
-                    <select id="add-pilot-select" style="flex: 1; min-width: 200px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--md-sys-color-outline); background: var(--md-sys-color-surface-container); color: var(--md-sys-color-on-surface); font-size: 14px;">
-                        <option value="">— Select a pilot —</option>
-                    </select>
-                    <md-outlined-button onclick="adminAddPilot()" title="Add this pilot to the race (entry validated directly)">
-                        <md-icon slot="icon">person_add</md-icon>
-                        Add
-                    </md-outlined-button>
-                </div>
-
                 <div class="m3-table-wrapper" style="margin-top: 16px;">
                     <table class="m3-table" style="table-layout: fixed;">
                         <colgroup>
@@ -308,6 +308,7 @@
                             <col class="col-set-pos">
                             <col class="col-reorder">
                             <col class="col-dnf">
+                            <col class="col-remove">
                         </colgroup>
                         <thead>
                             <tr>
@@ -320,6 +321,7 @@
                                 <th>Set Pos</th>
                                 <th>Reorder</th>
                                 <th>DNF</th>
+                                <th id="race-th-remove">Remove</th>
                             </tr>
                         </thead>
 
@@ -331,7 +333,7 @@
             <!-- pilots section -->
             <div class="m3-card" id="pilots-manager-section">
                 <div class="section-header">
-                    <h2 class="m3-card-title" style="margin-bottom:0">Pilots</h2>
+                    <h2 class="m3-card-title" style="margin-bottom:0">Available Pilots</h2>
                     <md-text-button onclick="resetPilots()">Reset pilots</md-text-button>
                 </div>
 
@@ -343,6 +345,7 @@
                             <col class="team-col">
                             <col class="col-vehicle">
                             <col class="col-controls">
+                            <col class="col-registration">
                             <col class="col-actions">
                         </colgroup>
                         <thead>
@@ -352,6 +355,7 @@
                                 <th class="team-ext">Team</th>
                                 <th>Vehicle</th>
                                 <th>Controls</th>
+                                <th>Registration</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -373,6 +377,7 @@
                                 <td>
                                     <md-outlined-select id="pilot-controls" label="Controls" style="width:100%;"></md-outlined-select>
                                 </td>
+                                <td></td>
                                 <td>
                                     <md-filled-button onclick="addPilot()">Add pilot</md-filled-button>
                                 </td>
@@ -568,50 +573,6 @@
                 </div>
             </div>
 
-            <!-- registrations section -->
-            <div class="m3-card" id="registrations-section">
-                <div class="section-header">
-                    <h2 class="m3-card-title" style="margin-bottom:0">
-                        Pilot registrations
-                        <span id="registrations-badge" style="
-                            display: none;
-                            align-items: center;
-                            justify-content: center;
-                            background-color: var(--md-sys-color-error);
-                            color: var(--md-sys-color-on-error);
-                            border-radius: 10px;
-                            font-size: 11px;
-                            font-weight: 700;
-                            min-width: 20px;
-                            height: 20px;
-                            padding: 0 6px;
-                            margin-left: 8px;
-                            vertical-align: middle;
-                        "></span>
-                    </h2>
-                    <md-text-button onclick="loadRegistrations()">
-                        <span class="material-symbols-outlined" slot="icon">refresh</span>
-                        Refresh
-                    </md-text-button>
-                </div>
-
-                <div class="form-row" style="margin-bottom: 16px;">
-                    <md-outlined-select
-                        id="registrations-race-select"
-                        label="Race"
-                        style="min-width: 280px; flex: 1;"
-                        onchange="loadRegistrations()"
-                    >
-                        <md-select-option value=""><div slot="headline">— Select a race —</div></md-select-option>
-                    </md-outlined-select>
-                </div>
-
-                <div id="registrations-content">
-                    <p class="md-typescale-body-medium" style="color: var(--md-sys-color-on-surface-variant);">
-                        Select a race to view pending registrations.
-                    </p>
-                </div>
-            </div>
 
             <!-- data section -->
             <div class="m3-card" id="data-manager-section">
@@ -649,7 +610,6 @@
         <script src="race-controls.js"></script>
         <script src="race-settings.js"></script>
         <script src="database.js"></script>
-        <script src="registrations.js"></script>
 
         <script>
             document.addEventListener("DOMContentLoaded", () => {

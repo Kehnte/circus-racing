@@ -323,6 +323,52 @@ table.m3-table.chrono-hidden td.chrono-cell {
     flex: 1;
 }
 
+.segmented-toggle {
+    display: inline-flex;
+    border-radius: var(--md-sys-shape-corner-full);
+    overflow: hidden;
+    border: 1px solid var(--md-sys-color-outline);
+}
+
+.segmented-toggle .seg-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 16px;
+    font-size: 14px;
+    font-family: "Roboto", sans-serif;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    color: var(--md-sys-color-on-surface);
+    transition: background-color 0.15s, color 0.15s;
+    white-space: nowrap;
+}
+
+.segmented-toggle .seg-btn:not(:last-child) {
+    border-right: 1px solid var(--md-sys-color-outline);
+}
+
+.segmented-toggle .seg-btn.selected {
+    background: var(--md-sys-color-secondary-container);
+    color: var(--md-sys-color-on-secondary-container);
+}
+
+.segmented-toggle .seg-btn:hover:not(.selected) {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.segmented-toggle .seg-btn:disabled {
+    opacity: 0.38;
+    cursor: default;
+}
+
+.segmented-toggle .seg-btn md-icon {
+    font-size: 18px;
+    --md-icon-size: 18px;
+}
+
 .timing-toggle-label {
     display: flex;
     align-items: center;
@@ -466,15 +512,9 @@ table.m3-table.teams-hidden td.team-ext {
     align-items: center;
 }
 
-/* session row: rounded top corners only */
-.race-controls-bar.race-controls-session {
-    border-radius: var(--md-sys-shape-corner-medium) var(--md-sys-shape-corner-medium) 0 0;
-    border-bottom: 1px solid var(--md-sys-color-outline-variant);
-}
-
-/* display row: rounded bottom corners only */
+/* display / overlay toolbar */
 .race-controls-bar.race-controls-display {
-    border-radius: 0 0 var(--md-sys-shape-corner-medium) var(--md-sys-shape-corner-medium);
+    border-radius: var(--md-sys-shape-corner-medium);
 }
 
 /* action row below settings bars */
@@ -490,7 +530,7 @@ table.m3-table.teams-hidden td.team-ext {
 #race-manager-section,
 #pilots-manager-section,
 #controls-manager-section,
-#registrations-section,
+#circuits-manager-section,
 #data-manager-section {
     grid-column: 1 / -1;
 }
@@ -505,6 +545,14 @@ table.m3-table.teams-hidden td.team-ext {
 #race-manager-section .m3-table col.col-set-pos     { width: 110px; }
 #race-manager-section .m3-table col.col-reorder     { width: 90px; }
 #race-manager-section .m3-table col.col-dnf         { width: 70px; }
+#race-manager-section .m3-table col.col-remove      { width: 70px; }
+
+/* hide remove column when race is running or finished */
+table.m3-table.remove-hidden col.col-remove,
+table.m3-table.remove-hidden th#race-th-remove,
+table.m3-table.remove-hidden td.remove-col {
+    display: none;
+}
 
 /* truncate pilot name with ellipsis; max-width:0 is required for text-overflow in fixed-layout tables */
 #race-manager-section .m3-table td:nth-child(2) {
@@ -519,5 +567,6 @@ table.m3-table.teams-hidden td.team-ext {
 #pilots-manager-section .m3-table col.col-nationality { width: 100px; }
 #pilots-manager-section .m3-table col.team-col        { width: 130px; }
 #pilots-manager-section .m3-table col.col-vehicle     { width: 130px; }
-#pilots-manager-section .m3-table col.col-controls    { width: 120px; }
-#pilots-manager-section .m3-table col.col-actions     { width: 110px; }
+#pilots-manager-section .m3-table col.col-controls      { width: 120px; }
+#pilots-manager-section .m3-table col.col-registration { width: 120px; }
+#pilots-manager-section .m3-table col.col-actions       { width: 100px; }

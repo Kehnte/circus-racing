@@ -34,6 +34,7 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.db = void 0;
+// db.ts — Drizzle ORM database instance (libSQL/SQLite).
 const node_1 = require("drizzle-orm/libsql/node");
 const schema = __importStar(require("./schema.js"));
 const dotenv_1 = require("dotenv");

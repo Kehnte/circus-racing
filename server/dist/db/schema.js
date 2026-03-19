@@ -1,11 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.raceState = exports.raceEntry = exports.race = exports.pilot = exports.racetrack = exports.controls = exports.vehicle = exports.team = void 0;
+// schema.ts — SQLite table definitions with Drizzle ORM.
+// Entities: pilot, team, vehicle, controls, racetrack, race, race_entry, race_state.
 const sqlite_core_1 = require("drizzle-orm/sqlite-core");
 const drizzle_orm_1 = require("drizzle-orm");
-// ---------------------------------------------------------------------------
 // Reference entities (managed by admin/modo)
-// ---------------------------------------------------------------------------
 exports.team = (0, sqlite_core_1.sqliteTable)("team", {
     id: (0, sqlite_core_1.text)().primaryKey().$defaultFn(() => crypto.randomUUID()),
     name: (0, sqlite_core_1.text)().notNull().unique(),
@@ -32,7 +32,7 @@ exports.racetrack = (0, sqlite_core_1.sqliteTable)("racetrack", {
 exports.pilot = (0, sqlite_core_1.sqliteTable)("pilot", {
     id: (0, sqlite_core_1.text)().primaryKey().$defaultFn(() => crypto.randomUUID()),
     displayName: (0, sqlite_core_1.text)().notNull().unique(),
-    email: (0, sqlite_core_1.text)().notNull().unique(),
+    email: (0, sqlite_core_1.text)().unique(),
     passwordHash: (0, sqlite_core_1.text)().notNull(),
     role: (0, sqlite_core_1.text)().$type().notNull().default("PILOT"),
     token: (0, sqlite_core_1.text)().notNull().unique(), // OCR auth token + lightweight session id
@@ -66,6 +66,7 @@ exports.raceEntry = (0, sqlite_core_1.sqliteTable)("race_entry", {
     raceId: (0, sqlite_core_1.text)().notNull().references(() => exports.race.id, { onDelete: "cascade" }),
     pilotId: (0, sqlite_core_1.text)().notNull().references(() => exports.pilot.id, { onDelete: "cascade" }),
     status: (0, sqlite_core_1.text)().$type().notNull().default("PENDING"),
+    gridPosition: (0, sqlite_core_1.integer)(), // 1-based grid order, set by admin
     // Snapshots saved at validation time (for historical records)
     teamSnapshot: (0, sqlite_core_1.text)({ mode: "json" }).$type(),
     vehicleSnapshot: (0, sqlite_core_1.text)({ mode: "json" }).$type(),

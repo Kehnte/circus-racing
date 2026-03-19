@@ -387,6 +387,14 @@ router.delete("/:raceId/entries/:entryId", requireAuth, async (req, res) => {
   }
 
   await db.delete(raceEntry).where(eq(raceEntry.id, entry.id));
+
+  try {
+    const ctx = getContext();
+    if (ctx?.raceId === entry.raceId && (ctx.raceStatus === "PENDING" || ctx.raceStatus === "SCHEDULED")) {
+      broadcastRaceState(await loadRace(entry.raceId));
+    }
+  } catch { /* fire-and-forget */ }
+
   res.sendStatus(204);
 });
 

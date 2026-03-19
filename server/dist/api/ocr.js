@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+// ocr.ts — OCR position ingestion endpoint (receives monitor position data).
 const express_1 = require("express");
 const drizzle_orm_1 = require("drizzle-orm");
 const db_js_1 = require("../db/db.js");
@@ -8,9 +9,7 @@ const race_context_js_1 = require("../engine/race-context.js");
 const race_engine_js_1 = require("../engine/race-engine.js");
 const emitter_js_1 = require("../socket/emitter.js");
 const router = (0, express_1.Router)();
-// ---------------------------------------------------------------------------
 // Token auth middleware — reads x-token header, looks up pilot.token
-// ---------------------------------------------------------------------------
 async function requireOcrToken(req, res, next) {
     const token = req.headers["x-token"];
     if (!token) {
@@ -28,10 +27,8 @@ async function requireOcrToken(req, res, next) {
     req.user = { id: found.id, role: found.role };
     next();
 }
-// ---------------------------------------------------------------------------
 // PUT /ocr/position
 // Body: { x: number, y: number, z: number }
-// ---------------------------------------------------------------------------
 router.put("/position", requireOcrToken, async (req, res) => {
     const { x, y, z } = req.body;
     if (typeof x !== "number" || typeof y !== "number" || typeof z !== "number") {

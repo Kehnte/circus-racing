@@ -32,6 +32,7 @@ export interface RaceContext {
   bufferRadius: number;
   pilotStates: Record<string, PilotState>;
   pilotProfiles: Record<string, PilotProfile>;
+  entryIds: Record<string, string>;
   startedAt: string | null;
   pausedAt: string | null;
   totalPausedMs: number;
@@ -74,6 +75,7 @@ export async function loadRace(raceId: string): Promise<RaceContext> {
   // Fetch VALIDATED entries with pilot info and grid position
   const validatedEntries = await db
     .select({
+      entryId: raceEntry.id,
       pilotId: raceEntry.pilotId,
       gridPosition: raceEntry.gridPosition,
       teamSnapshot: raceEntry.teamSnapshot,
@@ -111,11 +113,13 @@ export async function loadRace(raceId: string): Promise<RaceContext> {
 
   const pilotStates: Record<string, PilotState> = {};
   const pilotProfiles: Record<string, PilotProfile> = {};
+  const entryIds: Record<string, string> = {};
 
   for (let i = 0; i < validatedEntries.length; i++) {
     const entry = validatedEntries[i];
     const gp = entry.gridPosition ?? (i + 1);
     pilotStates[entry.pilotId] = defaultState(gp);
+    entryIds[entry.pilotId] = entry.entryId;
     pilotProfiles[entry.pilotId] = {
       displayName: entry.displayName,
       country: entry.country ?? "un",
@@ -140,6 +144,7 @@ export async function loadRace(raceId: string): Promise<RaceContext> {
     bufferRadius,
     pilotStates,
     pilotProfiles,
+    entryIds,
     startedAt: null,
     pausedAt: null,
     totalPausedMs: 0,

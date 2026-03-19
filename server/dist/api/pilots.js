@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+// pilots.ts — Pilot CRUD routes, profile updates, and config file download.
 const express_1 = require("express");
 const drizzle_orm_1 = require("drizzle-orm");
 const crypto_1 = require("crypto");

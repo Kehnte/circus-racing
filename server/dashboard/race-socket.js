@@ -24,8 +24,10 @@ raceSocket.on("race-state", (state) => {
         });
     }
 
-    if (typeof renderRaceTable    === "function") renderRaceTable(state);
+    if (typeof renderRaceTable       === "function") renderRaceTable(state);
     if (typeof renderDnfWarningPanel === "function") renderDnfWarningPanel();
+    if (typeof refreshPilotsAndEntries === "function") refreshPilotsAndEntries();
+    else if (typeof displayPilots === "function") displayPilots();
 });
 
 // backward compat: pilots.js reads isTeamManagementActive

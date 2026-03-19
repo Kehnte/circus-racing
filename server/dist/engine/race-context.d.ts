@@ -1,4 +1,4 @@
-import { type PilotState, type TrackingMode, type SessionMode, type TeamDisplayMode, type ChronoDisplayMode } from "../db/schema.js";
+import { type PilotState, type TrackingMode, type SessionMode, type TeamDisplayMode, type ChronoDisplayMode, type RaceStatus } from "../db/schema.js";
 export declare const CHECKPOINT_RADIUS: number;
 export interface PilotProfile {
     displayName: string;
@@ -9,6 +9,7 @@ export interface PilotProfile {
 }
 export interface RaceContext {
     raceId: string;
+    raceStatus: RaceStatus;
     trackingMode: TrackingMode;
     lapCount: number;
     sessionMode: SessionMode;
@@ -20,6 +21,7 @@ export interface RaceContext {
     bufferRadius: number;
     pilotStates: Record<string, PilotState>;
     pilotProfiles: Record<string, PilotProfile>;
+    entryIds: Record<string, string>;
     startedAt: string | null;
     pausedAt: string | null;
     totalPausedMs: number;
@@ -40,4 +42,22 @@ export declare function loadRace(raceId: string): Promise<RaceContext>;
 export declare function setPilotState(pilotId: string, patch: Partial<PilotState>): void;
 export declare function persistState(): Promise<void>;
 export declare function clearContext(): Promise<void>;
+export declare function setGridOrder(pilotIds: string[]): void;
+export declare function setManualPosition(pilotId: string, targetPos: number): void;
+export declare function reorderPilot(pilotId: string, direction: "up" | "down"): void;
+export declare function toggleDnf(pilotId: string): void;
+export type ManualLapEvent = {
+    type: "fastest-lap";
+    pilotId: string;
+    lapMs: number;
+    lapFormatted: string;
+} | {
+    type: "finished";
+    pilotId: string;
+} | {
+    type: "race-finished";
+};
+export declare function incrementLap(pilotId: string, delta: 1 | -1): {
+    events: ManualLapEvent[];
+} | null;
 //# sourceMappingURL=race-context.d.ts.map

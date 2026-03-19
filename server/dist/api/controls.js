@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+// controls.ts — CRUD routes for control schemes (keyboard, gamepad, etc.).
 const express_1 = require("express");
 const drizzle_orm_1 = require("drizzle-orm");
 const db_js_1 = require("../db/db.js");

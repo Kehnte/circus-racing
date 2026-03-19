@@ -1,8 +1,11 @@
 "use strict";
+// emitter.ts — Socket.IO broadcast: race-state (unified format)
+// and race-data (legacy format for backward-compatible overlays).
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.initEmitter = initEmitter;
 exports.emitAll = emitAll;
 exports.emitDashboard = emitDashboard;
+exports.buildRaceStateBroadcast = buildRaceStateBroadcast;
 exports.buildRaceUpdatePayload = buildRaceUpdatePayload;
 exports.broadcastRaceState = broadcastRaceState;
 let _io = null;
@@ -16,11 +19,7 @@ function emitAll(event, data) {
 function emitDashboard(event, data) {
     _io?.to("dashboard").emit(event, data);
 }
-// ---------------------------------------------------------------------------
-// buildRaceUpdatePayload
-// Builds the same shape as broadcastRaceUpdate() in dashboard/race.js so that
-// overlays receive identical data regardless of whether the race is MANUAL or AUTO.
-// ---------------------------------------------------------------------------
+// Chrono helpers
 function formatTime(ms) {
     const totalSec = Math.floor(ms / 1000);
     const m = Math.floor(totalSec / 60);
@@ -47,7 +46,7 @@ function getChronoDisplay(ctx, pilotId, leaderElapsedMs, now) {
     const elapsedMs = getPilotElapsedMs(ctx, pilotId, now);
     switch (ctx.chronoDisplayMode) {
         case "leader":
-            return pilotId === ctx.globalFastestLapPilotId || leaderElapsedMs === elapsedMs
+            return elapsedMs === leaderElapsedMs
                 ? formatTime(elapsedMs)
                 : `+${formatTime(elapsedMs - leaderElapsedMs)}`;
         case "gap":
@@ -64,16 +63,86 @@ function getChronoDisplay(ctx, pilotId, leaderElapsedMs, now) {
             return formatTime(elapsedMs);
     }
 }
-function buildRaceUpdatePayload(ctx) {
-    const now = Date.now();
-    // Sort pilots: FINISHED/DNF by raceProgress desc, then RUNNING/WARNING_DNF by raceProgress desc
-    const sorted = Object.entries(ctx.pilotStates).sort(([, a], [, b]) => {
+// Sort pilots according to tracking mode.
+// Manual: by gridPosition asc — Auto: by raceProgress desc.
+function sortPilots(ctx) {
+    const entries = Object.entries(ctx.pilotStates);
+    if (ctx.trackingMode === "manual") {
+        // Active pilots sorted by gridPosition, then finished/dnf at end
+        return entries.sort(([, a], [, b]) => {
+            const aActive = a.status === "RUNNING" || a.status === "WARNING_DNF";
+            const bActive = b.status === "RUNNING" || b.status === "WARNING_DNF";
+            if (aActive !== bActive)
+                return aActive ? -1 : 1;
+            return a.gridPosition - b.gridPosition;
+        });
+    }
+    // Auto: sort by raceProgress desc (existing logic)
+    return entries.sort(([, a], [, b]) => {
         const aActive = a.status === "RUNNING" || a.status === "WARNING_DNF";
         const bActive = b.status === "RUNNING" || b.status === "WARNING_DNF";
         if (aActive !== bActive)
             return aActive ? -1 : 1;
         return b.raceProgress - a.raceProgress;
     });
+}
+// buildRaceStateBroadcast — unified format per spec §7 (race-state event).
+function buildRaceStateBroadcast(ctx) {
+    const now = Date.now();
+    const sorted = sortPilots(ctx);
+    const leaderElapsedMs = sorted.length > 0
+        ? getPilotElapsedMs(ctx, sorted[0][0], now)
+        : 0;
+    const pilots = sorted.map(([pilotId, state], index) => {
+        const profile = ctx.pilotProfiles[pilotId];
+        const team = profile?.teamSnapshot ?? null;
+        const vehicle = profile?.vehicleSnapshot ?? null;
+        return {
+            id: pilotId,
+            entryId: ctx.entryIds?.[pilotId] ?? null,
+            displayName: profile?.displayName ?? pilotId,
+            country: profile?.country ?? "un",
+            teamSnapshot: team
+                ? { name: team.name, color: team.color, acronym: team.acronym }
+                : null,
+            vehicleSnapshot: vehicle
+                ? { type: vehicle.type, manufacturer: vehicle.manufacturer ?? "", model: vehicle.model }
+                : null,
+            position: index + 1,
+            lap: state.lap,
+            lapTimes: state.lapTimes,
+            status: state.status,
+            frozenTime: state.frozenTime,
+        };
+    });
+    return {
+        raceId: ctx.raceId,
+        raceName: ctx.raceName,
+        status: ctx.raceStatus,
+        trackingMode: ctx.trackingMode,
+        session: ctx.session,
+        weather: ctx.weather,
+        startType: ctx.startType,
+        sessionMode: ctx.sessionMode,
+        lapCount: ctx.lapCount,
+        sessionDurationMs: ctx.sessionDurationMs,
+        startedAt: ctx.startedAt,
+        pausedAt: ctx.pausedAt,
+        totalPausedMs: ctx.totalPausedMs,
+        globalFastestLapMs: ctx.globalFastestLapMs,
+        globalFastestLapPilotId: ctx.globalFastestLapPilotId,
+        teamDisplayMode: ctx.teamDisplayMode,
+        chronoDisplayMode: ctx.chronoDisplayMode,
+        timingEnabled: ctx.timingEnabled,
+        eventDuration: ctx.eventDuration,
+        pilots,
+    };
+}
+// buildRaceUpdatePayload — legacy format (race-data event).
+// Kept for backward compatibility with existing overlays.
+function buildRaceUpdatePayload(ctx) {
+    const now = Date.now();
+    const sorted = sortPilots(ctx);
     const leaderElapsedMs = sorted.length > 0
         ? getPilotElapsedMs(ctx, sorted[0][0], now)
         : 0;
@@ -104,7 +173,7 @@ function buildRaceUpdatePayload(ctx) {
             "standby";
     return {
         raceList,
-        teams: [], // overlays use teamColor/teamAcronym from raceList directly
+        teams: [],
         teamDisplayMode: ctx.teamDisplayMode,
         timingEnabled: ctx.timingEnabled,
         chronoDisplayMode: ctx.chronoDisplayMode,
@@ -123,7 +192,9 @@ function buildRaceUpdatePayload(ctx) {
         },
     };
 }
+// broadcastRaceState — emits race-state (new) + race-data (legacy).
 function broadcastRaceState(ctx) {
+    emitAll("race-state", buildRaceStateBroadcast(ctx));
     emitAll("race-data", buildRaceUpdatePayload(ctx));
 }
 //# sourceMappingURL=emitter.js.map

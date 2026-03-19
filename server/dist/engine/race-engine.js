@@ -1,11 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.processPosition = processPosition;
+// race-engine.ts — AUTO mode race engine (checkpoint detection, lap counting, DNF warnings).
 const math_js_1 = require("./math.js");
 const race_context_js_1 = require("./race-context.js");
-// ---------------------------------------------------------------------------
 // Helpers
-// ---------------------------------------------------------------------------
 function formatLapTime(ms) {
     const totalSec = Math.floor(ms / 1000);
     const m = Math.floor(totalSec / 60);
@@ -16,9 +15,7 @@ function formatLapTime(ms) {
 function allDone(ctx) {
     return Object.values(ctx.pilotStates).every(s => s.status === "FINISHED" || s.status === "DNF");
 }
-// ---------------------------------------------------------------------------
 // processPosition
-// ---------------------------------------------------------------------------
 function processPosition(pilotId, position, now) {
     const ctx = (0, race_context_js_1.getContext)();
     if (!ctx)
@@ -35,9 +32,7 @@ function processPosition(pilotId, position, now) {
     const cpLen = cps.length;
     // Update position
     state.position = position;
-    // -------------------------------------------------------------------------
     // Checkpoint detection
-    // -------------------------------------------------------------------------
     if (cpLen > 0) {
         const nextIdx = state.nextCheckpointOrder % cpLen;
         const nextCP = cps[nextIdx];
@@ -84,9 +79,7 @@ function processPosition(pilotId, position, now) {
                 state.status = "RUNNING";
         }
     }
-    // -------------------------------------------------------------------------
     // DNF buffer detection (only when RUNNING or WARNING_DNF)
-    // -------------------------------------------------------------------------
     if ((state.status === "RUNNING" || state.status === "WARNING_DNF") &&
         cpLen >= 2) {
         const nextIdx = state.nextCheckpointOrder % cpLen;

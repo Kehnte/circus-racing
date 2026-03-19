@@ -85,6 +85,7 @@ function renderRaceTable(state) {
     const isManual     = state.trackingMode === "manual";
     const showTeams    = state.teamDisplayMode !== "hidden";
     const useAcronym   = state.teamDisplayMode === "acronym";
+    const canRemove    = state.status === "PENDING" || state.status === "SCHEDULED";
 
     pilots.forEach((pilot, index) => {
         const isDnf      = pilot.status === "DNF" || pilot.status === "WARNING_DNF";
@@ -168,6 +169,11 @@ function renderRaceTable(state) {
                     <md-icon>${dnfIcon}</md-icon>
                 </md-icon-button>
             </td>
+            <td class="remove-col">
+                ${canRemove && pilot.entryId
+                    ? `<md-icon-button onclick="removeFromRace('${pilot.entryId}')" title="Remove from race" style="--md-icon-button-icon-color: var(--md-sys-color-error);"><md-icon>person_remove</md-icon></md-icon-button>`
+                    : ""}
+            </td>
         </tr>`;
         tableBody.insertAdjacentHTML("beforeend", row);
     });
@@ -176,6 +182,7 @@ function renderRaceTable(state) {
     if (table) {
         table.classList.toggle("chrono-hidden", !state.timingEnabled);
         table.classList.toggle("teams-hidden",  !showTeams);
+        table.classList.toggle("remove-hidden", !canRemove);
     }
 
     updateControlButtons(state);
@@ -238,11 +245,13 @@ function updateChronoSelectVisibility(enabled) {
 }
 
 function updateTrackingModeUI(trackingMode, status) {
-    const btn = document.getElementById("btn-tracking-mode");
-    if (btn) {
-        btn.textContent = trackingMode === "auto" ? "Mode AUTO ✓" : "Mode MANUEL";
-        btn.disabled    = status === "STARTED" || status === "PAUSED";
-    }
+    const toggle = document.getElementById("tracking-mode-toggle");
+    if (!toggle) return;
+    const disabled = status === "STARTED" || status === "PAUSED";
+    toggle.querySelectorAll(".seg-btn").forEach(btn => {
+        btn.classList.toggle("selected", btn.dataset.value === trackingMode);
+        btn.disabled = disabled;
+    });
 }
 
 // DNF warning panel (AUTO mode)
@@ -251,9 +260,10 @@ function renderDnfWarningPanel() {
     const panel = document.getElementById("dnf-warning-panel");
     if (!panel) return;
     const warnings = window._dnfWarningPilots ?? new Set();
-    if (warnings.size === 0) { panel.hidden = true; return; }
+    if (warnings.size === 0) { panel.hidden = true; panel.style.display = ""; return; }
 
-    panel.hidden    = false;
+    panel.hidden        = false;
+    panel.style.display = "flex";
     const state     = window.currentRaceState;
     panel.innerHTML = [...warnings].map(pilotId => {
         const pilot = state?.pilots?.find(p => p.id === pilotId);

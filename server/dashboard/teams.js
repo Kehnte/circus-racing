@@ -153,6 +153,7 @@ async function saveEdit(id) {
         displayTeams();
         updateTeamDropdown();
         if (typeof displayPilots === "function") displayPilots();
+        if (window.activeRaceId && typeof raceLoad === "function") raceLoad(window.activeRaceId);
         broadcastChange("teams");
     } catch (e) {
         alert(e.message || "Failed to update team");

@@ -80,35 +80,29 @@ async function toggleDNF(pilotId) {
     try { await manualDnf(id, pilotId); } catch (e) { alert(e.message); }
 }
 
-// admin direct-add
+// add pilot to race from the Available Pilots table
 
-async function adminAddPilot() {
-    const id      = window.activeRaceId;
-    const select  = document.getElementById("add-pilot-select");
-    const pilotId = select?.value;
+async function addPilotToRace(pilotId) {
+    const id = window.activeRaceId;
     if (!id)      { alert("Load a race first"); return; }
-    if (!pilotId) { alert("Select a pilot"); return; }
+    if (!pilotId) return;
     try {
         await adminAddEntryRequest(id, pilotId);
-        await reloadPilots(); // reload context from validated entries
-        updateAddPilotSelect();
+        await reloadPilots();
+        if (typeof refreshPilotsAndEntries === "function") await refreshPilotsAndEntries();
+        else if (typeof displayPilots === "function") displayPilots();
     } catch (e) { alert(e.message); }
 }
 
-// populate the "add pilot" select with pilots not already in the race
-function updateAddPilotSelect() {
-    const select = document.getElementById("add-pilot-select");
-    if (!select) return;
-    const inRace = new Set((window.currentRaceState?.pilots ?? []).map(p => p.id));
-    select.innerHTML = '<option value="">— Select a pilot —</option>';
-    const allPilots  = typeof pilots !== "undefined" ? pilots : [];
-    allPilots.forEach(p => {
-        if (inRace.has(p.id)) return;
-        const opt       = document.createElement("option");
-        opt.value       = p.id;
-        opt.textContent = p.displayName ?? p.name ?? p.id;
-        select.appendChild(opt);
-    });
+// remove pilot from race
+
+async function removeFromRace(entryId) {
+    const id = window.activeRaceId;
+    if (!id || !entryId) return;
+    if (!confirm("Remove this pilot from the race?")) return;
+    try {
+        await adminRevokeEntry(id, entryId);
+    } catch (e) { alert(e.message); }
 }
 
 // countdown

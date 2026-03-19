@@ -120,6 +120,7 @@ export function buildRaceStateBroadcast(ctx: RaceContext): object {
 
     return {
       id: pilotId,
+      entryId: ctx.entryIds?.[pilotId] ?? null,
       displayName: profile?.displayName ?? pilotId,
       country: profile?.country ?? "un",
       teamSnapshot: team

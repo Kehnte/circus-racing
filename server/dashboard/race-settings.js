@@ -16,11 +16,11 @@ async function loadActiveRaceList() {
         const select = document.getElementById("active-race-select");
         if (!select) return;
         const prev = select.value;
-        select.innerHTML = '<option value="">— Select a race —</option>';
+        select.innerHTML = '<option value="">Select a race</option>';
         races.forEach(r => {
             const opt       = document.createElement("option");
             opt.value       = r.id;
-            opt.textContent = `${r.name} [${r.status}]`;
+            opt.textContent = r.name;
             select.appendChild(opt);
         });
         if (prev && races.find(r => r.id === prev)) select.value = prev;
@@ -31,8 +31,13 @@ async function loadActiveRaceList() {
 
 // load a race and populate settings fields
 async function loadActiveRace(raceId) {
+    const settingsBtn = document.getElementById("btn-race-settings");
     if (!raceId) {
         window.activeRaceId = null;
+        showRaceSettingsPanel(false);
+        if (settingsBtn) settingsBtn.style.display = "none";
+        const settingsBtnActive = document.getElementById("btn-race-settings-active");
+        if (settingsBtnActive) settingsBtnActive.style.display = "none";
         if (typeof updateStatusBar     === "function") updateStatusBar(null);
         if (typeof updateControlButtons=== "function") updateControlButtons(null);
         return;
@@ -58,7 +63,10 @@ async function loadActiveRace(raceId) {
         if (typeof updateControlButtons === "function") updateControlButtons({ status: r.status, trackingMode: r.trackingMode, timingEnabled: r.timingEnabled });
         if (typeof updateChronoButton   === "function") updateChronoButton({ timingEnabled: r.timingEnabled ?? true });
         if (typeof updateChronoSelectVisibility === "function") updateChronoSelectVisibility(r.timingEnabled ?? true);
-        if (typeof updateAddPilotSelect === "function") updateAddPilotSelect();
+        if (typeof displayPilots === "function") displayPilots();
+
+        if (settingsBtn) settingsBtn.style.display = "";
+        showRaceSettingsPanel(true);
 
         // load server context to get the race-state broadcast
         await raceLoad(r.id);
@@ -149,7 +157,7 @@ async function closeRegistrations() {
 
 // tracking mode toggle
 
-async function toggleTrackingMode() {
+async function setTrackingMode(newMode) {
     const id    = window.activeRaceId;
     const state = window.currentRaceState;
     if (!id)    { alert("Load a race first"); return; }
@@ -157,10 +165,37 @@ async function toggleTrackingMode() {
         alert("Tracking mode cannot be changed while the race is running.");
         return;
     }
-    const newMode = state?.trackingMode === "auto" ? "manual" : "auto";
+    if (state?.trackingMode === newMode) return;
     try {
         await patchRaceSettings(id, { trackingMode: newMode });
+        if (window.currentRaceState) window.currentRaceState.trackingMode = newMode;
+        if (typeof updateTrackingModeUI === "function") updateTrackingModeUI(newMode, window.currentRaceState?.status);
     } catch (e) { alert(e.message); }
+}
+
+// race settings panel (collapsible)
+
+let _raceSettingsPanelVisible = false;
+
+function _updateSettingsButtonState() {
+    const btn       = document.getElementById("btn-race-settings");
+    const btnActive = document.getElementById("btn-race-settings-active");
+    if (btn)       btn.style.display       = _raceSettingsPanelVisible ? "none" : "";
+    if (btnActive) btnActive.style.display = _raceSettingsPanelVisible ? "" : "none";
+}
+
+function toggleRaceSettingsPanel() {
+    _raceSettingsPanelVisible = !_raceSettingsPanelVisible;
+    const panel = document.getElementById("race-settings-panel");
+    if (panel) panel.style.display = _raceSettingsPanelVisible ? "block" : "none";
+    _updateSettingsButtonState();
+}
+
+function showRaceSettingsPanel(show) {
+    _raceSettingsPanelVisible = show;
+    const panel = document.getElementById("race-settings-panel");
+    if (panel) panel.style.display = show ? "block" : "none";
+    _updateSettingsButtonState();
 }
 
 // race creation form

@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.requireAuth = requireAuth;
 exports.signToken = signToken;
+// auth.ts — JWT authentication middleware (extracts user from Bearer token).
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 /**
  * requireAuth — verifies the JWT from Authorization: Bearer <token>
