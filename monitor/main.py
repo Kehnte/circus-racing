@@ -233,46 +233,46 @@ def run_record():
     finished  = False
 
     print("=== MODE RECORD ===")
-    print("Touches : [S] START  [C] CHECKPOINT  [F] FINISH  [Q] Annuler")
+    print("Touches : [Ctrl+Num1] START  [Ctrl+Num2] CHECKPOINT  [Ctrl+Num3] FINISH  [Ctrl+Num4] Annuler")
     circuit_name = input("Nom du circuit : ").strip() or "Circuit"
     circuit_type = input("Type [LOOP/POINT_TO_POINT] (défaut: LOOP) : ").strip().upper() or "LOOP"
     if circuit_type not in ("LOOP", "POINT_TO_POINT"):
         circuit_type = "LOOP"
     recorded_by = input("Ton pseudo (optionnel) : ").strip()
 
-    def on_s(e):
+    def on_start():
         nonlocal recording
         if not raw_trace:
-            print("[S] Pas encore de position — attends que Star Citizen soit actif.")
+            print("[Ctrl+Num1] Pas encore de position — attends que Star Citizen soit actif.")
             return
         marks.append({"order": len(marks), "trace_idx": len(raw_trace) - 1, "type_hint": "start"})
         recording = True
-        print(f"[S] START marqué à {raw_trace[-1]['position']}")
+        print(f"[Ctrl+Num1] START marqué à {raw_trace[-1]['position']}")
 
-    def on_c(e):
+    def on_checkpoint():
         if not recording or not raw_trace:
             return
         marks.append({"order": len(marks), "trace_idx": len(raw_trace) - 1, "type_hint": "checkpoint"})
-        print(f"[C] CHECKPOINT {len(marks) - 1} marqué")
+        print(f"[Ctrl+Num2] CHECKPOINT {len(marks) - 1} marqué")
 
-    def on_f(e):
+    def on_finish():
         nonlocal finished
         if not recording or not raw_trace:
             return
         marks.append({"order": len(marks), "trace_idx": len(raw_trace) - 1, "type_hint": "finish"})
         finished = True
-        print("[F] FINISH marqué — export en cours...")
+        print("[Ctrl+Num3] FINISH marqué — export en cours...")
 
-    def on_q(e):
+    def on_cancel():
         nonlocal finished
         finished = True
         marks.clear()
-        print("[Q] Enregistrement annulé")
+        print("[Ctrl+Num4] Enregistrement annulé")
 
-    keyboard.on_press_key("s", on_s)
-    keyboard.on_press_key("c", on_c)
-    keyboard.on_press_key("f", on_f)
-    keyboard.on_press_key("q", on_q)
+    keyboard.add_hotkey("ctrl+num 1", on_start)
+    keyboard.add_hotkey("ctrl+num 2", on_checkpoint)
+    keyboard.add_hotkey("ctrl+num 3", on_finish)
+    keyboard.add_hotkey("ctrl+num 4", on_cancel)
 
     t0 = time.time()
     while not finished:
@@ -283,7 +283,7 @@ def run_record():
                 raw_trace.append({"t": round(time.time() - t0, 2), "position": pos})
         time.sleep(delta_time_s)
 
-    keyboard.unhook_all()
+    keyboard.remove_all_hotkeys()
 
     if not marks:
         print("Aucun checkpoint marqué, rien exporté.")
