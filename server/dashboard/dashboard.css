@@ -335,6 +335,8 @@ table.m3-table.chrono-hidden td.chrono-cell {
     align-items: center;
     gap: 6px;
     padding: 6px 16px;
+    height: 40px;
+    box-sizing: border-box;
     font-size: 14px;
     font-family: "Roboto", sans-serif;
     font-weight: 500;
@@ -381,17 +383,6 @@ table.m3-table.chrono-hidden td.chrono-cell {
     flex-shrink: 0;
 }
 
-.pilot-count-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    border-radius: var(--md-sys-shape-corner-full);
-    background-color: var(--md-sys-color-surface-container-highest);
-    font-size: 13px;
-    color: var(--md-sys-color-on-surface-variant);
-    font-weight: 500;
-}
 
 input.inline-number {
     width: 52px;
@@ -483,6 +474,13 @@ table.m3-table.teams-hidden td.team-ext {
     display: none;
 }
 
+/* hide registration column when no race is selected */
+table.m3-table.no-race col.reg-col,
+table.m3-table.no-race th.reg-col,
+table.m3-table.no-race td.reg-col {
+    display: none;
+}
+
 .col-grow {
     width: 100%;
 }
@@ -512,11 +510,6 @@ table.m3-table.teams-hidden td.team-ext {
     align-items: center;
 }
 
-/* display / overlay toolbar */
-.race-controls-bar.race-controls-display {
-    border-radius: var(--md-sys-shape-corner-medium);
-}
-
 /* action row below settings bars */
 .race-actions-bar {
     display: flex;
@@ -527,10 +520,9 @@ table.m3-table.teams-hidden td.team-ext {
 }
 
 /* full-width sections */
+#overlay-section,
 #race-manager-section,
 #pilots-manager-section,
-#controls-manager-section,
-#circuits-manager-section,
 #data-manager-section {
     grid-column: 1 / -1;
 }
@@ -545,14 +537,6 @@ table.m3-table.teams-hidden td.team-ext {
 #race-manager-section .m3-table col.col-set-pos     { width: 110px; }
 #race-manager-section .m3-table col.col-reorder     { width: 90px; }
 #race-manager-section .m3-table col.col-dnf         { width: 70px; }
-#race-manager-section .m3-table col.col-remove      { width: 70px; }
-
-/* hide remove column when race is running or finished */
-table.m3-table.remove-hidden col.col-remove,
-table.m3-table.remove-hidden th#race-th-remove,
-table.m3-table.remove-hidden td.remove-col {
-    display: none;
-}
 
 /* truncate pilot name with ellipsis; max-width:0 is required for text-overflow in fixed-layout tables */
 #race-manager-section .m3-table td:nth-child(2) {

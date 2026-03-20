@@ -6,56 +6,55 @@ let _countdownActive = false;
 async function startRace() {
     const id     = window.activeRaceId;
     const status = window.currentRaceState?.status;
-    if (!id) { alert("Load a race first"); return; }
+    if (!id) { console.warn("Load a race first"); return; }
     try {
         if (status === "PAUSED") {
             await raceResume(id);
         } else {
             await raceStart(id);
         }
-    } catch (e) { alert(e.message); }
+    } catch (e) { console.warn(e.message); }
 }
 
 async function pauseRace() {
     const id = window.activeRaceId;
     if (!id) return;
-    try { await racePause(id); } catch (e) { alert(e.message); }
+    try { await racePause(id); } catch (e) { console.warn(e.message); }
 }
 
 async function endRaceManually() {
     const id = window.activeRaceId;
     if (!id) return;
-    try { await raceFinish(id); } catch (e) { alert(e.message); }
+    try { await raceFinish(id); } catch (e) { console.warn(e.message); }
 }
 
 async function resetRace() {
     const id = window.activeRaceId;
     if (!id) return;
-    if (!confirm("Reset the race to zero?")) return;
     try {
         stopCountdown(false);
         await raceReset(id);
-    } catch (e) { alert(e.message); }
+    } catch (e) { console.warn(e.message); }
 }
 
 async function reloadPilots() {
     const id = window.activeRaceId;
-    if (!id) { alert("Load a race first"); return; }
-    try { await raceLoad(id); } catch (e) { alert(e.message); }
+    if (!id) { console.warn("Load a race first"); return; }
+    try { await raceLoad(id); } catch (e) { console.warn(e.message); }
 }
 
 async function changeLap(pilotId, delta) {
     const id     = window.activeRaceId;
     const state  = window.currentRaceState;
     if (!id || state?.status !== "STARTED" || state?.trackingMode !== "manual") return;
-    try { await manualLap(id, pilotId, delta); } catch (e) { alert(e.message); }
+    try { await manualLap(id, pilotId, delta); } catch (e) { console.warn(e.message); }
 }
 
 async function movePilot(pilotId, direction) {
     const id    = window.activeRaceId;
     const state = window.currentRaceState;
     if (!id || state?.trackingMode !== "manual") return;
-    try { await manualReorder(id, pilotId, direction); } catch (e) { alert(e.message); }
+    try { await manualReorder(id, pilotId, direction); } catch (e) { console.warn(e.message); }
 }
 
 async function jumpToPosition(pilotId, newPosValue) {
@@ -65,7 +64,7 @@ async function jumpToPosition(pilotId, newPosValue) {
     if (!id || state?.trackingMode !== "manual") return;
     if (isNaN(position) || position < 1) return;
     try { await manualPosition(id, pilotId, position); } catch (e) {
-        alert(e.message);
+        console.warn(e.message);
         // force a re-render to restore the value
         if (typeof renderRaceTable === "function" && window.currentRaceState) {
             renderRaceTable(window.currentRaceState);
@@ -77,32 +76,31 @@ async function toggleDNF(pilotId) {
     const id    = window.activeRaceId;
     const state = window.currentRaceState;
     if (!id || state?.trackingMode !== "manual") return;
-    try { await manualDnf(id, pilotId); } catch (e) { alert(e.message); }
+    try { await manualDnf(id, pilotId); } catch (e) { console.warn(e.message); }
+}
+
+// delete the active race
+
+async function deleteRace() {
+    const id = window.activeRaceId;
+    if (!id) { console.warn("Load a race first"); return; }
+    try {
+        await raceDelete(id);
+        window.activeRaceId = null;
+        if (typeof loadActiveRaceList === "function") loadActiveRaceList();
+        if (typeof loadActiveRace === "function") loadActiveRace("");
+    } catch (e) { console.warn(e.message); }
 }
 
 // add pilot to race from the Available Pilots table
 
 async function addPilotToRace(pilotId) {
     const id = window.activeRaceId;
-    if (!id)      { alert("Load a race first"); return; }
+    if (!id)      { console.warn("Load a race first"); return; }
     if (!pilotId) return;
     try {
         await adminAddEntryRequest(id, pilotId);
-        await reloadPilots();
-        if (typeof refreshPilotsAndEntries === "function") await refreshPilotsAndEntries();
-        else if (typeof displayPilots === "function") displayPilots();
-    } catch (e) { alert(e.message); }
-}
-
-// remove pilot from race
-
-async function removeFromRace(entryId) {
-    const id = window.activeRaceId;
-    if (!id || !entryId) return;
-    if (!confirm("Remove this pilot from the race?")) return;
-    try {
-        await adminRevokeEntry(id, entryId);
-    } catch (e) { alert(e.message); }
+    } catch (e) { console.warn(e.message); }
 }
 
 // countdown
@@ -111,9 +109,9 @@ async function startCountdown() {
     const id          = window.activeRaceId;
     const status      = window.currentRaceState?.status;
     const durationSec = parseInt(document.getElementById("countdown-duration")?.value) || 0;
-    if (!id) { alert("Load a race first"); return; }
+    if (!id) { console.warn("Load a race first"); return; }
     if (status === "STARTED" || status === "PAUSED" || status === "FINISHED") {
-        alert("Countdown can only be started before the race.");
+        console.warn("Countdown can only be started before the race.");
         return;
     }
     if (durationSec <= 0) { startRace(); return; }
@@ -121,7 +119,7 @@ async function startCountdown() {
         await raceCountdown(id, durationSec);
         _countdownActive = true;
         updateCountdownUI();
-    } catch (e) { alert(e.message); }
+    } catch (e) { console.warn(e.message); }
 }
 
 async function stopCountdown(callApi = true) {
@@ -151,7 +149,7 @@ async function confirmDnf(pilotId) {
         await confirmDnfRequest(id, pilotId);
         (window._dnfWarningPilots ?? new Set()).delete(pilotId);
         if (typeof renderDnfWarningPanel === "function") renderDnfWarningPanel();
-    } catch (e) { alert(e.message); }
+    } catch (e) { console.warn(e.message); }
 }
 
 async function ignoreDnf(pilotId) {
@@ -161,22 +159,16 @@ async function ignoreDnf(pilotId) {
         await ignoreDnfRequest(id, pilotId);
         (window._dnfWarningPilots ?? new Set()).delete(pilotId);
         if (typeof renderDnfWarningPanel === "function") renderDnfWarningPanel();
-    } catch (e) { alert(e.message); }
-}
-
-// overlay pilots visibility
-
-function togglePilotsVisibility() {
-    const chip = document.getElementById("btn-pilots-toggle");
-    const visible = chip ? chip.hasAttribute("selected") : true;
-    if (window.raceSocket) window.raceSocket.emit("toggle-pilots-visibility", { visible });
+    } catch (e) { console.warn(e.message); }
 }
 
 // chrono toggle (chip in index.html)
 
 async function toggleChrono() {
+    const state = window.currentRaceState;
+    const on = !(state?.timingEnabled ?? true);
     const chip = document.getElementById("btn-chrono-toggle");
-    const on   = chip ? chip.selected : true;
+    if (chip) chip.selected = on;
     if (typeof updateChronoSelectVisibility === "function") updateChronoSelectVisibility(on);
     if (typeof onTimingEnabledChange === "function") onTimingEnabledChange(on);
 }

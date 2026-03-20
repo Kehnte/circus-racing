@@ -20,7 +20,7 @@ async function addTeam() {
     const acronym = document.getElementById("acronym").value?.trim();
     const color   = document.getElementById("color").value;
 
-    if (!name || !acronym) { alert("Please fill in all fields"); return; }
+    if (!name || !acronym) { console.warn("Please fill in all fields"); return; }
 
     try {
         const created = await apiPost("/teams", { name, acronym, color });
@@ -31,7 +31,7 @@ async function addTeam() {
         if (typeof displayPilots === "function") displayPilots();
         broadcastChange("teams");
     } catch (e) {
-        alert(e.message || "Failed to create team");
+        console.warn(e.message || "Failed to create team");
     }
 }
 
@@ -130,7 +130,7 @@ async function deleteTeam(id) {
         if (typeof displayPilots === "function") displayPilots();
         broadcastChange("teams");
     } catch (e) {
-        alert(e.message || "Failed to delete team");
+        console.warn(e.message || "Failed to delete team");
     }
 }
 
@@ -143,7 +143,7 @@ async function saveEdit(id) {
     const acronym = document.getElementById("edit-acronym")?.value?.trim();
     const color   = document.getElementById("edit-color-value")?.value;
 
-    if (!name || !acronym) { alert("Please fill in all fields"); return; }
+    if (!name || !acronym) { console.warn("Please fill in all fields"); return; }
 
     try {
         const updated = await apiPatch(`/teams/${id}`, { name, acronym, color });
@@ -156,7 +156,7 @@ async function saveEdit(id) {
         if (window.activeRaceId && typeof raceLoad === "function") raceLoad(window.activeRaceId);
         broadcastChange("teams");
     } catch (e) {
-        alert(e.message || "Failed to update team");
+        console.warn(e.message || "Failed to update team");
     }
 }
 

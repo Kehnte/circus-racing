@@ -1,25 +1,26 @@
 # Circus Racing
 
-Plateforme de gestion de course en temps réel et d'overlays de streaming pour les événements **Star Citizen**. Un serveur Node.js centralise l'état de la course, le distribue via Socket.IO aux overlays OBS, et expose une API REST pilotée par le dashboard admin.
+Real-time race management platform and streaming overlays for **Star Citizen** events. A Node.js server centralizes race state, broadcasts it via Socket.IO to OBS overlays, and exposes a REST API driven by the admin dashboard.
 
 ---
 
-## Structure du repo
+## Repository structure
 
 ```
 circus-racing/
-├── server/                  ← Serveur Node.js (API REST + Socket.IO + Dashboard + Pilot app)
-│   ├── src/                 ← Code TypeScript compilé (API, moteur de course, DB, socket)
-│   ├── dashboard/           ← Interface admin (HTML/JS vanilla)
-│   ├── pilot-app/           ← Interface pilote (inscription, profil, config OCR)
-│   ├── overlays/            ← Browser sources OBS (leaderboard, race-alert)
-│   └── shared/              ← Nav commune dashboard/pilot-app
-├── monitor/                 ← Client OCR Windows (.exe) — lit les coords Star Citizen
-├── scripts/                 ← Seed, reset DB, simulation de courses
-├── docs/                    ← Spécifications
+├── server/                  ← Node.js server (REST API + Socket.IO + Dashboard + Pilot app)
+│   ├── src/                 ← TypeScript source (API, race engine, DB, socket)
+│   ├── dashboard/           ← Admin interface (vanilla HTML/JS)
+│   ├── pilot-app/           ← Pilot interface (registration, profile, OCR config)
+│   ├── overlays/            ← OBS browser sources (leaderboard, race-alert)
+│   └── shared/              ← Shared nav & styles for dashboard/pilot-app
+├── monitor/                 ← Windows OCR client (.exe) — reads Star Citizen coordinates
+├── scripts/                 ← Seed, reset DB, race simulations
+├── docs/                    ← Specifications
 ├── .github/workflows/
-│   ├── server-docker.yml    ← Build et push de l'image Docker sur changement server/
-│   └── monitor-release.yml  ← Build et publication du .exe sur changement monitor/
+│   ├── server-docker.yml    ← Build & push Docker image on server/ changes
+│   └── monitor-release.yml  ← Build & publish .exe on monitor/ changes
+├── Dockerfile
 ├── docker-compose.yml
 └── .env.example
 ```
@@ -30,15 +31,15 @@ circus-racing/
 
 ```bash
 cp .env.example .env
-# Éditer .env — définir JWT_SECRET et DATABASE_URL
+# Edit .env — set JWT_SECRET at minimum
 docker compose up -d
 ```
 
-Serveur disponible sur `http://localhost:3000`.
+Server available at `http://localhost:3000`.
 
 ---
 
-## Dev local
+## Local development
 
 ```bash
 cd server
@@ -46,91 +47,128 @@ npm install
 npm run dev:ts
 ```
 
+Other useful scripts:
+
+```bash
+npm run build        # Compile TypeScript to dist/
+npm run db:push      # Push schema changes to SQLite
+npm run db:studio    # Open Drizzle Studio (DB browser)
+```
+
 ---
 
-## Stack technique
+## Tech stack
 
-| Couche | Techno |
-|--------|--------|
-| Serveur | Node.js, Express |
-| Temps réel | Socket.IO |
-| Base de données | SQLite via Drizzle ORM |
+| Layer | Technology |
+|-------|------------|
+| Server | Node.js, Express |
+| Real-time | Socket.IO |
+| Database | SQLite via Drizzle ORM |
 | Auth | JWT (jsonwebtoken) + bcrypt |
-| Frontend | HTML/CSS/JS vanilla, Material Web Components |
-| Overlays | HTML/CSS/JS léger (browser source OBS) |
-| OCR client | Python (PyInstaller → .exe Windows) |
+| Frontend | Vanilla HTML/CSS/JS, Material Web Components |
+| Overlays | Lightweight HTML/CSS/JS (OBS browser source) |
+| OCR client | Python (PyInstaller → Windows .exe) |
 | CI/CD | GitHub Actions |
 
 ---
 
-## Comptes et rôles
+## Accounts and roles
 
-### Premier démarrage
+### First startup
 
-La base de données est vide. Lancer le script de seed pour créer des données de test (pilotes, teams, courses) :
+The database starts empty. Run the seed script to create test data (pilots, teams, races):
 
 ```bash
 cd scripts
 node seed.js
 ```
 
-Le script affiche les `displayName` et mots de passe de tous les pilotes créés. Le premier pilote est `ADMIN`.
+The script prints the `displayName` and password for every created pilot. The first pilot is `ADMIN`.
 
-Pour repartir de zéro :
+To start from scratch:
 
 ```bash
 node reset.js
 ```
 
-### Rôles
+### Roles
 
-| Rôle | Accès |
-|------|-------|
-| `ADMIN` | Tout + gestion des rôles utilisateurs (promouvoir/rétrograder) |
-| `MODERATOR` | Tout sauf gestion des rôles |
-| `PILOT` | Pilot app uniquement (profil, inscriptions, config OCR) |
+| Role | Access |
+|------|--------|
+| `ADMIN` | Everything + user role management (promote/demote) |
+| `MODERATOR` | Everything except role management |
+| `PILOT` | Pilot app only (profile, registrations, OCR config) |
 
-Le login se fait par `displayName` + `password` (pas d'email). Si un pilote perd son mot de passe, un admin/modo le réinitialise via le dashboard.
-
----
-
-## Utilisation — Workflow typique
-
-1. **Créer les entités** dans le dashboard : teams, vehicles, controls, circuits (racetracks)
-2. **Créer une course** : nom, mode de tracking (MANUEL ou AUTO), circuit, session, météo, type de départ, mode (tours ou temps)
-3. **Ouvrir les inscriptions** → la course passe en `SCHEDULED`
-4. **Les pilotes s'inscrivent** via la pilot-app (`/pilot-app/`)
-5. **Valider les inscriptions** dans le dashboard, ordonner la grille
-6. **Ajouter les overlays dans OBS** :
-   - Leaderboard : `http://localhost:3000/overlays/leaderboard/`
-   - Race alert : `http://localhost:3000/overlays/race-alert/`
-7. **Charger la course** (`Load`) → les pilotes apparaissent dans les overlays
-8. **Lancer le countdown** puis **Start race**
-9. En mode MANUEL : incrémenter les tours, ajuster les positions, marquer les DNF
-10. En mode AUTO : les monitors OCR des pilotes poussent leurs positions, le moteur calcule tout automatiquement
-11. **Finish** → résultats persistés, leaderboard figé
+Login uses `displayName` + `password` (no email). If a pilot loses their password, an admin or moderator resets it from the dashboard.
 
 ---
 
-## Monitor OCR
+## Application URLs
 
-Les pilotes téléchargent le `.exe` Windows depuis [GitHub Releases](https://github.com/Kehnte/circus-racing/releases) et leur `config.cfg` pré-rempli depuis leur page profil.
-
-Le monitor lit les coordonnées du joueur dans Star Citizen et les envoie au serveur toutes les ~2 secondes via un token unique (1 token = 1 pilote).
-
-Voir [`monitor/`](monitor/) pour les instructions de build.
+| App | URL |
+|-----|-----|
+| Admin dashboard | `http://localhost:3000/dashboard/` |
+| Pilot app | `http://localhost:3000/pilot-app/` |
+| Leaderboard overlay | `http://localhost:3000/overlays/leaderboard/` |
+| Race alert overlay | `http://localhost:3000/overlays/race-alert/` |
+| REST API | `http://localhost:3000/api/` |
+| Health check | `http://localhost:3000/health` |
 
 ---
 
-## Variables d'environnement
+## Usage — Typical workflow
 
-| Variable | Défaut | Description |
-|----------|--------|-------------|
-| `PORT` | `3000` | Port d'écoute du serveur |
-| `DATABASE_URL` | `file:./db/circus.db` | Chemin du fichier SQLite |
-| `JWT_SECRET` | *(obligatoire)* | Clé de signature des tokens JWT — générer avec `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"` |
-| `DNF_BUFFER_RADIUS` | `500` | Rayon (unités Star Citizen) du buffer géographique DNF en mode AUTO. Peut être surchargé par circuit. |
-| `OCR_POLL_MS` | `2000` | Intervalle entre les pushs de position du monitor OCR (ms) |
+1. **Create entities** in the dashboard: teams, vehicles, controls, racetracks
+2. **Create a race**: name, tracking mode (MANUAL or AUTO), racetrack, session, weather, start type, session mode (laps or timed)
+3. **Open registrations** — the race moves to `SCHEDULED`
+4. **Pilots register** via the pilot app (`/pilot-app/`)
+5. **Validate registrations** in the dashboard, set grid order
+6. **Add overlays in OBS**:
+   - Leaderboard: `http://localhost:3000/overlays/leaderboard/`
+   - Race alert: `http://localhost:3000/overlays/race-alert/`
+7. **Load the race** (`Load`) — pilots appear in the overlays
+8. **Start countdown** then **Start race**
+9. In MANUAL mode: increment laps, adjust positions, mark DNFs
+10. In AUTO mode: pilot OCR monitors push positions, the engine computes everything automatically
+11. **Finish** — results are persisted, leaderboard is frozen
+
+---
+
+## OCR monitor
+
+Pilots download the Windows `.exe` from [GitHub Releases](https://github.com/Kehnte/circus-racing/releases) and their pre-filled `config.cfg` from their profile page.
+
+The monitor reads player coordinates from Star Citizen and sends them to the server every ~2 seconds using a unique token (1 token = 1 pilot).
+
+See [`monitor/`](monitor/) for build instructions.
+
+---
+
+## Scripts
+
+| Script | Description |
+|--------|-------------|
+| `scripts/seed.js` | Populate the DB with test data (teams, vehicles, controls, pilots, racetracks, races) |
+| `scripts/reset.js` | Reset the database |
+| `scripts/simulate-manual.js` | Simulate a race in MANUAL tracking mode |
+| `scripts/simulate-auto.js` | Simulate a race in AUTO tracking mode (checkpoint detection) |
+
+---
+
+## Environment variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `3000` | Server listen port |
+| `DATABASE_URL` | `file:./db/circus.db` | SQLite file path |
+| `JWT_SECRET` | *(required)* | JWT signing key — generate with `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"` |
+| `DNF_BUFFER_RADIUS` | `500` | DNF geographic buffer radius (Star Citizen units) in AUTO mode. Can be overridden per racetrack. |
+| `OCR_POLL_MS` | `2000` | Interval between OCR monitor position pushes (ms) |
+| `SMTP_HOST` | — | SMTP server host (optional, for future email features) |
+| `SMTP_PORT` | — | SMTP server port |
+| `SMTP_USER` | — | SMTP username |
+| `SMTP_PASS` | — | SMTP password |
+| `SMTP_FROM` | — | Sender address for outgoing emails |
 
 ---
 

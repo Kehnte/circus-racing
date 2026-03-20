@@ -7,6 +7,8 @@ import { db } from "../db/db.js";
 import { pilot, raceEntry } from "../db/schema.js";
 import { requireAuth } from "../middleware/auth.js";
 import { requireModo, requireAdmin } from "../middleware/roles.js";
+import { emitDashboard } from "../socket/emitter.js";
+import { refreshPilotEntrySnapshots } from "../engine/snapshot-refresh.js";
 
 const router = Router();
 
@@ -52,6 +54,7 @@ router.post("/", ...requireAdmin, async (req, res) => {
     ...(controlsId ? { controlsId } : {}),
   }).returning();
 
+  emitDashboard("data-changed", { resource: "pilots" });
   res.status(201).json(safePublic(created));
 });
 
@@ -142,6 +145,10 @@ router.patch("/me", requireAuth, async (req, res) => {
   }
 
   const [updated] = await db.update(pilot).set(patch).where(eq(pilot.id, pilotId)).returning();
+  const configChanged = LOCKABLE_FIELDS.some(f => patch[f] !== undefined)
+    || patch.displayName !== undefined || patch.country !== undefined;
+  if (configChanged) await refreshPilotEntrySnapshots(pilotId);
+  emitDashboard("data-changed", { resource: "pilots" });
   res.json(safePublic(updated));
 });
 
@@ -160,12 +167,17 @@ router.patch("/:id", ...requireModo, async (req, res) => {
   }
   const [updated] = await db.update(pilot).set(patch).where(eq(pilot.id, String(req.params.id))).returning();
   if (!updated) { res.status(404).json({ error: "Pilot not found" }); return; }
+  const configChanged = LOCKABLE_FIELDS.some(f => patch[f] !== undefined)
+    || patch.displayName !== undefined || patch.country !== undefined;
+  if (configChanged) await refreshPilotEntrySnapshots(String(req.params.id));
+  emitDashboard("data-changed", { resource: "pilots" });
   res.json(safePublic(updated));
 });
 
 /** DELETE /pilots/:id — admin only */
 router.delete("/:id", ...requireAdmin, async (req, res) => {
   await db.delete(pilot).where(eq(pilot.id, String(req.params.id)));
+  emitDashboard("data-changed", { resource: "pilots" });
   res.sendStatus(204);
 });
 

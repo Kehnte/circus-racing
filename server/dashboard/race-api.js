@@ -77,12 +77,8 @@ async function adminAddEntryRequest(raceId, pilotId) {
     return apiPost(`/races/${raceId}/entries/admin`, { pilotId });
 }
 
-async function adminRemoveEntry(raceId, entryId) {
-    return apiDelete(`/races/${raceId}/entries/${entryId}`);
-}
-
-async function adminRevokeEntry(raceId, entryId) {
-    return apiPatch(`/races/${raceId}/entries/${entryId}/revoke`);
+async function raceDelete(raceId) {
+    return apiDelete(`/races/${raceId}`);
 }
 
 // race settings

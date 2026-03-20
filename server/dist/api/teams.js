@@ -6,6 +6,8 @@ const drizzle_orm_1 = require("drizzle-orm");
 const db_js_1 = require("../db/db.js");
 const schema_js_1 = require("../db/schema.js");
 const roles_js_1 = require("../middleware/roles.js");
+const emitter_js_1 = require("../socket/emitter.js");
+const snapshot_refresh_js_1 = require("../engine/snapshot-refresh.js");
 const router = (0, express_1.Router)();
 /** GET /teams — public */
 router.get("/", async (_req, res) => {
@@ -20,6 +22,7 @@ router.post("/", ...roles_js_1.requireModo, async (req, res) => {
         return;
     }
     const [created] = await db_js_1.db.insert(schema_js_1.team).values({ name, acronym, color }).returning();
+    (0, emitter_js_1.emitDashboard)("data-changed", { resource: "teams" });
     res.status(201).json(created);
 });
 /** PATCH /teams/:id — admin/modo */
@@ -33,11 +36,14 @@ router.patch("/:id", ...roles_js_1.requireModo, async (req, res) => {
         res.status(404).json({ error: "Team not found" });
         return;
     }
+    await (0, snapshot_refresh_js_1.refreshTeamSnapshots)(String(req.params.id));
+    (0, emitter_js_1.emitDashboard)("data-changed", { resource: "teams" });
     res.json(updated);
 });
 /** DELETE /teams/:id — admin/modo */
 router.delete("/:id", ...roles_js_1.requireModo, async (req, res) => {
     await db_js_1.db.delete(schema_js_1.team).where((0, drizzle_orm_1.eq)(schema_js_1.team.id, String(req.params.id)));
+    (0, emitter_js_1.emitDashboard)("data-changed", { resource: "teams" });
     res.sendStatus(204);
 });
 exports.default = router;

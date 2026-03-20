@@ -55,6 +55,67 @@
 
         <div class="page-content">
 
+            <!-- overlay section -->
+            <div class="m3-card" id="overlay-section">
+                <div class="section-header">
+                    <h2 class="m3-card-title" style="margin-bottom:0">Overlay</h2>
+                </div>
+
+                <div class="race-controls-bar">
+                    <md-outlined-text-field
+                        id="event-duration"
+                        label="Alert duration (s)"
+                        type="number"
+                        value="5"
+                        min="1"
+                        style="width: 140px; flex-shrink: 0;"
+                    ></md-outlined-text-field>
+
+                    <md-outlined-text-field
+                        id="countdown-duration"
+                        label="Countdown (s)"
+                        type="number"
+                        value="0"
+                        min="0"
+                        style="width: 130px; flex-shrink: 0;"
+                        title="Pre-race countdown in seconds. Leave at 0 or use Start Race to skip."
+                    ></md-outlined-text-field>
+                    <md-outlined-button
+                        id="btn-countdown"
+                        onclick="startCountdown()"
+                        title="Start pre-race countdown on the leaderboard"
+                    >Countdown</md-outlined-button>
+                    <md-text-button
+                        id="btn-countdown-stop"
+                        onclick="stopCountdown(true)"
+                        style="display:none; --md-text-button-label-text-color: var(--md-sys-color-error);"
+                    >Stop countdown</md-text-button>
+
+                    <md-outlined-select
+                        id="setting-team-display"
+                        label="Teams"
+                        style="width: 160px; flex-shrink: 0;"
+                    >
+                        <md-select-option value="color-bar"><div slot="headline">Color bar</div></md-select-option>
+                        <md-select-option value="acronym"><div slot="headline">Acronym</div></md-select-option>
+                        <md-select-option value="hidden"><div slot="headline">Hidden</div></md-select-option>
+                    </md-outlined-select>
+
+                    <md-filter-chip id="btn-chrono-toggle" label="Chrono" selected onclick="toggleChrono()"></md-filter-chip>
+
+                    <md-outlined-select
+                        id="setting-chrono-display"
+                        label="Chrono mode"
+                        style="width: 170px; flex-shrink: 0;"
+                    >
+                        <md-select-option value="leader"><div slot="headline">Leader gap</div></md-select-option>
+                        <md-select-option value="gap"><div slot="headline">Interval gap</div></md-select-option>
+                        <md-select-option value="best-lap"><div slot="headline">Best lap</div></md-select-option>
+                        <md-select-option value="last-lap"><div slot="headline">Last lap</div></md-select-option>
+                    </md-outlined-select>
+                </div>
+            </div>
+
             <!-- race section -->
             <div class="m3-card" id="race-manager-section">
                 <div class="section-header">
@@ -71,10 +132,6 @@
                     >
                         <option value="">Select a race</option>
                     </select>
-                    <md-outlined-button onclick="loadActiveRaceList()" title="Refresh the race list">
-                        <md-icon slot="icon">refresh</md-icon>
-                        Refresh
-                    </md-outlined-button>
                     <md-filled-button onclick="toggleCreateRaceForm()" title="Create a new race">
                         <md-icon slot="icon">add</md-icon>
                         New race
@@ -87,12 +144,24 @@
                         <md-icon slot="icon">settings</md-icon>
                         Settings
                     </md-filled-tonal-button>
+                    <md-outlined-button id="btn-open-regs" onclick="openRegistrations()" style="display: none;">
+                        <md-icon slot="icon">how_to_reg</md-icon>
+                        Open registrations
+                    </md-outlined-button>
+                    <md-outlined-button id="btn-close-regs" onclick="closeRegistrations()" style="display: none;">
+                        <md-icon slot="icon">lock</md-icon>
+                        Close registrations
+                    </md-outlined-button>
+                    <md-outlined-button id="btn-delete-race" onclick="deleteRace()" style="display: none; --md-outlined-button-label-text-color: var(--md-sys-color-error); --md-outlined-button-outline-color: var(--md-sys-color-error);">
+                        <md-icon slot="icon" style="color: var(--md-sys-color-error);">delete</md-icon>
+                        Delete race
+                    </md-outlined-button>
                     <div id="tracking-mode-toggle" class="segmented-toggle">
                         <button class="seg-btn selected" data-value="manual" onclick="setTrackingMode('manual')" title="Manual tracking mode">
-                            <md-icon>touch_app</md-icon> manual
+                            <md-icon>touch_app</md-icon> Manual
                         </button>
                         <button class="seg-btn" data-value="auto" onclick="setTrackingMode('auto')" title="Auto OCR tracking mode">
-                            <md-icon>smart_toy</md-icon> auto
+                            <md-icon>smart_toy</md-icon> Auto
                         </button>
                     </div>
                 </div>
@@ -145,19 +214,6 @@
                     </div>
                 </div>
 
-                <!-- race status + lifecycle buttons -->
-                <div id="race-status-bar" style="display: none; align-items: center; gap: 8px; flex-wrap: wrap; padding: 4px 0 8px 0;">
-                    <span class="md-typescale-label-medium" style="color: var(--md-sys-color-on-surface-variant);">Status:</span>
-                    <span id="race-status-chip" style="display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 16px; font-size: 12px; font-weight: 600; background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container);"></span>
-                    <md-outlined-button id="btn-open-regs" onclick="openRegistrations()" style="display: none;">
-                        <md-icon slot="icon">how_to_reg</md-icon>
-                        Open registrations
-                    </md-outlined-button>
-                    <md-outlined-button id="btn-close-regs" onclick="closeRegistrations()" style="display: none;">
-                        <md-icon slot="icon">lock</md-icon>
-                        Close registrations
-                    </md-outlined-button>
-                </div>
 
                 <!-- DNF warning panel (AUTO mode) -->
                 <div id="dnf-warning-panel" hidden style="margin: 8px 0; padding: 12px 16px; border-radius: 8px; background: var(--md-sys-color-error-container); color: var(--md-sys-color-on-error-container); flex-direction: column; gap: 8px;">
@@ -223,76 +279,13 @@
                     </div>
                 </div>
 
-                <!-- display / overlay toolbar -->
-                <div class="race-controls-bar race-controls-display">
-                    <md-outlined-text-field
-                        id="event-duration"
-                        label="Alert duration (s)"
-                        type="number"
-                        value="5"
-                        min="1"
-                        style="width: 140px; flex-shrink: 0;"
-                    ></md-outlined-text-field>
-
-                    <md-outlined-text-field
-                        id="countdown-duration"
-                        label="Countdown (s)"
-                        type="number"
-                        value="0"
-                        min="0"
-                        style="width: 130px; flex-shrink: 0;"
-                        title="Pre-race countdown in seconds. Leave at 0 or use Start Race to skip."
-                    ></md-outlined-text-field>
-                    <md-outlined-button
-                        id="btn-countdown"
-                        onclick="startCountdown()"
-                        title="Start pre-race countdown on the leaderboard"
-                    >Countdown</md-outlined-button>
-                    <md-text-button
-                        id="btn-countdown-stop"
-                        onclick="stopCountdown(true)"
-                        style="display:none; --md-text-button-label-text-color: var(--md-sys-color-error);"
-                    >Stop countdown</md-text-button>
-
-                    <md-outlined-select
-                        id="setting-team-display"
-                        label="Teams"
-                        style="width: 160px; flex-shrink: 0;"
-                    >
-                        <md-select-option value="color-bar"><div slot="headline">Color bar</div></md-select-option>
-                        <md-select-option value="acronym"><div slot="headline">Acronym</div></md-select-option>
-                        <md-select-option value="hidden"><div slot="headline">Hidden</div></md-select-option>
-                    </md-outlined-select>
-
-                    <md-filter-chip id="btn-chrono-toggle" label="Chrono" selected onclick="toggleChrono()"></md-filter-chip>
-
-                    <md-outlined-select
-                        id="setting-chrono-display"
-                        label="Chrono mode"
-                        style="width: 170px; flex-shrink: 0;"
-                    >
-                        <md-select-option value="leader"><div slot="headline">Leader gap</div></md-select-option>
-                        <md-select-option value="gap"><div slot="headline">Interval gap</div></md-select-option>
-                        <md-select-option value="best-lap"><div slot="headline">Best lap</div></md-select-option>
-                        <md-select-option value="last-lap"><div slot="headline">Last lap</div></md-select-option>
-                    </md-outlined-select>
-
-                    <md-filter-chip id="btn-pilots-toggle" label="Overlay names" selected onclick="togglePilotsVisibility()" title="Show/hide pilot names on the leaderboard overlay"></md-filter-chip>
-                </div>
-
-                <!-- race action buttons + pilot count -->
+                <!-- race action buttons -->
                 <div class="race-actions-bar">
                     <div class="button-group">
                         <md-filled-button onclick="startRace()" id="btn-start">Start race</md-filled-button>
                         <md-outlined-button onclick="pauseRace()" id="btn-pause" disabled>Pause race</md-outlined-button>
                         <md-outlined-button onclick="endRaceManually()" id="btn-finish" disabled>Finish race</md-outlined-button>
                         <md-text-button onclick="resetRace()">Reset race</md-text-button>
-                        <md-text-button onclick="reloadPilots()" title="Reload all system pilots into the race (quick mode)">Reload all</md-text-button>
-                    </div>
-
-                    <div class="pilot-count-chip">
-                        <span>Pilots:</span>
-                        <strong id="pilot-count">0</strong>
                     </div>
                 </div>
 
@@ -308,7 +301,6 @@
                             <col class="col-set-pos">
                             <col class="col-reorder">
                             <col class="col-dnf">
-                            <col class="col-remove">
                         </colgroup>
                         <thead>
                             <tr>
@@ -321,7 +313,6 @@
                                 <th>Set Pos</th>
                                 <th>Reorder</th>
                                 <th>DNF</th>
-                                <th id="race-th-remove">Remove</th>
                             </tr>
                         </thead>
 
@@ -345,7 +336,7 @@
                             <col class="team-col">
                             <col class="col-vehicle">
                             <col class="col-controls">
-                            <col class="col-registration">
+                            <col class="col-registration reg-col">
                             <col class="col-actions">
                         </colgroup>
                         <thead>
@@ -355,7 +346,7 @@
                                 <th class="team-ext">Team</th>
                                 <th>Vehicle</th>
                                 <th>Controls</th>
-                                <th>Registration</th>
+                                <th class="reg-col">Registration</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -377,7 +368,7 @@
                                 <td>
                                     <md-outlined-select id="pilot-controls" label="Controls" style="width:100%;"></md-outlined-select>
                                 </td>
-                                <td></td>
+                                <td class="reg-col"></td>
                                 <td>
                                     <md-filled-button onclick="addPilot()">Add pilot</md-filled-button>
                                 </td>

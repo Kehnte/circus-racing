@@ -19,7 +19,7 @@ async function addControl() {
     const type = document.getElementById("control-type").value?.trim();
     const img  = document.getElementById("control-img").value?.trim();
 
-    if (!type) { alert("Please fill in the control type"); return; }
+    if (!type) { console.warn("Please fill in the control type"); return; }
 
     try {
         const created = await apiPost("/controls", { type, img: img || undefined });
@@ -31,7 +31,7 @@ async function addControl() {
         if (typeof displayPilots === "function") displayPilots();
         broadcastChange("controls");
     } catch (e) {
-        alert(e.message || "Failed to create control type");
+        console.warn(e.message || "Failed to create control type");
     }
 }
 
@@ -79,7 +79,6 @@ function createControlEditRow(ctrl) {
 
 // DELETE control type via API
 async function deleteControl(id) {
-    if (!confirm("Delete this control type?")) return;
     try {
         await apiDelete(`/controls/${id}`);
         controlsList = controlsList.filter((c) => c.id !== id);
@@ -88,7 +87,7 @@ async function deleteControl(id) {
         if (typeof displayPilots === "function") displayPilots();
         broadcastChange("controls");
     } catch (e) {
-        alert(e.message || "Failed to delete control type");
+        console.warn(e.message || "Failed to delete control type");
     }
 }
 
@@ -100,7 +99,7 @@ async function saveEditControl(id) {
     const type = document.getElementById("edit-control-type")?.value?.trim();
     const img  = document.getElementById("edit-control-img")?.value?.trim();
 
-    if (!type) { alert("Please fill in the control type"); return; }
+    if (!type) { console.warn("Please fill in the control type"); return; }
 
     try {
         const updated = await apiPatch(`/controls/${id}`, { type, img: img || undefined });
@@ -112,7 +111,7 @@ async function saveEditControl(id) {
         if (typeof displayPilots === "function") displayPilots();
         broadcastChange("controls");
     } catch (e) {
-        alert(e.message || "Failed to update control type");
+        console.warn(e.message || "Failed to update control type");
     }
 }
 

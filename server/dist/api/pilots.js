@@ -9,6 +9,8 @@ const db_js_1 = require("../db/db.js");
 const schema_js_1 = require("../db/schema.js");
 const auth_js_1 = require("../middleware/auth.js");
 const roles_js_1 = require("../middleware/roles.js");
+const emitter_js_1 = require("../socket/emitter.js");
+const snapshot_refresh_js_1 = require("../engine/snapshot-refresh.js");
 const router = (0, express_1.Router)();
 // Fields a pilot can always edit on their own profile
 const ALWAYS_EDITABLE = ["displayName", "country", "avatarUrl"];
@@ -46,6 +48,7 @@ router.post("/", ...roles_js_1.requireAdmin, async (req, res) => {
         ...(vehicleId ? { vehicleId } : {}),
         ...(controlsId ? { controlsId } : {}),
     }).returning();
+    (0, emitter_js_1.emitDashboard)("data-changed", { resource: "pilots" });
     res.status(201).json(safePublic(created));
 });
 /** GET /pilots — admin/modo only (full list with emails) */
@@ -133,6 +136,11 @@ router.patch("/me", auth_js_1.requireAuth, async (req, res) => {
         return;
     }
     const [updated] = await db_js_1.db.update(schema_js_1.pilot).set(patch).where((0, drizzle_orm_1.eq)(schema_js_1.pilot.id, pilotId)).returning();
+    const configChanged = LOCKABLE_FIELDS.some(f => patch[f] !== undefined)
+        || patch.displayName !== undefined || patch.country !== undefined;
+    if (configChanged)
+        await (0, snapshot_refresh_js_1.refreshPilotEntrySnapshots)(pilotId);
+    (0, emitter_js_1.emitDashboard)("data-changed", { resource: "pilots" });
     res.json(safePublic(updated));
 });
 /**
@@ -154,11 +162,17 @@ router.patch("/:id", ...roles_js_1.requireModo, async (req, res) => {
         res.status(404).json({ error: "Pilot not found" });
         return;
     }
+    const configChanged = LOCKABLE_FIELDS.some(f => patch[f] !== undefined)
+        || patch.displayName !== undefined || patch.country !== undefined;
+    if (configChanged)
+        await (0, snapshot_refresh_js_1.refreshPilotEntrySnapshots)(String(req.params.id));
+    (0, emitter_js_1.emitDashboard)("data-changed", { resource: "pilots" });
     res.json(safePublic(updated));
 });
 /** DELETE /pilots/:id — admin only */
 router.delete("/:id", ...roles_js_1.requireAdmin, async (req, res) => {
     await db_js_1.db.delete(schema_js_1.pilot).where((0, drizzle_orm_1.eq)(schema_js_1.pilot.id, String(req.params.id)));
+    (0, emitter_js_1.emitDashboard)("data-changed", { resource: "pilots" });
     res.sendStatus(204);
 });
 exports.default = router;

@@ -891,6 +891,30 @@ socket.on("race-restarted", () => {
     updatePageIndicator(0, 1);
 });
 
+socket.on("race-started", () => {
+    stopChronoTicker();
+    stopSessionCountdownDisplay();
+    currentCountdown = null;
+    currentPage = 0;
+    totalPages = 1;
+    fastestLapPilotId = null;
+    finishedPilotIds.clear();
+    if (pageTimer) { clearInterval(pageTimer); pageTimer = null; }
+    pilotElements.clear();
+    const container = document.getElementById("lb-pilots-container");
+    if (container) container.innerHTML = "";
+    updatePageIndicator(0, 1);
+});
+
+socket.on("race-reset", () => {
+    fastestLapPilotId = null;
+    finishedPilotIds.clear();
+    pilotElements.forEach((els) => {
+        if (els.leftEl) els.leftEl.innerHTML = "";
+        if (els.rightEl) els.rightEl.innerHTML = "";
+    });
+});
+
 socket.on("race-resumed", () => {
     wipeInResumed();
 });
@@ -944,11 +968,3 @@ function hidePilots() {
     });
 }
 
-// Listen for dashboard toggle command and animate accordingly
-socket.on("toggle-pilots-visibility", (data) => {
-    if (data.visible) {
-        showPilots();
-    } else {
-        hidePilots();
-    }
-});

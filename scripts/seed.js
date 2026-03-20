@@ -34,9 +34,9 @@ async function api(method, path, body, token) {
 // seed data
 
 const TEAMS = [
-  { name: 'Cirque Lisoir',  color: '#E91E63', acronym: 'CIRC' },
-  { name: 'Pico Racing Team',  color: '#FF5722', acronym: 'IPX' },
-  { name: 'Finley Aeroview CureLife Racing',    color: '#2196F3', acronym: 'FACR' },
+  { name: 'Lisoir Circus',  color: '#FFB74D', acronym: 'CIRC' },
+  { name: 'Pico Motors',  color: '#4FC3F7', acronym: 'PICO' },
+  { name: 'Finley Aeroview Racing Team',    color: '#F06292', acronym: 'FART' },
 ];
 
 const VEHICLES = [
@@ -56,7 +56,7 @@ const CONTROLS = [
 // the FIRST registered pilot automatically becomes ADMIN (see auth.ts)
 const PILOTS = [
   { displayName: 'Kehnte',     password: 'kehnteazerty',  country: 'fr', teamIdx: 0, vehicleIdx: 0, controlsIdx: 0 },
-  { displayName: 'Neoscris',     password: 'pilot123',  country: 'uk', teamIdx: 0, vehicleIdx: 0, controlsIdx: 0 },
+  { displayName: 'Neoscris',     password: 'pilot123',  country: 'gb', teamIdx: 0, vehicleIdx: 0, controlsIdx: 0 },
   { displayName: 'Kainan',      password: 'pilot123',  country: 'de', teamIdx: 0, vehicleIdx: 1, controlsIdx: 1 },
   { displayName: 'Heizenberg',  password: 'pilot123',  country: 'gb', teamIdx: 1, vehicleIdx: 1, controlsIdx: 0 },
   { displayName: 'Hugo Lisoir',   password: 'pilot123',  country: 'ca', teamIdx: 1, vehicleIdx: 1, controlsIdx: 2 },
@@ -147,7 +147,7 @@ async function seed() {
   // --- 5. Races ---
   console.log('\n5. Creating races');
   const raceManual = await api('POST', '/api/races', {
-    name:         'Test Race MANUEL',
+    name:         'Rikkord Memorial Raceway',
     trackingMode: 'manual',
     lapCount:     3,
     session:      'Race',
@@ -158,7 +158,7 @@ async function seed() {
   console.log(`  ✓ MANUEL "${raceManual.name}" [${raceManual.id}]`);
 
   const raceAuto = await api('POST', '/api/races', {
-    name:         'Test Race AUTO',
+    name:         'Yadar Valley',
     trackingMode: 'auto',
     racetrackId:  track.id,
     lapCount:     3,

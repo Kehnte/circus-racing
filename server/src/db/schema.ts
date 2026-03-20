@@ -80,7 +80,7 @@ export const race = sqliteTable("race", {
 
 // Race entry (pilot registration for a race)
 
-export type RaceEntryStatus = "PENDING" | "VALIDATED" | "REJECTED" | "REVOKED";
+export type RaceEntryStatus = "PENDING" | "VALIDATED";
 
 export const raceEntry = sqliteTable("race_entry", {
   id:               text().primaryKey().$defaultFn(() => crypto.randomUUID()),

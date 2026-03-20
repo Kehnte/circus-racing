@@ -26,7 +26,7 @@ async function addVehicle() {
     const img      = document.getElementById("ship-img").value?.trim();
     const category = document.getElementById("ship-category").value?.trim() || "ship";
 
-    if (!model) { alert("Please fill in the model"); return; }
+    if (!model) { console.warn("Please fill in the model"); return; }
 
     try {
         const created = await apiPost("/vehicles", { model, type: category, img: img || undefined });
@@ -37,7 +37,7 @@ async function addVehicle() {
         if (typeof displayPilots === "function") displayPilots();
         broadcastChange("vehicles");
     } catch (e) {
-        alert(e.message || "Failed to create vehicle");
+        console.warn(e.message || "Failed to create vehicle");
     }
 }
 
@@ -97,7 +97,7 @@ async function deleteVehicle(id) {
         if (typeof displayPilots === "function") displayPilots();
         broadcastChange("vehicles");
     } catch (e) {
-        alert(e.message || "Failed to delete vehicle");
+        console.warn(e.message || "Failed to delete vehicle");
     }
 }
 
@@ -110,7 +110,7 @@ async function saveEditVehicle(id) {
     const img      = document.getElementById("edit-ship-img")?.value?.trim();
     const category = document.getElementById("edit-ship-category")?.value || "ship";
 
-    if (!model) { alert("Please fill in the Model"); return; }
+    if (!model) { console.warn("Please fill in the Model"); return; }
 
     try {
         const updated = await apiPatch(`/vehicles/${id}`, { model, type: category, img: img || undefined });
@@ -122,7 +122,7 @@ async function saveEditVehicle(id) {
         if (typeof displayPilots === "function") displayPilots();
         broadcastChange("vehicles");
     } catch (e) {
-        alert(e.message || "Failed to update vehicle");
+        console.warn(e.message || "Failed to update vehicle");
     }
 }
 

@@ -63,26 +63,23 @@ function getChronoDisplay(ctx, pilotId, leaderElapsedMs, now) {
             return formatTime(elapsedMs);
     }
 }
-// Sort pilots according to tracking mode.
-// Manual: by gridPosition asc — Auto: by raceProgress desc.
+// Sort pilots: FINISHED first (by frozenTime asc), then active, then DNF last.
 function sortPilots(ctx) {
     const entries = Object.entries(ctx.pilotStates);
-    if (ctx.trackingMode === "manual") {
-        // Active pilots sorted by gridPosition, then finished/dnf at end
-        return entries.sort(([, a], [, b]) => {
-            const aActive = a.status === "RUNNING" || a.status === "WARNING_DNF";
-            const bActive = b.status === "RUNNING" || b.status === "WARNING_DNF";
-            if (aActive !== bActive)
-                return aActive ? -1 : 1;
-            return a.gridPosition - b.gridPosition;
-        });
-    }
-    // Auto: sort by raceProgress desc (existing logic)
     return entries.sort(([, a], [, b]) => {
-        const aActive = a.status === "RUNNING" || a.status === "WARNING_DNF";
-        const bActive = b.status === "RUNNING" || b.status === "WARNING_DNF";
-        if (aActive !== bActive)
-            return aActive ? -1 : 1;
+        const rank = (s) => s.status === "FINISHED" ? 0 :
+            (s.status === "RUNNING" || s.status === "WARNING_DNF") ? 1 : 2;
+        const ra = rank(a), rb = rank(b);
+        if (ra !== rb)
+            return ra - rb;
+        if (a.status === "FINISHED" && b.status === "FINISHED") {
+            return (a.frozenTime ?? "").localeCompare(b.frozenTime ?? "");
+        }
+        if (ctx.trackingMode === "manual") {
+            if (a.lap !== b.lap)
+                return b.lap - a.lap;
+            return a.gridPosition - b.gridPosition;
+        }
         return b.raceProgress - a.raceProgress;
     });
 }

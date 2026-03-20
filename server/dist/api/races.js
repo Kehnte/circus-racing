@@ -57,6 +57,7 @@ router.post("/", ...roles_js_1.requireModo, async (req, res) => {
         timingEnabled: timingEnabled ?? true,
         eventDuration: eventDuration ?? 5,
     }).returning();
+    (0, emitter_js_1.emitDashboard)("race-list-changed");
     res.status(201).json(created);
 });
 /** PATCH /races/:id — modo+. Blocks trackingMode if STARTED. */
@@ -103,6 +104,10 @@ router.patch("/:id", ...roles_js_1.requireModo, async (req, res) => {
             ctx.startType = patch.startType;
         if (patch.lapCount)
             ctx.lapCount = patch.lapCount;
+        if (patch.sessionMode)
+            ctx.sessionMode = patch.sessionMode;
+        if (patch.sessionDurationMs !== undefined)
+            ctx.sessionDurationMs = patch.sessionDurationMs;
         (0, emitter_js_1.broadcastRaceState)(ctx);
     }
     res.json(updated);
@@ -120,6 +125,7 @@ router.delete("/:id", ...roles_js_1.requireModo, async (req, res) => {
         return;
     }
     await db_js_1.db.delete(schema_js_1.race).where((0, drizzle_orm_1.eq)(schema_js_1.race.id, raceId));
+    (0, emitter_js_1.emitDashboard)("race-list-changed");
     res.sendStatus(204);
 });
 // Race entries
@@ -293,74 +299,7 @@ router.patch("/:raceId/entries/:entryId/validate", ...roles_js_1.requireModo, as
     catch { /* fire-and-forget */ }
     res.json(updated);
 });
-/** PATCH /races/:raceId/entries/:entryId/reject — PENDING → REJECTED */
-router.patch("/:raceId/entries/:entryId/reject", ...roles_js_1.requireModo, async (req, res) => {
-    const entry = await db_js_1.db.select().from(schema_js_1.raceEntry).where((0, drizzle_orm_1.eq)(schema_js_1.raceEntry.id, String(req.params.entryId))).get();
-    if (!entry) {
-        res.status(404).json({ error: "Entry not found" });
-        return;
-    }
-    if (entry.status !== "PENDING") {
-        res.status(409).json({ error: "Entry must be PENDING to reject" });
-        return;
-    }
-    const [updated] = await db_js_1.db.update(schema_js_1.raceEntry).set({ status: "REJECTED" }).where((0, drizzle_orm_1.eq)(schema_js_1.raceEntry.id, entry.id)).returning();
-    res.json(updated);
-});
-/** PATCH /races/:raceId/entries/:entryId/revoke — VALIDATED → REVOKED */
-router.patch("/:raceId/entries/:entryId/revoke", ...roles_js_1.requireModo, async (req, res) => {
-    const entry = await db_js_1.db.select().from(schema_js_1.raceEntry).where((0, drizzle_orm_1.eq)(schema_js_1.raceEntry.id, String(req.params.entryId))).get();
-    if (!entry) {
-        res.status(404).json({ error: "Entry not found" });
-        return;
-    }
-    if (entry.status !== "VALIDATED") {
-        res.status(409).json({ error: "Entry must be VALIDATED to revoke" });
-        return;
-    }
-    const [updated] = await db_js_1.db.update(schema_js_1.raceEntry).set({ status: "REVOKED", gridPosition: null }).where((0, drizzle_orm_1.eq)(schema_js_1.raceEntry.id, entry.id)).returning();
-    try {
-        const ctx = (0, race_context_js_1.getContext)();
-        if (ctx?.raceId === entry.raceId && (ctx.raceStatus === "PENDING" || ctx.raceStatus === "SCHEDULED")) {
-            (0, emitter_js_1.broadcastRaceState)(await (0, race_context_js_1.loadRace)(entry.raceId));
-        }
-    }
-    catch { /* fire-and-forget */ }
-    res.json(updated);
-});
-/** PATCH /races/:raceId/entries/:entryId/readmit — REJECTED|REVOKED → VALIDATED */
-router.patch("/:raceId/entries/:entryId/readmit", ...roles_js_1.requireModo, async (req, res) => {
-    const entry = await db_js_1.db.select().from(schema_js_1.raceEntry).where((0, drizzle_orm_1.eq)(schema_js_1.raceEntry.id, String(req.params.entryId))).get();
-    if (!entry) {
-        res.status(404).json({ error: "Entry not found" });
-        return;
-    }
-    if (entry.status !== "REJECTED" && entry.status !== "REVOKED") {
-        res.status(409).json({ error: "Entry must be REJECTED or REVOKED to readmit" });
-        return;
-    }
-    // Assign position at end of validated list
-    const validatedEntries = await db_js_1.db
-        .select({ gridPosition: schema_js_1.raceEntry.gridPosition })
-        .from(schema_js_1.raceEntry)
-        .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_js_1.raceEntry.raceId, entry.raceId), (0, drizzle_orm_1.eq)(schema_js_1.raceEntry.status, "VALIDATED")))
-        .all();
-    const maxPos = validatedEntries.reduce((m, e) => Math.max(m, e.gridPosition ?? 0), 0);
-    const [updated] = await db_js_1.db
-        .update(schema_js_1.raceEntry)
-        .set({ status: "VALIDATED", gridPosition: maxPos + 1 })
-        .where((0, drizzle_orm_1.eq)(schema_js_1.raceEntry.id, entry.id))
-        .returning();
-    try {
-        const ctx = (0, race_context_js_1.getContext)();
-        if (ctx?.raceId === entry.raceId && (ctx.raceStatus === "PENDING" || ctx.raceStatus === "SCHEDULED")) {
-            (0, emitter_js_1.broadcastRaceState)(await (0, race_context_js_1.loadRace)(entry.raceId));
-        }
-    }
-    catch { /* fire-and-forget */ }
-    res.json(updated);
-});
-/** DELETE /races/:raceId/entries/:entryId — pilot cancels their own registration (PENDING) */
+/** DELETE /races/:raceId/entries/:entryId — pilot cancels own PENDING entry, modo+ can remove any */
 router.delete("/:raceId/entries/:entryId", auth_js_1.requireAuth, async (req, res) => {
     const entry = await db_js_1.db
         .select()
@@ -404,7 +343,12 @@ router.post("/:id/open-registrations", ...roles_js_1.requireModo, async (req, re
         res.status(409).json({ error: "Race must be PENDING to open registrations" });
         return;
     }
-    const [updated] = await db_js_1.db.update(schema_js_1.race).set({ status: "SCHEDULED" }).where((0, drizzle_orm_1.eq)(schema_js_1.race.id, String(req.params.id))).returning();
+    const raceId = String(req.params.id);
+    const [updated] = await db_js_1.db.update(schema_js_1.race).set({ status: "SCHEDULED" }).where((0, drizzle_orm_1.eq)(schema_js_1.race.id, raceId)).returning();
+    const ctx = (0, race_context_js_1.getContext)();
+    if (ctx && ctx.raceId === raceId)
+        ctx.raceStatus = "SCHEDULED";
+    (0, emitter_js_1.emitDashboard)("race-list-changed");
     res.json(updated);
 });
 /** POST /races/:id/close-registrations — SCHEDULED → PENDING */
@@ -418,7 +362,12 @@ router.post("/:id/close-registrations", ...roles_js_1.requireModo, async (req, r
         res.status(409).json({ error: "Race must be SCHEDULED to close registrations" });
         return;
     }
-    const [updated] = await db_js_1.db.update(schema_js_1.race).set({ status: "PENDING" }).where((0, drizzle_orm_1.eq)(schema_js_1.race.id, String(req.params.id))).returning();
+    const raceId = String(req.params.id);
+    const [updated] = await db_js_1.db.update(schema_js_1.race).set({ status: "PENDING" }).where((0, drizzle_orm_1.eq)(schema_js_1.race.id, raceId)).returning();
+    const ctx = (0, race_context_js_1.getContext)();
+    if (ctx && ctx.raceId === raceId)
+        ctx.raceStatus = "PENDING";
+    (0, emitter_js_1.emitDashboard)("race-list-changed");
     res.json(updated);
 });
 // Race lifecycle
@@ -468,7 +417,8 @@ router.post("/:id/start", ...roles_js_1.requireModo, async (req, res) => {
         ctx.raceStatus = "STARTED";
         await db_js_1.db.update(schema_js_1.race).set({ status: "STARTED" }).where((0, drizzle_orm_1.eq)(schema_js_1.race.id, raceId));
         await (0, race_context_js_1.persistState)();
-        (0, emitter_js_1.emitAll)("race-restarted");
+        (0, emitter_js_1.emitAll)("race-started");
+        (0, emitter_js_1.emitDashboard)("race-list-changed");
         (0, emitter_js_1.broadcastRaceState)(ctx);
         res.json({ ok: true, status: "STARTED" });
     }
@@ -560,6 +510,7 @@ router.post("/:id/finish", ...roles_js_1.requireModo, async (req, res) => {
     else {
         await db_js_1.db.update(schema_js_1.race).set({ status: "FINISHED" }).where((0, drizzle_orm_1.eq)(schema_js_1.race.id, raceId));
     }
+    (0, emitter_js_1.emitDashboard)("race-list-changed");
     res.json({ ok: true, status: "FINISHED" });
 });
 /**
@@ -584,13 +535,12 @@ router.post("/:id/reset", ...roles_js_1.requireModo, async (req, res) => {
     try {
         const ctx = await (0, race_context_js_1.loadRace)(raceId);
         ctx.raceStatus = "PENDING";
+        (0, emitter_js_1.emitAll)("race-reset");
         (0, emitter_js_1.broadcastRaceState)(ctx);
-        res.json({ ok: true, status: "PENDING" });
     }
-    catch {
-        // If load fails (e.g. no validated entries), still return ok
-        res.json({ ok: true, status: "PENDING" });
-    }
+    catch { /* no validated entries */ }
+    (0, emitter_js_1.emitDashboard)("race-list-changed");
+    res.json({ ok: true, status: "PENDING" });
 });
 exports.default = router;
 //# sourceMappingURL=races.js.map

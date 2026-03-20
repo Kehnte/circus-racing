@@ -65,7 +65,7 @@ async function addPilot() {
 
     const showTeams = typeof teamDisplayMode !== "undefined" ? teamDisplayMode !== "hidden" : true;
     if (!name || (showTeams && !teamId) || !shipId || !controlId) {
-        alert("Please fill in all required fields");
+        console.warn("Please fill in all required fields");
         return;
     }
 
@@ -81,12 +81,14 @@ async function addPilot() {
         displayPilots();
         clearPilotForm();
     } catch (e) {
-        alert(e.message || "Failed to create pilot");
+        console.warn(e.message || "Failed to create pilot");
     }
 }
 
-// re-render the pilots table
+// re-render the pilots table (skips if a row is being edited)
 function displayPilots() {
+    if (editingPilotId) return;
+
     const tableBody = document.getElementById("pilots-list");
     if (!tableBody) return;
     tableBody.innerHTML = "";
@@ -94,6 +96,12 @@ function displayPilots() {
         const row = pilot.id === editingPilotId ? createPilotEditRow(pilot) : createPilotDisplayRow(pilot);
         tableBody.insertAdjacentHTML("beforeend", row);
     });
+    const table = tableBody.closest("table");
+    const hidden = typeof teamDisplayMode !== "undefined" && teamDisplayMode === "hidden";
+    if (table) table.classList.toggle("teams-hidden", hidden);
+
+    const hasRace = !!window.activeRaceId;
+    if (table) table.classList.toggle("no-race", !hasRace);
 }
 
 // check if a pilot is already enrolled in the active race
@@ -123,10 +131,7 @@ function registrationCell(pilot) {
                 <md-icon-button onclick="rejectEntry('${raceId}','${entry.id}')" ${disabled} title="Reject" style="--md-icon-button-icon-color: var(--md-sys-color-error);"><md-icon>close</md-icon></md-icon-button>
             </div>`;
         case "VALIDATED":
-            return `<md-icon-button onclick="revokeEntry('${raceId}','${entry.id}')" ${disabled} title="Revoke" style="--md-icon-button-icon-color: var(--md-sys-color-error);"><md-icon>person_remove</md-icon></md-icon-button>`;
-        case "REJECTED":
-        case "REVOKED":
-            return `<md-icon-button onclick="readmitEntry('${raceId}','${entry.id}')" ${disabled} title="Readmit"><md-icon>undo</md-icon></md-icon-button>`;
+            return `<md-icon-button onclick="revokeEntry('${raceId}','${entry.id}')" ${disabled} title="Remove from race" style="--md-icon-button-icon-color: var(--md-sys-color-error);"><md-icon>person_remove</md-icon></md-icon-button>`;
         default:
             return "";
     }
@@ -142,11 +147,11 @@ function createPilotDisplayRow(pilot) {
     return `
       <tr>
         <td>${pilot.name}</td>
-        <td><span class="fi fi-${country} fis"></span> (${country.toUpperCase()})</td>
-        <td class="team-ext">${team ? team.name : "---"}</td>
+        <td><span class="fi fi-${country} fis" title="${country.toUpperCase()}"></span></td>
+        <td class="team-ext" style="color: ${team ? team.color : "inherit"}">${team ? team.acronym : "---"}</td>
         <td>${vehicle ? vehicle.model : "No vehicle"}</td>
         <td>${ctrl ? ctrl.type : "Unknown"}</td>
-        <td>${registrationCell(pilot)}</td>
+        <td class="reg-col">${registrationCell(pilot)}</td>
         <td>
           <div class="action-buttons">
             <md-icon-button onclick="startEditPilot('${pilot.id}')" title="Edit"><md-icon>edit</md-icon></md-icon-button>
@@ -177,7 +182,7 @@ function createPilotEditRow(pilot) {
       <td class="team-ext"><md-outlined-select id="edit-pilot-team" style="width:100%;">${teamOptions}</md-outlined-select></td>
       <td><md-outlined-select id="edit-pilot-ship" style="width:100%;">${vehicleOptions}</md-outlined-select></td>
       <td><md-outlined-select id="edit-pilot-controls" style="width:100%;">${controlOptions}</md-outlined-select></td>
-      <td></td>
+      <td class="reg-col"></td>
       <td>
         <div class="action-buttons">
           <md-icon-button onclick="saveEditPilot('${pilot.id}')" title="Save"><md-icon>check</md-icon></md-icon-button>
@@ -194,7 +199,7 @@ async function deletePilot(id) {
         pilots = pilots.filter((p) => p.id !== id);
         displayPilots();
     } catch (e) {
-        alert(e.message || "Failed to delete pilot");
+        console.warn(e.message || "Failed to delete pilot");
     }
 }
 
@@ -211,7 +216,7 @@ async function saveEditPilot(id) {
 
     const showTeams = typeof teamDisplayMode !== "undefined" ? teamDisplayMode !== "hidden" : true;
     if (!name || (showTeams && !teamId) || !shipId || !controlId) {
-        alert("Please fill in all fields");
+        console.warn("Please fill in all fields");
         return;
     }
 
@@ -228,7 +233,7 @@ async function saveEditPilot(id) {
         editingPilotId = null;
         displayPilots();
     } catch (e) {
-        alert(e.message || "Failed to update pilot");
+        console.warn(e.message || "Failed to update pilot");
     }
 }
 
@@ -254,35 +259,25 @@ async function validateEntry(raceId, entryId) {
         await apiPatch(`/races/${raceId}/entries/${entryId}/validate`);
         await refreshPilotsAndEntries();
     } catch (err) {
-        alert(`Validation failed: ${err.message}`);
+        console.warn(`Validation failed: ${err.message}`);
     }
 }
 
 async function rejectEntry(raceId, entryId) {
-    if (!confirm("Reject this registration?")) return;
     try {
-        await apiPatch(`/races/${raceId}/entries/${entryId}/reject`);
+        await apiDelete(`/races/${raceId}/entries/${entryId}`);
         await refreshPilotsAndEntries();
     } catch (err) {
-        alert(`Rejection failed: ${err.message}`);
+        console.warn(`Rejection failed: ${err.message}`);
     }
 }
 
 async function revokeEntry(raceId, entryId) {
-    if (!confirm("Revoke this validated registration?")) return;
     try {
-        await apiPatch(`/races/${raceId}/entries/${entryId}/revoke`);
+        await apiDelete(`/races/${raceId}/entries/${entryId}`);
         await refreshPilotsAndEntries();
     } catch (err) {
-        alert(`Revoke failed: ${err.message}`);
+        console.warn(`Removal failed: ${err.message}`);
     }
 }
 
-async function readmitEntry(raceId, entryId) {
-    try {
-        await apiPatch(`/races/${raceId}/entries/${entryId}/readmit`);
-        await refreshPilotsAndEntries();
-    } catch (err) {
-        alert(`Readmit failed: ${err.message}`);
-    }
-}

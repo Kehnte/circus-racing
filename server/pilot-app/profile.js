@@ -359,11 +359,11 @@ async function loadOpenRaces() {
             entry = await apiFetch(`/api/races/${race.id}/entries/me`);
         } catch { /* 404 = not registered */ }
 
+        if (race.status !== "SCHEDULED" && !entry) continue;
+
         const card = document.createElement("div");
         card.className = "race-enroll-card m3-card";
         card.style.marginBottom = "12px";
-
-        const statusLabel = { PENDING: "Open", SCHEDULED: "Scheduled" }[race.status] ?? race.status;
 
         const entryBadge = entry
             ? `<span class="meta-chip" style="background-color: color-mix(in srgb, var(--md-sys-color-tertiary-container) 60%, transparent); color: var(--md-sys-color-on-tertiary-container);">
@@ -375,10 +375,8 @@ async function loadOpenRaces() {
         card.innerHTML = `
             <p class="md-typescale-title-small" style="margin: 0 0 8px 0;">${escHtml(race.name)}</p>
             <div class="race-meta">
-                <span class="meta-chip"><span class="material-symbols-outlined" style="font-size:14px">flag</span> ${escHtml(statusLabel)}</span>
                 <span class="meta-chip"><span class="material-symbols-outlined" style="font-size:14px">repeat</span> ${race.lapCount} laps</span>
-                <span class="meta-chip"><span class="material-symbols-outlined" style="font-size:14px">settings_input_component</span> ${escHtml(race.trackingMode.toUpperCase())}</span>
-                <span class="meta-chip"><span class="material-symbols-outlined" style="font-size:14px">cloud</span> ${escHtml(race.weather)}</span>
+                <span class="meta-chip"><span class="material-symbols-outlined" style="font-size:14px">settings_input_component</span> ${race.trackingMode === "auto" ? "Auto" : "Manual"}</span>
                 ${entryBadge}
             </div>
             <div id="race-action-${race.id}" style="margin-top: 12px;"></div>

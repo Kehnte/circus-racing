@@ -67,6 +67,7 @@ router.post("/", ...requireModo, async (req, res) => {
     eventDuration:     eventDuration     ?? 5,
   }).returning();
 
+  emitDashboard("race-list-changed");
   res.status(201).json(created);
 });
 
@@ -96,15 +97,17 @@ router.patch("/:id", ...requireModo, async (req, res) => {
   // Sync display settings in live context if loaded
   const ctx = getContext();
   if (ctx && ctx.raceId === raceId) {
-    if (patch.teamDisplayMode)   ctx.teamDisplayMode   = patch.teamDisplayMode as typeof ctx.teamDisplayMode;
-    if (patch.chronoDisplayMode) ctx.chronoDisplayMode = patch.chronoDisplayMode as typeof ctx.chronoDisplayMode;
-    if (patch.timingEnabled !== undefined) ctx.timingEnabled = patch.timingEnabled as boolean;
-    if (patch.eventDuration)     ctx.eventDuration     = patch.eventDuration as number;
-    if (patch.name)              ctx.raceName          = patch.name as string;
-    if (patch.session)           ctx.session           = patch.session as string;
-    if (patch.weather)           ctx.weather           = patch.weather as string;
-    if (patch.startType)         ctx.startType         = patch.startType as string;
-    if (patch.lapCount)          ctx.lapCount          = patch.lapCount as number;
+    if (patch.teamDisplayMode)              ctx.teamDisplayMode   = patch.teamDisplayMode as typeof ctx.teamDisplayMode;
+    if (patch.chronoDisplayMode)            ctx.chronoDisplayMode = patch.chronoDisplayMode as typeof ctx.chronoDisplayMode;
+    if (patch.timingEnabled !== undefined)  ctx.timingEnabled     = patch.timingEnabled as boolean;
+    if (patch.eventDuration)                ctx.eventDuration     = patch.eventDuration as number;
+    if (patch.name)                         ctx.raceName          = patch.name as string;
+    if (patch.session)                      ctx.session           = patch.session as string;
+    if (patch.weather)                      ctx.weather           = patch.weather as string;
+    if (patch.startType)                    ctx.startType         = patch.startType as string;
+    if (patch.lapCount)                     ctx.lapCount          = patch.lapCount as number;
+    if (patch.sessionMode)                  ctx.sessionMode       = patch.sessionMode as typeof ctx.sessionMode;
+    if (patch.sessionDurationMs !== undefined) ctx.sessionDurationMs = patch.sessionDurationMs as number | null;
     broadcastRaceState(ctx);
   }
 
@@ -123,6 +126,7 @@ router.delete("/:id", ...requireModo, async (req, res) => {
   }
 
   await db.delete(race).where(eq(race.id, raceId));
+  emitDashboard("race-list-changed");
   res.sendStatus(204);
 });
 
@@ -301,71 +305,7 @@ router.patch("/:raceId/entries/:entryId/validate", ...requireModo, async (req, r
   res.json(updated);
 });
 
-/** PATCH /races/:raceId/entries/:entryId/reject — PENDING → REJECTED */
-router.patch("/:raceId/entries/:entryId/reject", ...requireModo, async (req, res) => {
-  const entry = await db.select().from(raceEntry).where(eq(raceEntry.id, String(req.params.entryId))).get();
-  if (!entry) { res.status(404).json({ error: "Entry not found" }); return; }
-  if (entry.status !== "PENDING") {
-    res.status(409).json({ error: "Entry must be PENDING to reject" }); return;
-  }
-
-  const [updated] = await db.update(raceEntry).set({ status: "REJECTED" }).where(eq(raceEntry.id, entry.id)).returning();
-  res.json(updated);
-});
-
-/** PATCH /races/:raceId/entries/:entryId/revoke — VALIDATED → REVOKED */
-router.patch("/:raceId/entries/:entryId/revoke", ...requireModo, async (req, res) => {
-  const entry = await db.select().from(raceEntry).where(eq(raceEntry.id, String(req.params.entryId))).get();
-  if (!entry) { res.status(404).json({ error: "Entry not found" }); return; }
-  if (entry.status !== "VALIDATED") {
-    res.status(409).json({ error: "Entry must be VALIDATED to revoke" }); return;
-  }
-
-  const [updated] = await db.update(raceEntry).set({ status: "REVOKED", gridPosition: null }).where(eq(raceEntry.id, entry.id)).returning();
-
-  try {
-    const ctx = getContext();
-    if (ctx?.raceId === entry.raceId && (ctx.raceStatus === "PENDING" || ctx.raceStatus === "SCHEDULED")) {
-      broadcastRaceState(await loadRace(entry.raceId));
-    }
-  } catch { /* fire-and-forget */ }
-
-  res.json(updated);
-});
-
-/** PATCH /races/:raceId/entries/:entryId/readmit — REJECTED|REVOKED → VALIDATED */
-router.patch("/:raceId/entries/:entryId/readmit", ...requireModo, async (req, res) => {
-  const entry = await db.select().from(raceEntry).where(eq(raceEntry.id, String(req.params.entryId))).get();
-  if (!entry) { res.status(404).json({ error: "Entry not found" }); return; }
-  if (entry.status !== "REJECTED" && entry.status !== "REVOKED") {
-    res.status(409).json({ error: "Entry must be REJECTED or REVOKED to readmit" }); return;
-  }
-
-  // Assign position at end of validated list
-  const validatedEntries = await db
-    .select({ gridPosition: raceEntry.gridPosition })
-    .from(raceEntry)
-    .where(and(eq(raceEntry.raceId, entry.raceId), eq(raceEntry.status, "VALIDATED")))
-    .all();
-  const maxPos = validatedEntries.reduce((m, e) => Math.max(m, e.gridPosition ?? 0), 0);
-
-  const [updated] = await db
-    .update(raceEntry)
-    .set({ status: "VALIDATED", gridPosition: maxPos + 1 })
-    .where(eq(raceEntry.id, entry.id))
-    .returning();
-
-  try {
-    const ctx = getContext();
-    if (ctx?.raceId === entry.raceId && (ctx.raceStatus === "PENDING" || ctx.raceStatus === "SCHEDULED")) {
-      broadcastRaceState(await loadRace(entry.raceId));
-    }
-  } catch { /* fire-and-forget */ }
-
-  res.json(updated);
-});
-
-/** DELETE /races/:raceId/entries/:entryId — pilot cancels their own registration (PENDING) */
+/** DELETE /races/:raceId/entries/:entryId — pilot cancels own PENDING entry, modo+ can remove any */
 router.delete("/:raceId/entries/:entryId", requireAuth, async (req, res) => {
   const entry = await db
     .select()
@@ -407,7 +347,11 @@ router.post("/:id/open-registrations", ...requireModo, async (req, res) => {
   if (found.status !== "PENDING") {
     res.status(409).json({ error: "Race must be PENDING to open registrations" }); return;
   }
-  const [updated] = await db.update(race).set({ status: "SCHEDULED" }).where(eq(race.id, String(req.params.id))).returning();
+  const raceId = String(req.params.id);
+  const [updated] = await db.update(race).set({ status: "SCHEDULED" }).where(eq(race.id, raceId)).returning();
+  const ctx = getContext();
+  if (ctx && ctx.raceId === raceId) ctx.raceStatus = "SCHEDULED";
+  emitDashboard("race-list-changed");
   res.json(updated);
 });
 
@@ -418,7 +362,11 @@ router.post("/:id/close-registrations", ...requireModo, async (req, res) => {
   if (found.status !== "SCHEDULED") {
     res.status(409).json({ error: "Race must be SCHEDULED to close registrations" }); return;
   }
-  const [updated] = await db.update(race).set({ status: "PENDING" }).where(eq(race.id, String(req.params.id))).returning();
+  const raceId = String(req.params.id);
+  const [updated] = await db.update(race).set({ status: "PENDING" }).where(eq(race.id, raceId)).returning();
+  const ctx = getContext();
+  if (ctx && ctx.raceId === raceId) ctx.raceStatus = "PENDING";
+  emitDashboard("race-list-changed");
   res.json(updated);
 });
 
@@ -465,7 +413,8 @@ router.post("/:id/start", ...requireModo, async (req, res) => {
     ctx.raceStatus = "STARTED";
     await db.update(race).set({ status: "STARTED" }).where(eq(race.id, raceId));
     await persistState();
-    emitAll("race-restarted");
+    emitAll("race-started");
+    emitDashboard("race-list-changed");
     broadcastRaceState(ctx);
     res.json({ ok: true, status: "STARTED" });
 
@@ -560,6 +509,7 @@ router.post("/:id/finish", ...requireModo, async (req, res) => {
     await db.update(race).set({ status: "FINISHED" }).where(eq(race.id, raceId));
   }
 
+  emitDashboard("race-list-changed");
   res.json({ ok: true, status: "FINISHED" });
 });
 
@@ -585,12 +535,12 @@ router.post("/:id/reset", ...requireModo, async (req, res) => {
   try {
     const ctx = await loadRace(raceId);
     ctx.raceStatus = "PENDING";
+    emitAll("race-reset");
     broadcastRaceState(ctx);
-    res.json({ ok: true, status: "PENDING" });
-  } catch {
-    // If load fails (e.g. no validated entries), still return ok
-    res.json({ ok: true, status: "PENDING" });
-  }
+  } catch { /* no validated entries */ }
+
+  emitDashboard("race-list-changed");
+  res.json({ ok: true, status: "PENDING" });
 });
 
 export default router;

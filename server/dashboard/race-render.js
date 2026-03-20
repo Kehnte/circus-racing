@@ -74,19 +74,20 @@ function getChronoDisplay(state, pilot, index) {
 
 function renderRaceTable(state) {
     const tableBody    = document.getElementById("race-list");
-    const pilotCountEl = document.getElementById("pilot-count");
     if (!tableBody) return;
+
+    const activeEl = document.activeElement;
+    if (activeEl && activeEl.classList.contains("inline-number") && tableBody.contains(activeEl)) {
+        return;
+    }
 
     tableBody.innerHTML = "";
     const pilots = state.pilots ?? [];
-    if (pilotCountEl) pilotCountEl.textContent = pilots.length;
 
     const isRunning    = state.status === "STARTED";
     const isManual     = state.trackingMode === "manual";
     const showTeams    = state.teamDisplayMode !== "hidden";
     const useAcronym   = state.teamDisplayMode === "acronym";
-    const canRemove    = state.status === "PENDING" || state.status === "SCHEDULED";
-
     pilots.forEach((pilot, index) => {
         const isDnf      = pilot.status === "DNF" || pilot.status === "WARNING_DNF";
         const isFinished = pilot.status === "FINISHED";
@@ -95,8 +96,7 @@ function renderRaceTable(state) {
 
         const teamColor   = pilot.teamSnapshot?.color   ?? "inherit";
         const teamAcronym = pilot.teamSnapshot?.acronym ?? "—";
-        const teamName    = pilot.teamSnapshot?.name    ?? "—";
-        const teamDisplay = useAcronym ? teamAcronym : teamName;
+        const teamDisplay = teamAcronym;
 
         const lapDisplay = isFinished
             ? `<span class="lap-display finished">Finished</span>`
@@ -169,11 +169,6 @@ function renderRaceTable(state) {
                     <md-icon>${dnfIcon}</md-icon>
                 </md-icon-button>
             </td>
-            <td class="remove-col">
-                ${canRemove && pilot.entryId
-                    ? `<md-icon-button onclick="removeFromRace('${pilot.entryId}')" title="Remove from race" style="--md-icon-button-icon-color: var(--md-sys-color-error);"><md-icon>person_remove</md-icon></md-icon-button>`
-                    : ""}
-            </td>
         </tr>`;
         tableBody.insertAdjacentHTML("beforeend", row);
     });
@@ -182,7 +177,6 @@ function renderRaceTable(state) {
     if (table) {
         table.classList.toggle("chrono-hidden", !state.timingEnabled);
         table.classList.toggle("teams-hidden",  !showTeams);
-        table.classList.toggle("remove-hidden", !canRemove);
     }
 
     updateControlButtons(state);
@@ -279,25 +273,13 @@ function renderDnfWarningPanel() {
 // status bar (open/close registrations)
 
 function updateStatusBar(status) {
-    const bar      = document.getElementById("race-status-bar");
-    const chip     = document.getElementById("race-status-chip");
-    const btnOpen  = document.getElementById("btn-open-regs");
-    const btnClose = document.getElementById("btn-close-regs");
-    if (!bar) return;
-
-    if (!status || !window.activeRaceId) { bar.style.display = "none"; return; }
-
-    bar.style.display = "flex";
-    const labels = {
-        PENDING:   "Pending",
-        SCHEDULED: "Registrations open",
-        STARTED:   "In progress",
-        PAUSED:    "Paused",
-        FINISHED:  "Finished",
-    };
-    if (chip) chip.textContent = labels[status] ?? status;
-    if (btnOpen)  btnOpen.style.display  = status === "PENDING"   ? "" : "none";
-    if (btnClose) btnClose.style.display = status === "SCHEDULED" ? "" : "none";
+    const btnOpen   = document.getElementById("btn-open-regs");
+    const btnClose  = document.getElementById("btn-close-regs");
+    const btnDelete = document.getElementById("btn-delete-race");
+    const show = status && window.activeRaceId;
+    if (btnOpen)   btnOpen.style.display   = show && status === "PENDING"   ? "" : "none";
+    if (btnClose)  btnClose.style.display  = show && status === "SCHEDULED" ? "" : "none";
+    if (btnDelete) btnDelete.style.display = show && status !== "STARTED" && status !== "PAUSED" ? "" : "none";
 }
 
 // XSS escaping utility

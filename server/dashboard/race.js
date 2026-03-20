@@ -11,16 +11,6 @@ let teamDisplayMode   = "color-bar";
 let raceStatus        = "standby";
 let timingEnabled     = true;
 let chronoDisplayMode = "leader";
-let pilotsVisible     = true;
-
-// emit toggle to show/hide the pilot list on the leaderboard overlay
-function togglePilotsVisibility() {
-    const chip = document.getElementById("btn-pilots-toggle");
-    // md-filter-chip toggles `selected` before the click handler fires
-    pilotsVisible = chip ? chip.hasAttribute("selected") : !pilotsVisible;
-    socket.emit("toggle-pilots-visibility", { visible: pilotsVisible });
-}
-
 let sessionMode       = "laps";
 let sessionDurationMs = 30 * 60 * 1000;
 
@@ -622,11 +612,9 @@ function detectAndEmitEvents() {
 // rebuilds the race table, updates column visibility and broadcasts state to overlays
 function displayRace() {
     const tableBody    = document.getElementById("race-list");
-    const pilotCountEl = document.getElementById("pilot-count");
     if (!tableBody) return;
 
     tableBody.innerHTML = "";
-    if (pilotCountEl) pilotCountEl.textContent = raceList.length;
 
     const isRunning = raceStatus === "running";
     const showTeams = teamDisplayMode !== "hidden";
@@ -831,8 +819,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     updateSessionModeUI();
 
-    const pilotsChip = document.getElementById("btn-pilots-toggle");
-    if (pilotsChip) pilotsChip.setAttribute("selected", "");
 });
 
 // create race form
@@ -1040,7 +1026,7 @@ async function loadActiveRace(raceId) {
 // update the tracking mode button label and disable manual controls in AUTO mode
 function updateTrackingModeUI() {
     const btn = document.getElementById("btn-tracking-mode");
-    if (btn) btn.textContent = trackingMode === "auto" ? "Mode AUTO ✓" : "Mode MANUEL";
+    if (btn) btn.textContent = trackingMode === "auto" ? "Auto" : "Manual";
     document.querySelectorAll(".lap-btn, .reorder-btn").forEach(el => el.disabled = (trackingMode === "auto"));
 }
 

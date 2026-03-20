@@ -865,7 +865,7 @@ export declare const race: import("drizzle-orm/sqlite-core").SQLiteTableWithColu
     };
     dialect: "sqlite";
 }>;
-export type RaceEntryStatus = "PENDING" | "VALIDATED" | "REJECTED" | "REVOKED";
+export type RaceEntryStatus = "PENDING" | "VALIDATED";
 export declare const raceEntry: import("drizzle-orm/sqlite-core").SQLiteTableWithColumns<{
     name: "race_entry";
     schema: undefined;

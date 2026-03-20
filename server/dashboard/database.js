@@ -21,7 +21,7 @@ async function exportData() {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
     } catch (e) {
-        alert("Export failed: " + (e.message || e));
+        console.warn("Export failed: " + (e.message || e));
     }
 }
 
@@ -39,13 +39,12 @@ async function handleFileImport(event) {
     reader.onload = async (e) => {
         try {
             const data = JSON.parse(e.target.result);
-            if (!confirm("Import data into the database? Entries with conflicting names will be skipped.")) return;
             await importPayloadToApi(data);
             await initDashboard();
-            alert("Import complete!");
+            console.warn("Import complete!");
         } catch (err) {
             console.error("Import error:", err);
-            alert("Import failed: " + (err.message || err));
+            console.warn("Import failed: " + (err.message || err));
         }
     };
     reader.readAsText(file);
@@ -60,11 +59,9 @@ async function migrateLocalData() {
     const rawPilots   = localStorage.getItem("circusRacing_pilots");
 
     if (!rawTeams && !rawShips && !rawControls && !rawPilots) {
-        alert("No local data found to migrate.");
+        console.warn("No local data found to migrate.");
         return;
     }
-    if (!confirm("Migrate local storage data to the database?\n\nDuplicates will be skipped.")) return;
-
     try {
         await importPayloadToApi({
             teams:    rawTeams    ? JSON.parse(rawTeams)    : [],
@@ -75,10 +72,10 @@ async function migrateLocalData() {
         }, true);
 
         await initDashboard();
-        alert("Migration complete! Use 'Clear local storage' to remove legacy data.");
+        console.warn("Migration complete! Use 'Clear local storage' to remove legacy data.");
     } catch (err) {
         console.error("Migration error:", err);
-        alert("Migration failed: " + (err.message || err));
+        console.warn("Migration failed: " + (err.message || err));
     }
 }
 
@@ -153,8 +150,6 @@ async function importPayloadToApi(data, isLegacy = false) {
 
 // clear localStorage only — the DB is the source of truth
 function resetAllData() {
-    if (confirm("Clear all local storage data?\n\nThis does NOT affect the database.")) {
-        localStorage.clear();
-        alert("Local storage cleared.");
-    }
+    localStorage.clear();
+    console.warn("Local storage cleared.");
 }

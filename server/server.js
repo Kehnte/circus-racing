@@ -51,15 +51,13 @@ try {
   app.use('/api/ocr',          ocrRouter);
   app.use('/api/race-events',  raceEventsRouter);
 
-  // 500ms broadcast interval — keeps overlays in sync during active races
+  // 500ms broadcast interval — keeps overlays in sync whenever a race is loaded
   const { getContext }      = require('./src/engine/race-context');
   const { broadcastRaceState } = require('./src/socket/emitter');
   setInterval(() => {
     try {
       const ctx = getContext();
-      if (ctx && (ctx.raceStatus === 'STARTED' || ctx.raceStatus === 'PAUSED')) {
-        broadcastRaceState(ctx);
-      }
+      if (ctx) broadcastRaceState(ctx);
     } catch { /* ignore */ }
   }, 500);
 
@@ -84,6 +82,14 @@ io.on('connection', (socket) => {
     socket.join('dashboard');
   }
 
+  // Send current race state to newly connected clients (leaderboard, overlays)
+  try {
+    const { getContext: getCtx } = require('./src/engine/race-context');
+    const { broadcastRaceState: sendState } = require('./src/socket/emitter');
+    const ctx = getCtx();
+    if (ctx) sendState(ctx);
+  } catch { /* ignore */ }
+
   // Broadcast full race state to all clients (leaderboard overlay)
   socket.on('race-update', (data) => {
     socket.broadcast.emit('race-data', data);
@@ -101,11 +107,6 @@ io.on('connection', (socket) => {
 
   socket.on('race-resumed', () => {
     socket.broadcast.emit('race-resumed');
-  });
-
-  // Pilot list visibility toggle (dashboard → leaderboard)
-  socket.on('toggle-pilots-visibility', (data) => {
-    socket.broadcast.emit('toggle-pilots-visibility', data);
   });
 
   socket.on('disconnect', () => {

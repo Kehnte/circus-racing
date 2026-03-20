@@ -29,17 +29,32 @@ async function loadActiveRaceList() {
     }
 }
 
+// toggle race action bar and pilot table visibility
+function _setRaceContentVisible(visible) {
+    const section = document.getElementById("race-manager-section");
+    if (!section) return;
+    const actionsBar  = section.querySelector(".race-actions-bar");
+    const tableWrap   = section.querySelector(".m3-table-wrapper");
+    if (actionsBar) actionsBar.style.display = visible ? "" : "none";
+    if (tableWrap)  tableWrap.style.display  = visible ? "" : "none";
+}
+
 // load a race and populate settings fields
 async function loadActiveRace(raceId) {
     const settingsBtn = document.getElementById("btn-race-settings");
     if (!raceId) {
         window.activeRaceId = null;
+        window.currentRaceState = null;
         showRaceSettingsPanel(false);
         if (settingsBtn) settingsBtn.style.display = "none";
         const settingsBtnActive = document.getElementById("btn-race-settings-active");
         if (settingsBtnActive) settingsBtnActive.style.display = "none";
+        const raceTableBody = document.getElementById("race-list");
+        if (raceTableBody) raceTableBody.innerHTML = "";
+        _setRaceContentVisible(false);
         if (typeof updateStatusBar     === "function") updateStatusBar(null);
         if (typeof updateControlButtons=== "function") updateControlButtons(null);
+        if (typeof displayPilots       === "function") displayPilots();
         return;
     }
     try {
@@ -66,6 +81,7 @@ async function loadActiveRace(raceId) {
         if (typeof displayPilots === "function") displayPilots();
 
         if (settingsBtn) settingsBtn.style.display = "";
+        _setRaceContentVisible(true);
         showRaceSettingsPanel(true);
 
         // load server context to get the race-state broadcast
@@ -129,7 +145,13 @@ function _debouncedPatch(field, value) {
     if (!id) return;
     clearTimeout(_patchDebounceTimer);
     _patchDebounceTimer = setTimeout(async () => {
-        try { await patchRaceSettings(id, { [field]: value }); } catch (e) { console.warn(e.message); }
+        try {
+            await patchRaceSettings(id, { [field]: value });
+            if (field === "name") {
+                const opt = document.querySelector(`#active-race-select option[value="${id}"]`);
+                if (opt) opt.textContent = value;
+            }
+        } catch (e) { console.warn(e.message); }
     }, 600);
 }
 
@@ -141,8 +163,7 @@ async function openRegistrations() {
     try {
         const updated = await apiPost(`/races/${id}/open-registrations`);
         if (typeof updateStatusBar === "function") updateStatusBar(updated.status);
-        await loadActiveRaceList();
-    } catch (e) { alert(e.message); }
+    } catch (e) { console.warn(e.message); }
 }
 
 async function closeRegistrations() {
@@ -151,8 +172,7 @@ async function closeRegistrations() {
     try {
         const updated = await apiPost(`/races/${id}/close-registrations`);
         if (typeof updateStatusBar === "function") updateStatusBar(updated.status);
-        await loadActiveRaceList();
-    } catch (e) { alert(e.message); }
+    } catch (e) { console.warn(e.message); }
 }
 
 // tracking mode toggle
@@ -160,9 +180,9 @@ async function closeRegistrations() {
 async function setTrackingMode(newMode) {
     const id    = window.activeRaceId;
     const state = window.currentRaceState;
-    if (!id)    { alert("Load a race first"); return; }
+    if (!id)    { console.warn("Load a race first"); return; }
     if (state?.status === "STARTED" || state?.status === "PAUSED") {
-        alert("Tracking mode cannot be changed while the race is running.");
+        console.warn("Tracking mode cannot be changed while the race is running.");
         return;
     }
     if (state?.trackingMode === newMode) return;
@@ -170,7 +190,7 @@ async function setTrackingMode(newMode) {
         await patchRaceSettings(id, { trackingMode: newMode });
         if (window.currentRaceState) window.currentRaceState.trackingMode = newMode;
         if (typeof updateTrackingModeUI === "function") updateTrackingModeUI(newMode, window.currentRaceState?.status);
-    } catch (e) { alert(e.message); }
+    } catch (e) { console.warn(e.message); }
 }
 
 // race settings panel (collapsible)
@@ -288,19 +308,25 @@ document.addEventListener("DOMContentLoaded", () => {
     // Team display
     const teamDisplaySelect = document.getElementById("setting-team-display");
     if (teamDisplaySelect) {
-        teamDisplaySelect.addEventListener("change", () => onTeamDisplayModeChange(teamDisplaySelect.value));
+        const handler = () => onTeamDisplayModeChange(teamDisplaySelect.value);
+        teamDisplaySelect.addEventListener("change", handler);
+        teamDisplaySelect.addEventListener("input", handler);
     }
 
     // Chrono mode
     const chronoSelect = document.getElementById("setting-chrono-display");
     if (chronoSelect) {
-        chronoSelect.addEventListener("change", () => onChronoDisplayModeChange(chronoSelect.value));
+        const handler = () => onChronoDisplayModeChange(chronoSelect.value);
+        chronoSelect.addEventListener("change", handler);
+        chronoSelect.addEventListener("input", handler);
     }
 
     // Session mode
     const sessionModeSelect = document.getElementById("setting-session-mode");
     if (sessionModeSelect) {
-        sessionModeSelect.addEventListener("change", () => onSessionModeChange(sessionModeSelect.value));
+        const handler = () => onSessionModeChange(sessionModeSelect.value);
+        sessionModeSelect.addEventListener("change", handler);
+        sessionModeSelect.addEventListener("input", handler);
     }
 
     // text/select fields to live-patch
@@ -335,7 +361,4 @@ document.addEventListener("DOMContentLoaded", () => {
     // initialize session mode UI
     updateSessionModeUI("laps");
 
-    // pilots-toggle chip: initial state
-    const pilotsChip = document.getElementById("btn-pilots-toggle");
-    if (pilotsChip) pilotsChip.setAttribute("selected", "");
 });

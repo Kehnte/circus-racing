@@ -124,12 +124,11 @@ async function submitCreateCircuit() {
 }
 
 async function deleteCircuit(id) {
-    if (!confirm("Delete this racetrack? This action is irreversible.")) return;
     try {
         await apiDelete(`/racetracks/${id}`);
         await loadRacetracks();
     } catch (e) {
-        alert(`Error: ${e.message}`);
+        console.warn(`Error: ${e.message}`);
     }
 }
 
