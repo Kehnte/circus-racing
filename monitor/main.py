@@ -621,8 +621,8 @@ def monitor_thread():
 
 def _ui_folder() -> str:
     if getattr(sys, "frozen", False):
-        return str(Path(sys._MEIPASS) / "ui")
-    return str(Path(__file__).parent / "ui")
+        return str(Path(sys._MEIPASS) / "frontend" / "dist")
+    return str(Path(__file__).parent / "frontend" / "dist")
 
 
 flask_app = Flask(__name__, static_folder=_ui_folder(), static_url_path="")

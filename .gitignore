@@ -5,6 +5,8 @@ server/dist/
 server/.env
 
 # Monitor
+monitor/frontend/node_modules/
+monitor/frontend/dist/
 monitor/.venv/
 monitor/__pycache__/
 monitor/dist/

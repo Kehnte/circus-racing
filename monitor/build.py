@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -42,11 +43,25 @@ def _check_environment() -> int:
     return 0
 
 
+def _build_frontend() -> int:
+    frontend_dir = Path(__file__).parent / "frontend"
+    print("Building frontend…")
+    result = subprocess.run(["npm", "run", "build"], cwd=frontend_dir)
+    if result.returncode != 0:
+        print("ERROR: Frontend build failed.")
+        return result.returncode
+    return 0
+
+
 def main() -> int:
     shutil.copy("config.example.cfg", "config.cfg")
 
     # Ensure checkpoints.txt exists — required by the .spec as a bundled data file
     Path("checkpoints.txt").touch(exist_ok=True)
+
+    ret = _build_frontend()
+    if ret != 0:
+        return ret
 
     ret = _check_environment()
     if ret != 0:
