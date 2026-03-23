@@ -18,8 +18,9 @@ async function pollState() {
 }
 
 function updateUI(s) {
-  // Server connectivity dot
-  setServerDot(s.server_ok);
+  // Server connectivity dots
+  setServerDot(s.server_reachable);
+  setSendDot(s.server_ok, s.last_send_status);
 
   // Mode buttons
   document.getElementById('btn-race').classList.toggle('active', s.mode === 'RACE');
@@ -49,19 +50,6 @@ function updateUI(s) {
     ocrEl.textContent = 'Star Citizen not detected';
   }
 
-  // Send status
-  const sendEl = document.getElementById('send-status');
-  if (s.last_send_status === 200) {
-    sendEl.textContent = 'sent';
-    sendEl.className = 'send-ok';
-  } else if (s.last_send_status === 'error') {
-    sendEl.textContent = 'send failed';
-    sendEl.className = 'send-error';
-  } else {
-    sendEl.textContent = '';
-    sendEl.className = '';
-  }
-
   // Record: trace count
   document.getElementById('trace-count').textContent = `${s.trace_count} point${s.trace_count !== 1 ? 's' : ''} recorded`;
 
@@ -78,6 +66,21 @@ function setServerDot(ok) {
   const label = document.getElementById('server-label');
   dot.className = 'dot' + (ok ? ' ok' : ' error');
   label.textContent = ok ? 'connected' : 'unreachable';
+}
+
+function setSendDot(ok, status) {
+  const dot = document.getElementById('send-dot');
+  const label = document.getElementById('send-dot-label');
+  if (status === null || status === undefined) {
+    dot.className = 'dot';
+    label.textContent = 'not sent yet';
+  } else if (ok) {
+    dot.className = 'dot ok';
+    label.textContent = 'sent';
+  } else {
+    dot.className = 'dot error';
+    label.textContent = 'send failed';
+  }
 }
 
 async function setMode(mode) {

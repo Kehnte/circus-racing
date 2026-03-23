@@ -7,18 +7,26 @@ from PyInstaller.utils.hooks import collect_dynamic_libs
 
 block_cipher = None
 
-# Ensure the config and checkpoint files are included, as well as the tesseract runtime.
+# Ensure the config and checkpoint files are included, as well as the UI and tesseract runtime.
 datas = [
     ("config.cfg", "."),
     ("config.example.cfg", "."),
-    ("checkpoints.txt", "."),
+    ("ui", "ui"),
 ]
 
 # Include the full tesseract runtime (binaries + tessdata) if it exists in the repo.
 if os.path.isdir("tesseract"):
     datas.append(("tesseract", "tesseract"))
 
-hiddenimports = []
+hiddenimports = [
+    "flask",
+    "werkzeug",
+    "werkzeug.serving",
+    "werkzeug.debug",
+    "click",
+    "jinja2",
+    "itsdangerous",
+]
 
 a = Analysis(
     ["main.py"],
@@ -47,7 +55,7 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=True,
+    console=False,
 )
 
 coll = COLLECT(

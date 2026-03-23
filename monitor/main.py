@@ -114,7 +114,8 @@ class MonitorState:
     position: Optional[list] = None
     last_ocr_at: Optional[str] = None
     last_send_status: object = None       # 200, "error", or None
-    server_ok: bool = False
+    server_ok: bool = False               # last OCR send succeeded
+    server_reachable: bool = False        # /api/ping reachable
 
     # Record mode
     recording: bool = False
@@ -136,7 +137,12 @@ state = MonitorState()
 # ---------------------------------------------------------------------------
 
 POS_PATTERN = re.compile(
-    r"[PpRr]os:\s*(.+?)\s*[kK][mn]\S*\s+(.+?)\s*[kK][mn]\S*\s+(.+?)\s*[kK][mn]",
+    r"[PpRr]os:\s*(.+?)\s*[kK]?m\S*\s+(.+?)\s*[kK]?m\S*\s+(.+?)\s*[kK]?m",
+    re.IGNORECASE,
+)
+# Fallback when "Pos:" is outside the capture zone
+POS_PATTERN_BARE = re.compile(
+    r"([\d.+-]+)\s*[kK]?m\s*([\d.+-]+)\s*[kK]?m\s*([\d.+-]+)\s*[kK]?m",
     re.IGNORECASE,
 )
 
@@ -158,7 +164,7 @@ def _clean_number(raw: str) -> float:
 
 def parse_pos(text: str):
     text = text.replace(", ", ",").replace(". ", ".")
-    match = POS_PATTERN.search(text)
+    match = POS_PATTERN.search(text) or POS_PATTERN_BARE.search(text)
     if match:
         try:
             x, y, z = [_clean_number(g) for g in match.groups()]
@@ -170,7 +176,7 @@ def parse_pos(text: str):
 
 
 _CAPTURE_ZONES = {
-    (2560, 1440): (2090, 58, 470, 11),
+    (2560, 1440): (2231, 45, 329, 11),
 }
 
 _REF_RES = (2560, 1440)
@@ -215,7 +221,8 @@ def _capture_pos():
     processed = cv2.bitwise_not(thresh)
     cv2.imwrite(str(DATA_DIR / "debug_image.png"), processed)
 
-    text = pytesseract.image_to_string(processed, config="--oem 3 --psm 7")
+    text = pytesseract.image_to_string(processed, config="--oem 3 --psm 7 -c tessedit_char_whitelist=0123456789.km-Pos: ")
+    log.info("OCR raw: %r", text)
     return parse_pos(text)
 
 
@@ -226,6 +233,26 @@ def write_checkpoint(pos):
 
 def calculate_distance(pos1, pos2):
     return math.sqrt(sum((a - b) ** 2 for a, b in zip(pos1, pos2)))
+
+
+# ---------------------------------------------------------------------------
+# Server reachability ping
+# ---------------------------------------------------------------------------
+
+def check_server_reachable():
+    try:
+        res = requests.get(f"{config['server']['url']}/api/ping", timeout=3)
+        with state.lock:
+            state.server_reachable = res.status_code == 200
+    except Exception:
+        with state.lock:
+            state.server_reachable = False
+
+
+def _ping_loop():
+    while True:
+        check_server_reachable()
+        time.sleep(5)
 
 
 # ---------------------------------------------------------------------------
@@ -617,6 +644,7 @@ def api_state():
             "last_ocr_at": state.last_ocr_at,
             "last_send_status": state.last_send_status,
             "server_ok": state.server_ok,
+            "server_reachable": state.server_reachable,
             "recording": state.recording,
             "trace_count": len(state.raw_trace),
             "marks": state.marks,
@@ -758,6 +786,9 @@ def main():
 
     t_monitor = threading.Thread(target=monitor_thread, daemon=True)
     t_monitor.start()
+
+    t_ping = threading.Thread(target=_ping_loop, daemon=True)
+    t_ping.start()
 
     # Give Flask a moment to bind before opening the browser
     time.sleep(0.8)

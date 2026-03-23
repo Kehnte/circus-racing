@@ -25,6 +25,9 @@ app.use((req, res, next) => {
   next();
 });
 
+// Ping — no auth, used by the monitor to check server reachability
+app.get('/api/ping', (_req, res) => res.json({ ok: true }));
+
 // REST API — routes from src/ (TypeScript compiled to dist/ in prod,
 // loaded with tsx/ts-node in dev via "npm run dev:ts")
 try {

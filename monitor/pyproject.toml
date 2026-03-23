@@ -12,4 +12,5 @@ dependencies = [
     "pytesseract>=0.3.13",
     "pywin32>=311",
     "requests>=2.32.4",
+    "flask>=3.0",
 ]
