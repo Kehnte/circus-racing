@@ -73,6 +73,13 @@ try {
 // Health check — used by reset.js to wait for server readiness
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
+// React dashboard SPA — served under /dashboard, before generic static middleware
+const frontendDist = path.join(__dirname, 'frontend', 'dist');
+app.use('/dashboard', express.static(frontendDist));
+app.get('/dashboard/*splat', (_req, res) => {
+  res.sendFile(path.join(frontendDist, 'index.html'));
+});
+
 // Static files — dashboard, overlays, pilot-app
 app.use(express.static(path.join(__dirname)));
 
