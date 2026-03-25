@@ -140,6 +140,7 @@ export function buildRaceStateBroadcast(ctx: RaceContext): object {
   return {
     raceId: ctx.raceId,
     raceName: ctx.raceName,
+    racetrackId: ctx.racetrackId,
     status: ctx.raceStatus,
     trackingMode: ctx.trackingMode,
     session: ctx.session,

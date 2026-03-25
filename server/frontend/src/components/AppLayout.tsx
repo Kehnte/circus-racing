@@ -24,7 +24,6 @@ import MenuOpenOutlined from '@mui/icons-material/MenuOpenOutlined';
 import MenuOutlined from '@mui/icons-material/MenuOutlined';
 import PersonOutlined from '@mui/icons-material/PersonOutlined';
 import RocketLaunchOutlined from '@mui/icons-material/RocketLaunchOutlined';
-import RouteOutlined from '@mui/icons-material/RouteOutlined';
 import SpaceDashboardOutlined from '@mui/icons-material/SpaceDashboardOutlined';
 import TuneOutlined from '@mui/icons-material/TuneOutlined';
 import { useAuth } from '../context/AuthContext.tsx';
@@ -48,7 +47,6 @@ const NAV_SECTIONS = [
       { label: 'Teams', path: '/teams', icon: <GroupsOutlined /> },
       { label: 'Vehicles', path: '/vehicles', icon: <RocketLaunchOutlined /> },
       { label: 'Controls', path: '/controls', icon: <TuneOutlined /> },
-      { label: 'Circuits', path: '/circuits', icon: <RouteOutlined /> },
     ],
   },
 ];
@@ -59,7 +57,6 @@ const PAGE_TITLES: Record<string, string> = {
   '/teams': 'Teams',
   '/vehicles': 'Vehicles',
   '/controls': 'Controls',
-  '/circuits': 'Circuits',
 };
 
 function resolvePageTitle(pathname: string): string {
@@ -208,8 +205,54 @@ export default function AppLayout() {
         }}
       >
         <Toolbar /> {/* AppBar spacer */}
-        <Box sx={{ flex: 1, overflow: 'auto', p: 3, display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{ flex: 1, overflow: 'hidden', p: 3, display: 'flex', flexDirection: 'column' }}>
           <Outlet />
+        </Box>
+        <Box
+          component="footer"
+          sx={{
+            px: 3,
+            py: 0.75,
+            borderTop: 1,
+            borderColor: 'divider',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 1,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          <Tooltip
+            title="This is an unofficial Star Citizen tool, not affiliated with the Cloud Imperium group of companies. All game content and materials are copyright Cloud Imperium Rights LLC and Cloud Imperium Rights Ltd. Star Citizen®, Squadron 42®, Roberts Space Industries®, and Cloud Imperium® are registered trademarks of Cloud Imperium Rights LLC."
+            placement="top"
+            arrow
+          >
+            <Typography variant="caption" color="text.disabled" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, cursor: 'default' }}>
+              Unofficial Star Citizen fan tool
+            </Typography>
+          </Tooltip>
+          <Typography variant="caption" color="text.disabled">·</Typography>
+          <Typography
+            variant="caption"
+            component="a"
+            href="https://robertsspaceindustries.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            sx={{ color: 'text.disabled', textDecoration: 'none', '&:hover': { color: 'text.secondary' } }}
+          >
+            robertsspaceindustries.com
+          </Typography>
+          <Typography variant="caption" color="text.disabled">·</Typography>
+          <Typography
+            variant="caption"
+            component="a"
+            href="https://buymeacoffee.com/kehnte"
+            target="_blank"
+            rel="noopener noreferrer"
+            sx={{ color: 'text.disabled', textDecoration: 'none', '&:hover': { color: 'text.secondary' } }}
+          >
+            Made by @Kehnte
+          </Typography>
         </Box>
       </Box>
     </Box>

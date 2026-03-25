@@ -14,5 +14,5 @@ export const useRaceStore = create<RaceStore>((set) => ({
   raceState: null,
   activeRaceId: null,
   setRaceState: (s) => set({ raceState: s }),
-  setActiveRaceId: (id) => set({ activeRaceId: id }),
+  setActiveRaceId: (id) => set({ activeRaceId: id, ...(id === null ? { raceState: null } : {}) }),
 }));

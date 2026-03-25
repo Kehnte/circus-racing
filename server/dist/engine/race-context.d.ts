@@ -9,6 +9,7 @@ export interface PilotProfile {
 }
 export interface RaceContext {
     raceId: string;
+    racetrackId: string | null;
     raceStatus: RaceStatus;
     trackingMode: TrackingMode;
     lapCount: number;

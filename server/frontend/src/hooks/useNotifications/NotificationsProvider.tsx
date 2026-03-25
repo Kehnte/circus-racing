@@ -37,17 +37,15 @@ export default function NotificationsProvider({ children }: { children: ReactNod
     <NotificationsContext.Provider value={{ show, close }}>
       {children}
       {current && (
-        <Badge
-          badgeContent={queue.length > 1 ? queue.length : undefined}
-          color="primary"
-          sx={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 1400 }}
+        <Snackbar
+          open
+          autoHideDuration={current.options.autoHideDuration ?? 4000}
+          onClose={() => close(current.key)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
         >
-          <Snackbar
-            open
-            autoHideDuration={current.options.autoHideDuration ?? 4000}
-            onClose={() => close(current.key)}
-            anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-            sx={{ position: 'static', transform: 'none' }}
+          <Badge
+            badgeContent={queue.length > 1 ? queue.length : undefined}
+            color="primary"
           >
             <Alert
               severity={current.options.severity ?? 'info'}
@@ -70,8 +68,8 @@ export default function NotificationsProvider({ children }: { children: ReactNod
             >
               {current.message}
             </Alert>
-          </Snackbar>
-        </Badge>
+          </Badge>
+        </Snackbar>
       )}
     </NotificationsContext.Provider>
   );

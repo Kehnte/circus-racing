@@ -8,6 +8,7 @@ const schema_js_1 = require("../db/schema.js");
 const auth_js_1 = require("../middleware/auth.js");
 const roles_js_1 = require("../middleware/roles.js");
 const race_context_js_1 = require("../engine/race-context.js");
+const race_lifecycle_js_1 = require("../engine/race-lifecycle.js");
 const emitter_js_1 = require("../socket/emitter.js");
 const router = (0, express_1.Router)();
 // Races CRUD
@@ -36,10 +37,6 @@ router.post("/", ...roles_js_1.requireModo, async (req, res) => {
     const { name, racetrackId, lapCount, session, weather, startType, trackingMode, sessionMode, sessionDurationMs, teamDisplayMode, chronoDisplayMode, timingEnabled, eventDuration, } = req.body;
     if (!name) {
         res.status(400).json({ error: "name is required" });
-        return;
-    }
-    if ((trackingMode ?? "manual") === "auto" && !racetrackId) {
-        res.status(400).json({ error: "racetrackId is required for auto tracking mode" });
         return;
     }
     const [created] = await db_js_1.db.insert(schema_js_1.race).values({
@@ -108,6 +105,10 @@ router.patch("/:id", ...roles_js_1.requireModo, async (req, res) => {
             ctx.sessionMode = patch.sessionMode;
         if (patch.sessionDurationMs !== undefined)
             ctx.sessionDurationMs = patch.sessionDurationMs;
+        if (patch.trackingMode)
+            ctx.trackingMode = patch.trackingMode;
+        if (patch.racetrackId !== undefined)
+            ctx.racetrackId = patch.racetrackId;
         (0, emitter_js_1.broadcastRaceState)(ctx);
     }
     res.json(updated);
@@ -372,6 +373,14 @@ router.post("/:id/close-registrations", ...roles_js_1.requireModo, async (req, r
 });
 // Race lifecycle
 /**
+ * POST /races/unload — modo+
+ * Drops the in-memory RaceContext, stopping all race-state broadcasts.
+ */
+router.post("/unload", ...roles_js_1.requireModo, async (_req, res) => {
+    await (0, race_context_js_1.clearContext)();
+    res.json({ ok: true });
+});
+/**
  * POST /races/:id/load — modo+
  * Loads the server RaceContext from VALIDATED entries.
  * Does not start the race. Required before grid-order and start.
@@ -407,12 +416,17 @@ router.post("/:id/start", ...roles_js_1.requireModo, async (req, res) => {
         res.status(404).json({ error: "Race not found" });
         return;
     }
+    if (found.trackingMode === "auto" && !found.racetrackId) {
+        res.status(400).json({ error: "A circuit is required to start in auto mode." });
+        return;
+    }
     if (found.status === "SCHEDULED" || found.status === "PENDING") {
         // Fresh start — load context if not already loaded
         let ctx = (0, race_context_js_1.getContext)();
         if (!ctx || ctx.raceId !== raceId) {
             ctx = await (0, race_context_js_1.loadRace)(raceId);
         }
+        (0, race_lifecycle_js_1.clearCountdownTimer)(raceId);
         ctx.startedAt = new Date().toISOString();
         ctx.raceStatus = "STARTED";
         await db_js_1.db.update(schema_js_1.race).set({ status: "STARTED" }).where((0, drizzle_orm_1.eq)(schema_js_1.race.id, raceId));

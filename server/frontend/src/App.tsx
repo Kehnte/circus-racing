@@ -20,8 +20,6 @@ import VehicleEditPage from './pages/vehicles/VehicleEditPage.tsx';
 import ControlsListPage from './pages/controls/ControlsListPage.tsx';
 import ControlCreatePage from './pages/controls/ControlCreatePage.tsx';
 import ControlEditPage from './pages/controls/ControlEditPage.tsx';
-import CircuitsListPage from './pages/circuits/CircuitsListPage.tsx';
-import CircuitCreatePage from './pages/circuits/CircuitCreatePage.tsx';
 
 const router = createBrowserRouter(
   [
@@ -69,13 +67,6 @@ const router = createBrowserRouter(
                 { index: true, element: <ControlsListPage /> },
                 { path: 'new', element: <ControlCreatePage /> },
                 { path: ':controlId/edit', element: <ControlEditPage /> },
-              ],
-            },
-            {
-              path: 'circuits',
-              children: [
-                { index: true, element: <CircuitsListPage /> },
-                { path: 'new', element: <CircuitCreatePage /> },
               ],
             },
             { path: 'profile', element: <ProfilePage /> },

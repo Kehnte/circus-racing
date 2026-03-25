@@ -23,6 +23,7 @@ export interface PilotProfile {
 
 export interface RaceContext {
   raceId: string;
+  racetrackId: string | null;
   raceStatus: RaceStatus;
   trackingMode: TrackingMode;
   lapCount: number;
@@ -62,10 +63,6 @@ export function hasContext(): boolean { return _ctx !== null; }
 export async function loadRace(raceId: string): Promise<RaceContext> {
   const raceRow = await db.select().from(race).where(eq(race.id, raceId)).get();
   if (!raceRow) throw new Error(`Race ${raceId} not found`);
-
-  if (raceRow.trackingMode === "auto" && !raceRow.racetrackId) {
-    throw new Error(`Race ${raceId} is in AUTO mode but has no racetrack assigned`);
-  }
 
   const track = raceRow.racetrackId
     ? await db.select().from(racetrack).where(eq(racetrack.id, raceRow.racetrackId)).get()
@@ -135,6 +132,7 @@ export async function loadRace(raceId: string): Promise<RaceContext> {
 
   _ctx = {
     raceId,
+    racetrackId: raceRow.racetrackId ?? null,
     raceStatus: raceRow.status,
     trackingMode: raceRow.trackingMode,
     lapCount: raceRow.lapCount,

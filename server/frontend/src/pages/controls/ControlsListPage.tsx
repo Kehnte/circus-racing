@@ -76,7 +76,7 @@ export default function ControlsListPage() {
     {
       field: 'img',
       headerName: 'Image',
-      minWidth: 48,
+      minWidth: 60,
       sortable: false,
       renderCell: (params: GridRenderCellParams<Controls, string | null>) =>
         params.value ? (
@@ -87,7 +87,7 @@ export default function ControlsListPage() {
           <Box sx={{ display: 'flex', alignItems: 'center', height: '100%', color: 'text.disabled' }}>—</Box>
         ),
     },
-    { field: 'type', headerName: 'Type', flex: 1, minWidth: 80 },
+    { field: 'type', headerName: 'Type', flex: 1, minWidth: 60 },
     {
       field: 'actions',
       type: 'actions',
@@ -122,6 +122,7 @@ export default function ControlsListPage() {
         onSortModelChange={handleSortChange}
         filterModel={filterModel}
         onFilterModelChange={handleFilterChange}
+        disableColumnResize
         disableRowSelectionOnClick
         slots={{ toolbar: CrudToolbar, noRowsOverlay: NoRowsOverlay }}
         sx={{ flex: 1 }}

@@ -3,14 +3,15 @@
 
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import Typography from '@mui/material/Typography';
+import Stack from '@mui/material/Stack';
 import AddOutlined from '@mui/icons-material/AddOutlined';
 import { useState } from 'react';
 import { useRaceSocket } from '../hooks/useRaceSocket.ts';
 import { useRaceStore } from '../store/raceStore.ts';
+import PageContainer from '../components/PageContainer.tsx';
 import AddPilotDialog from '../components/race/AddPilotDialog.tsx';
 import DnfWarningPanel from '../components/race/DnfWarningPanel.tsx';
-import LeaderboardDisplayPanel from '../components/race/LeaderboardDisplayPanel.tsx';
+import OverlaySettingsPanel from '../components/race/OverlaySettingsPanel.tsx';
 import RaceControlBar from '../components/race/RaceControlBar.tsx';
 import RaceGrid from '../components/race/RaceGrid.tsx';
 import RaceSelector from '../components/race/RaceSelector.tsx';
@@ -23,37 +24,34 @@ export default function DashboardPage() {
   const [addPilotOpen, setAddPilotOpen] = useState(false);
 
   return (
-    <Box>
-      <Typography variant="overline" display="block" mb={1}>
-        Dashboard
-      </Typography>
-
-      <RaceSelector />
+    <PageContainer title="Dashboard">
+      <Stack spacing={2}>
+        <RaceSelector />
+        {raceState && (
+          <>
+            <RaceSettingsPanel raceState={raceState} />
+            <OverlaySettingsPanel raceState={raceState} />
+            <RaceControlBar raceState={raceState} />
+            <DnfWarningPanel raceState={raceState} />
+          </>
+        )}
+      </Stack>
 
       {raceState && (
         <>
-          <RaceSettingsPanel raceState={raceState} />
-
-          <Box sx={{ mt: 2 }}>
-            <RaceControlBar raceState={raceState} />
+          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, mt: 2 }}>
+            <RaceGrid raceState={raceState} />
           </Box>
 
-          <LeaderboardDisplayPanel raceState={raceState} />
-
-          <DnfWarningPanel raceState={raceState} />
-
-          <RaceGrid raceState={raceState} />
-
-          <Box sx={{ mt: 1 }}>
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={<AddOutlined />}
-              onClick={() => setAddPilotOpen(true)}
-            >
-              add pilot
-            </Button>
-          </Box>
+          <Button
+            size="small"
+            variant="contained"
+            startIcon={<AddOutlined />}
+            onClick={() => setAddPilotOpen(true)}
+            sx={{ alignSelf: 'flex-start', mt: 1 }}
+          >
+            add pilot
+          </Button>
 
           <AddPilotDialog
             open={addPilotOpen}
@@ -62,6 +60,6 @@ export default function DashboardPage() {
           />
         </>
       )}
-    </Box>
+    </PageContainer>
   );
 }

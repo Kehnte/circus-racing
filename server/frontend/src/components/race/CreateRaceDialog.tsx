@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { mutate } from 'swr';
-import useSWR from 'swr';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
@@ -14,8 +13,8 @@ import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
 import TextField from '@mui/material/TextField';
-import { apiFetch, fetcher } from '../../api.ts';
-import type { Racetrack, RaceMeta } from '../../types.ts';
+import { apiFetch } from '../../api.ts';
+import type { RaceMeta } from '../../types.ts';
 
 interface Props {
   open: boolean;
@@ -26,7 +25,6 @@ interface Props {
 export default function CreateRaceDialog({ open, onClose, onCreated }: Props) {
   const [name, setName] = useState('');
   const [trackingMode, setTrackingMode] = useState<'manual' | 'auto'>('manual');
-  const [racetrackId, setRacetrackId] = useState('');
   const [session, setSession] = useState('Race');
   const [weather, setWeather] = useState('Clear');
   const [startType, setStartType] = useState('Grid Start');
@@ -36,10 +34,8 @@ export default function CreateRaceDialog({ open, onClose, onCreated }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const { data: racetracks } = useSWR<Racetrack[]>(open ? '/api/racetracks' : null, fetcher);
-
   function reset() {
-    setName(''); setTrackingMode('manual'); setRacetrackId('');
+    setName(''); setTrackingMode('manual');
     setSession('Race'); setWeather('Clear'); setStartType('Grid Start');
     setSessionMode('laps'); setLapCount('5'); setDurationMin('30');
     setError('');
@@ -47,14 +43,12 @@ export default function CreateRaceDialog({ open, onClose, onCreated }: Props) {
 
   async function handleCreate() {
     if (!name.trim()) { setError('Name is required'); return; }
-    if (trackingMode === 'auto' && !racetrackId) { setError('Racetrack is required for auto mode'); return; }
 
     setLoading(true);
     try {
       const body: Record<string, unknown> = {
         name: name.trim(), trackingMode, session, weather, startType, sessionMode,
         ...(sessionMode === 'laps' ? { lapCount: Number(lapCount) } : { sessionDurationMs: Number(durationMin) * 60000 }),
-        ...(trackingMode === 'auto' ? { racetrackId } : {}),
       };
       const race = await apiFetch<RaceMeta>('/api/races', { method: 'POST', body: JSON.stringify(body) });
       await apiFetch(`/api/races/${race.id}/load`, { method: 'POST' });
@@ -86,19 +80,6 @@ export default function CreateRaceDialog({ open, onClose, onCreated }: Props) {
               </Select>
             </FormControl>
           </Grid>
-
-          {trackingMode === 'auto' && (
-            <Grid size={6}>
-              <FormControl size="small" fullWidth required error={!!error && !racetrackId}>
-                <InputLabel>Racetrack</InputLabel>
-                <Select value={racetrackId} label="Racetrack" onChange={(e) => setRacetrackId(e.target.value)}>
-                  {(racetracks ?? []).map((r) => (
-                    <MenuItem key={r.id} value={r.id}>{r.name}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-          )}
 
           <Grid size={4}>
             <FormControl size="small" fullWidth>

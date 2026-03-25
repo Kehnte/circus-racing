@@ -16,12 +16,13 @@ interface Props {
 }
 
 export default function RaceControlBar({ raceState }: Props) {
-  const { raceId, status } = raceState;
+  const { raceId, status, trackingMode, racetrackId } = raceState;
 
   const isPending = status === 'PENDING' || status === 'SCHEDULED';
   const isStarted = status === 'STARTED';
   const isPaused = status === 'PAUSED';
   const isFinished = status === 'FINISHED';
+  const missingCircuit = trackingMode === 'auto' && !racetrackId;
 
   async function call(path: string) {
     await apiFetch(path, { method: 'POST' });
@@ -34,7 +35,7 @@ export default function RaceControlBar({ raceState }: Props) {
           variant="contained"
           size="small"
           startIcon={<PlayArrowOutlined />}
-          disabled={!(isPending || isPaused)}
+          disabled={!(isPending || isPaused) || missingCircuit}
           onClick={() => void call(isPaused ? `/api/races/${raceId}/resume` : `/api/races/${raceId}/start`)}
         >
           {isPaused ? 'resume' : 'start'}

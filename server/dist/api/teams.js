@@ -14,6 +14,15 @@ router.get("/", async (_req, res) => {
     const teams = await db_js_1.db.select().from(schema_js_1.team).all();
     res.json(teams);
 });
+/** GET /teams/:id — public */
+router.get("/:id", async (req, res) => {
+    const found = await db_js_1.db.select().from(schema_js_1.team).where((0, drizzle_orm_1.eq)(schema_js_1.team.id, String(req.params.id))).get();
+    if (!found) {
+        res.status(404).json({ error: "Team not found" });
+        return;
+    }
+    res.json(found);
+});
 /** POST /teams — admin/modo */
 router.post("/", ...roles_js_1.requireModo, async (req, res) => {
     const { name, acronym, color } = req.body;

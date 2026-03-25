@@ -30,6 +30,15 @@ export default function RaceSelector() {
     selectedRace.status !== 'STARTED' &&
     selectedRace.status !== 'PAUSED';
 
+  async function handleUnload() {
+    try {
+      await apiFetch('/api/races/unload', { method: 'POST' });
+    } catch (err) {
+      notifications.show((err as Error).message, { severity: 'error' });
+    }
+    setActiveRaceId(null);
+  }
+
   async function handleSelect(raceId: string) {
     try {
       await apiFetch(`/api/races/${raceId}/load`, { method: 'POST' });
@@ -65,19 +74,15 @@ export default function RaceSelector() {
           <Select
             value={activeRaceId ?? ''}
             label="Active race"
-            onChange={(e) => void handleSelect(e.target.value)}
+            onChange={(e) => e.target.value ? void handleSelect(e.target.value) : void handleUnload()}
             displayEmpty
           >
+            <MenuItem value="">none</MenuItem>
             {(races ?? []).map((r) => (
               <MenuItem key={r.id} value={r.id}>
                 {r.name}
               </MenuItem>
             ))}
-            {(races ?? []).length === 0 && (
-              <MenuItem disabled value="">
-                No active races
-              </MenuItem>
-            )}
           </Select>
         </FormControl>
 

@@ -100,7 +100,7 @@ export default function PilotsListPage() {
     {
       field: 'country',
       headerName: 'Country',
-      minWidth: 56,
+      minWidth: 60,
       renderCell: (params: GridRenderCellParams<Pilot, string>) => (
         <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
           <FlagIcon code={params.value ?? 'un'} size={20} />
@@ -110,7 +110,6 @@ export default function PilotsListPage() {
     {
       field: 'role',
       headerName: 'Role',
-      flex: 1,
       minWidth: 90,
       renderCell: (params: GridRenderCellParams<Pilot, string>) => (
         <Chip label={params.value ? params.value.charAt(0) + params.value.slice(1).toLowerCase() : ''} color={roleChipColor(params.value ?? '')} size="small" />
@@ -119,7 +118,6 @@ export default function PilotsListPage() {
     {
       field: 'teamId',
       headerName: 'Team',
-      flex: 1,
       minWidth: 90,
       renderCell: (params: GridRenderCellParams<Pilot, string | null>) => {
         const team = params.value ? teamById[params.value] : null;
@@ -131,7 +129,7 @@ export default function PilotsListPage() {
       field: 'vehicleId',
       headerName: 'Vehicle',
       flex: 1,
-      minWidth: 130,
+      minWidth: 120,
       renderCell: (params: GridRenderCellParams<Pilot, string | null>) => {
         const v = params.value ? vehicleById[params.value] : null;
         if (!v) return <Typography color="text.disabled">—</Typography>;
@@ -147,7 +145,7 @@ export default function PilotsListPage() {
       field: 'controlsId',
       headerName: 'Controls',
       flex: 1,
-      minWidth: 100,
+      minWidth: 90,
       renderCell: (params: GridRenderCellParams<Pilot, string | null>) => {
         const c = params.value ? controlsById[params.value] : null;
         return <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}><Typography variant="body2">{c ? c.type : '—'}</Typography></Box>;
@@ -189,6 +187,7 @@ export default function PilotsListPage() {
         onSortModelChange={handleSortChange}
         filterModel={filterModel}
         onFilterModelChange={handleFilterChange}
+        disableColumnResize
         disableRowSelectionOnClick
         slots={{ toolbar: CrudToolbar, noRowsOverlay: NoRowsOverlay }}
         sx={{ flex: 1 }}

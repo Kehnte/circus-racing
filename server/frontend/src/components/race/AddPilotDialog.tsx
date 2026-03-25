@@ -54,6 +54,7 @@ export default function AddPilotDialog({ open, raceState, onClose }: Props) {
           columns={columns}
 
           checkboxSelection
+          disableColumnResize
           disableColumnMenu
           autoHeight
           hideFooter={available.length <= 25}

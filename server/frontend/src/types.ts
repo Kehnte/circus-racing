@@ -68,6 +68,7 @@ export interface PilotRaceState {
 export interface RaceStatePayload {
   raceId: string;
   raceName: string;
+  racetrackId: string | null;
   status: RaceStatus;
   trackingMode: 'manual' | 'auto';
   session: string;

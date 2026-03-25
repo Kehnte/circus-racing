@@ -75,12 +75,11 @@ export default function TeamsListPage() {
 
   const columns: (GridColDef<Team> | GridActionsColDef<Team>)[] = [
     { field: 'name', headerName: 'Name', flex: 2, minWidth: 120 },
-    { field: 'acronym', headerName: 'Acronym', flex: 1, minWidth: 80 },
+    { field: 'acronym', headerName: 'Acronym', minWidth: 60 },
     {
       field: 'color',
       headerName: 'Color',
-      flex: 1,
-      minWidth: 120,
+      minWidth: 60,
       renderCell: (params: GridRenderCellParams<Team, string>) => (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, height: '100%' }}>
           <Box sx={{ width: 16, height: 16, bgcolor: params.value, flexShrink: 0 }} />
@@ -122,6 +121,7 @@ export default function TeamsListPage() {
         onSortModelChange={handleSortChange}
         filterModel={filterModel}
         onFilterModelChange={handleFilterChange}
+        disableColumnResize
         disableRowSelectionOnClick
         slots={{ toolbar: CrudToolbar, noRowsOverlay: NoRowsOverlay }}
         sx={{ flex: 1 }}

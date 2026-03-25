@@ -47,10 +47,6 @@ router.post("/", ...requireModo, async (req, res) => {
     res.status(400).json({ error: "name is required" });
     return;
   }
-  if ((trackingMode ?? "manual") === "auto" && !racetrackId) {
-    res.status(400).json({ error: "racetrackId is required for auto tracking mode" });
-    return;
-  }
 
   const [created] = await db.insert(race).values({
     name,
@@ -109,6 +105,8 @@ router.patch("/:id", ...requireModo, async (req, res) => {
     if (patch.lapCount)                     ctx.lapCount          = patch.lapCount as number;
     if (patch.sessionMode)                  ctx.sessionMode       = patch.sessionMode as typeof ctx.sessionMode;
     if (patch.sessionDurationMs !== undefined) ctx.sessionDurationMs = patch.sessionDurationMs as number | null;
+    if (patch.trackingMode)                 ctx.trackingMode      = patch.trackingMode as typeof ctx.trackingMode;
+    if (patch.racetrackId !== undefined)    ctx.racetrackId       = patch.racetrackId as string | null;
     broadcastRaceState(ctx);
   }
 
@@ -374,6 +372,15 @@ router.post("/:id/close-registrations", ...requireModo, async (req, res) => {
 // Race lifecycle
 
 /**
+ * POST /races/unload — modo+
+ * Drops the in-memory RaceContext, stopping all race-state broadcasts.
+ */
+router.post("/unload", ...requireModo, async (_req, res) => {
+  await clearContext();
+  res.json({ ok: true });
+});
+
+/**
  * POST /races/:id/load — modo+
  * Loads the server RaceContext from VALIDATED entries.
  * Does not start the race. Required before grid-order and start.
@@ -403,6 +410,11 @@ router.post("/:id/start", ...requireModo, async (req, res) => {
   const raceId = String(req.params.id);
   const found = await db.select().from(race).where(eq(race.id, raceId)).get();
   if (!found) { res.status(404).json({ error: "Race not found" }); return; }
+
+  if (found.trackingMode === "auto" && !found.racetrackId) {
+    res.status(400).json({ error: "A circuit is required to start in auto mode." });
+    return;
+  }
 
   if (found.status === "SCHEDULED" || found.status === "PENDING") {
     // Fresh start — load context if not already loaded

@@ -14,13 +14,13 @@ interface PageContainerProps {
 
 export default function PageContainer({ title, actions, children }: PageContainerProps) {
   return (
-    <Container sx={{ flex: 1, display: 'flex', flexDirection: 'column' }} disableGutters>
-      <Stack sx={{ flex: 1, my: 2 }} spacing={2}>
+    <Container sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }} disableGutters>
+      <Stack sx={{ flex: 1, my: 2, minHeight: 0 }} spacing={2}>
         <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1}>
           {title && <Typography variant="h4">{title}</Typography>}
           {actions && <Box sx={{ ml: 'auto', display: 'flex', gap: 1 }}>{actions}</Box>}
         </Stack>
-        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           {children}
         </Box>
       </Stack>

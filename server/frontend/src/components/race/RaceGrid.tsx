@@ -1,17 +1,23 @@
 // RaceGrid — Live race DataGrid with per-pilot controls in MANUAL mode.
 
-import { DataGrid } from '@mui/x-data-grid';
-import type { GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
+import { DataGrid, GridActionsCellItem } from '@mui/x-data-grid';
+import type { GridColDef, GridRenderCellParams, GridRowParams } from '@mui/x-data-grid';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import AddOutlined from '@mui/icons-material/AddOutlined';
 import ArrowDownwardOutlined from '@mui/icons-material/ArrowDownwardOutlined';
 import ArrowUpwardOutlined from '@mui/icons-material/ArrowUpwardOutlined';
+import DeleteOutlined from '@mui/icons-material/DeleteOutlined';
 import RemoveOutlined from '@mui/icons-material/RemoveOutlined';
 import { apiFetch } from '../../api.ts';
+import { useAuth } from '../../context/AuthContext.tsx';
+import useNotifications from '../../hooks/useNotifications/useNotifications.tsx';
+import CrudToolbar from '../CrudToolbar.tsx';
 import FlagIcon from '../FlagIcon.tsx';
+import { NoRowsOverlay } from '../DataGridOverlays.tsx';
 import type { PilotRaceState, RaceStatePayload } from '../../types.ts';
 import ChronoDisplay from './ChronoDisplay.tsx';
 
@@ -29,6 +35,19 @@ export default function RaceGrid({ raceState }: Props) {
   const { raceId, pilots, trackingMode, status, teamDisplayMode, timingEnabled } = raceState;
   const isManual = trackingMode === 'manual';
   const canAct = status === 'STARTED';
+
+  const { role } = useAuth();
+  const notifications = useNotifications();
+  const canDelete = role === 'ADMIN' || role === 'MODERATOR';
+
+  async function handleRemovePilot(pilot: PilotRaceState) {
+    try {
+      await apiFetch(`/api/races/${raceId}/entries/${pilot.entryId}`, { method: 'DELETE' });
+      notifications.show('Pilot removed.', { severity: 'success', autoHideDuration: 3000 });
+    } catch (err) {
+      notifications.show(`Remove failed: ${(err as Error).message}`, { severity: 'error', autoHideDuration: 5000 });
+    }
+  }
 
   async function changeLap(pilotId: string, delta: 1 | -1) {
     await apiFetch(`/api/race-events/races/${raceId}/manual-lap`, {
@@ -55,7 +74,7 @@ export default function RaceGrid({ raceState }: Props) {
     {
       field: 'position',
       headerName: 'Pos',
-      width: 56,
+      minWidth: 60,
       renderCell: (params: GridRenderCellParams<PilotRaceState, number>) => (
         <Typography component="span" variant="body2" sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: 13, fontWeight: 700 }}>
           {params.value}
@@ -83,7 +102,7 @@ export default function RaceGrid({ raceState }: Props) {
       ? [{
           field: 'teamSnapshot' as const,
           headerName: 'Team',
-          width: 120,
+          minWidth: 60,
           renderCell: (params: GridRenderCellParams<PilotRaceState>) => {
             const t = params.row.teamSnapshot;
             if (!t) return <Typography color="text.disabled">—</Typography>;
@@ -98,7 +117,7 @@ export default function RaceGrid({ raceState }: Props) {
     {
       field: 'lap',
       headerName: 'Laps',
-      width: 90,
+      minWidth: 60,
       renderCell: (params: GridRenderCellParams<PilotRaceState>) => {
         const s = params.row.status;
         if (s === 'FINISHED') return <Chip label="Finished" color="success" size="small" />;
@@ -114,7 +133,7 @@ export default function RaceGrid({ raceState }: Props) {
       ? [{
           field: 'chrono' as const,
           headerName: 'Chrono',
-          width: 140,
+          minWidth: 150,
           sortable: false,
           renderCell: (params: GridRenderCellParams<PilotRaceState>) => (
             <ChronoDisplay pilot={params.row} raceState={raceState} />
@@ -125,7 +144,7 @@ export default function RaceGrid({ raceState }: Props) {
       ? [{
           field: 'actions' as const,
           headerName: 'Controls',
-          width: 170,
+          minWidth: 210,
           sortable: false,
           renderCell: (params: GridRenderCellParams<PilotRaceState>) => {
             const isDnf = params.row.status === 'DNF';
@@ -156,6 +175,26 @@ export default function RaceGrid({ raceState }: Props) {
           },
         }]
       : []),
+    {
+      field: 'delete',
+      type: 'actions' as const,
+      headerName: 'Actions',
+      headerAlign: 'left' as const,
+      align: 'left' as const,
+      minWidth: 60,
+      getActions: (params: GridRowParams<PilotRaceState>) => [
+        ...(canDelete ? [
+          <Tooltip title="Remove" placement="bottom">
+            <GridActionsCellItem
+              icon={<DeleteOutlined />}
+              label="Remove"
+              onClick={() => void handleRemovePilot(params.row)}
+              showInMenu={false}
+            />
+          </Tooltip>,
+        ] : []),
+      ],
+    },
   ];
 
   return (
@@ -163,13 +202,12 @@ export default function RaceGrid({ raceState }: Props) {
       rows={pilots}
       columns={columns}
 
-      disableColumnFilter
-      disableColumnMenu
-      hideFooter={pilots.length <= 25}
       pageSizeOptions={[25, 50]}
+      disableColumnResize
       disableRowSelectionOnClick
       getRowId={(row) => row.id}
-      sx={{ width: '100%' }}
+      slots={{ toolbar: CrudToolbar, noRowsOverlay: NoRowsOverlay }}
+      sx={{ flex: 1 }}
     />
   );
 }

@@ -1,34 +1,40 @@
-// RaceSettingsPanel — Collapsible Accordion with race settings and registration controls.
-// Debounces text field patches; selects patch immediately.
+// RaceSettingsPanel — Collapsible Accordion with race settings, registration controls,
+// and circuit management (auto mode only).
 
 import { useState, useEffect, useRef } from 'react';
+import useSWR, { mutate } from 'swr';
 import Accordion from '@mui/material/Accordion';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogTitle from '@mui/material/DialogTitle';
 import Divider from '@mui/material/Divider';
 import Grid from '@mui/material/Grid';
+import IconButton from '@mui/material/IconButton';
 import InputLabel from '@mui/material/InputLabel';
 import FormControl from '@mui/material/FormControl';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
-import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+import DeleteOutlined from '@mui/icons-material/DeleteOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import { mutate } from 'swr';
-import { apiFetch } from '../../api.ts';
-import type { RaceStatePayload } from '../../types.ts';
-import AddPilotDialog from './AddPilotDialog.tsx';
+import UploadFileOutlined from '@mui/icons-material/UploadFileOutlined';
+import { apiFetch, fetcher } from '../../api.ts';
+import type { RaceStatePayload, Racetrack } from '../../types.ts';
 
 interface Props {
   raceState: RaceStatePayload;
 }
 
 export default function RaceSettingsPanel({ raceState }: Props) {
-  const { raceId, status } = raceState;
+  const { raceId, status, trackingMode, racetrackId } = raceState;
   const isStarted = status === 'STARTED';
+  const isAuto = trackingMode === 'auto';
 
   // Local controlled state for debounced text fields.
   const [name, setName] = useState(raceState.raceName);
@@ -36,8 +42,6 @@ export default function RaceSettingsPanel({ raceState }: Props) {
   const [sessionDuration, setSessionDuration] = useState(
     raceState.sessionDurationMs ? String(Math.round(raceState.sessionDurationMs / 60000)) : ''
   );
-
-  const [addPilotOpen, setAddPilotOpen] = useState(false);
 
   // Sync local text state when a new race is loaded.
   useEffect(() => {
@@ -72,11 +76,42 @@ export default function RaceSettingsPanel({ raceState }: Props) {
     }, 600);
   }
 
-  function immediatePatch(field: string, value: string | number | boolean) {
+  function immediatePatch(field: string, value: string | number | boolean | null) {
     void apiFetch(`/api/races/${raceId}`, {
       method: 'PATCH',
       body: JSON.stringify({ [field]: value }),
     });
+  }
+
+  // Circuit management (auto mode only)
+  const { data: racetracks } = useSWR<Racetrack[]>(isAuto ? '/api/racetracks' : null, fetcher);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    try {
+      const text = await file.text();
+      const json = JSON.parse(text) as { name: string; checkpoints: unknown[]; bufferRadius?: number };
+      const created = await apiFetch<Racetrack>('/api/racetracks', {
+        method: 'POST',
+        body: JSON.stringify(json),
+      });
+      await mutate('/api/racetracks');
+      immediatePatch('racetrackId', created.id);
+    } catch {
+      // silently ignore; error visible from failed request
+    }
+  }
+
+  async function handleDelete() {
+    if (!racetrackId) return;
+    await apiFetch(`/api/racetracks/${racetrackId}`, { method: 'DELETE' });
+    await mutate('/api/racetracks');
+    immediatePatch('racetrackId', null);
+    setDeleteConfirmOpen(false);
   }
 
   return (
@@ -136,7 +171,7 @@ export default function RaceSettingsPanel({ raceState }: Props) {
               <FormControl size="small" fullWidth>
                 <InputLabel>Tracking</InputLabel>
                 <Select
-                  value={raceState.trackingMode}
+                  value={trackingMode}
                   label="Tracking"
                   disabled={isStarted}
                   onChange={(e) => immediatePatch('trackingMode', e.target.value)}
@@ -187,33 +222,92 @@ export default function RaceSettingsPanel({ raceState }: Props) {
                 />
               </Grid>
             )}
+
+            {/* Circuit (auto mode only) */}
+            {isAuto && (
+              <>
+                <Grid size={12}>
+                  <Divider />
+                </Grid>
+                <Grid size={12}>
+                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                    <FormControl size="small" sx={{ flex: 1 }}>
+                      <InputLabel>Circuit</InputLabel>
+                      <Select
+                        value={racetrackId ?? ''}
+                        label="Circuit"
+                        disabled={isStarted}
+                        onChange={(e) => immediatePatch('racetrackId', e.target.value || null)}
+                      >
+                        <MenuItem value="">none</MenuItem>
+                        {(racetracks ?? []).map((r) => (
+                          <MenuItem key={r.id} value={r.id}>{r.name}</MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".json"
+                      style={{ display: 'none' }}
+                      onChange={(e) => void handleImport(e)}
+                    />
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<UploadFileOutlined />}
+                      disabled={isStarted}
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      import
+                    </Button>
+                    {racetrackId && (
+                      <IconButton
+                        size="small"
+                        color="error"
+                        disabled={isStarted}
+                        onClick={() => setDeleteConfirmOpen(true)}
+                      >
+                        <DeleteOutlined fontSize="small" />
+                      </IconButton>
+                    )}
+                  </Box>
+                </Grid>
+              </>
+            )}
           </Grid>
 
           <Divider sx={{ my: 2 }} />
 
           {/* Actions */}
-          <Stack direction="row" spacing={1} flexWrap="wrap">
-            <Button
-              size="small"
-              variant="outlined"
-              color={status === 'SCHEDULED' ? 'error' : 'primary'}
-              disabled={status !== 'PENDING' && status !== 'SCHEDULED'}
-              onClick={() => void apiFetch(
-                `/api/races/${raceId}/${status === 'SCHEDULED' ? 'close' : 'open'}-registrations`,
-                { method: 'POST' }
-              )}
-            >
-              {status === 'SCHEDULED' ? 'close registrations' : 'open registrations'}
-            </Button>
-            <Box sx={{ flex: 1 }} />
-            <Button size="small" variant="outlined" onClick={() => setAddPilotOpen(true)}>
-              + add pilot
-            </Button>
-          </Stack>
+          <Button
+            size="small"
+            variant="outlined"
+            color={status === 'SCHEDULED' ? 'error' : 'primary'}
+            disabled={status !== 'PENDING' && status !== 'SCHEDULED'}
+            onClick={() => void apiFetch(
+              `/api/races/${raceId}/${status === 'SCHEDULED' ? 'close' : 'open'}-registrations`,
+              { method: 'POST' }
+            )}
+          >
+            {status === 'SCHEDULED' ? 'close registrations' : 'open registrations'}
+          </Button>
         </AccordionDetails>
       </Accordion>
 
-      <AddPilotDialog open={addPilotOpen} raceState={raceState} onClose={() => setAddPilotOpen(false)} />
+      {/* Delete circuit confirmation */}
+      <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)} maxWidth="xs">
+        <DialogTitle>Delete circuit?</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2">
+            This will permanently delete the circuit and unassign it from this race.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteConfirmOpen(false)}>cancel</Button>
+          <Button color="error" variant="contained" onClick={() => void handleDelete()}>delete</Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }

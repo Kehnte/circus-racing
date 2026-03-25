@@ -27,9 +27,6 @@ async function loadRace(raceId) {
     const raceRow = await db_js_1.db.select().from(schema_js_1.race).where((0, drizzle_orm_1.eq)(schema_js_1.race.id, raceId)).get();
     if (!raceRow)
         throw new Error(`Race ${raceId} not found`);
-    if (raceRow.trackingMode === "auto" && !raceRow.racetrackId) {
-        throw new Error(`Race ${raceId} is in AUTO mode but has no racetrack assigned`);
-    }
     const track = raceRow.racetrackId
         ? await db_js_1.db.select().from(schema_js_1.racetrack).where((0, drizzle_orm_1.eq)(schema_js_1.racetrack.id, raceRow.racetrackId)).get()
         : null;
@@ -94,6 +91,7 @@ async function loadRace(raceId) {
         parseInt(process.env.DNF_BUFFER_RADIUS ?? "200");
     _ctx = {
         raceId,
+        racetrackId: raceRow.racetrackId ?? null,
         raceStatus: raceRow.status,
         trackingMode: raceRow.trackingMode,
         lapCount: raceRow.lapCount,

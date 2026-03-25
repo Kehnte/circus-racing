@@ -9,6 +9,7 @@ const schema_js_1 = require("../db/schema.js");
 const roles_js_1 = require("../middleware/roles.js");
 const race_context_js_1 = require("../engine/race-context.js");
 const emitter_js_1 = require("../socket/emitter.js");
+const race_lifecycle_js_1 = require("../engine/race-lifecycle.js");
 const router = (0, express_1.Router)();
 // Helper — verifies the context is loaded for the given race
 function requireContext(raceId, res) {
@@ -177,16 +178,21 @@ router.post("/races/:id/grid-order", ...roles_js_1.requireModo, async (req, res)
 // POST /race-events/races/:id/countdown — modo+
 // Body: { seconds: number }
 router.post("/races/:id/countdown", ...roles_js_1.requireModo, async (req, res) => {
+    const raceId = String(req.params.id);
     const { seconds } = req.body;
     if (typeof seconds !== "number" || seconds < 1) {
         res.status(400).json({ error: "seconds must be a positive number" });
         return;
     }
+    (0, race_lifecycle_js_1.setCountdownTimer)(raceId, seconds, () => {
+        void (0, race_lifecycle_js_1.startRaceById)(raceId).catch(() => { });
+    });
     (0, emitter_js_1.emitAll)("race-event", { type: "countdown", seconds });
     res.json({ ok: true });
 });
 // POST /race-events/races/:id/countdown-stop — modo+
 router.post("/races/:id/countdown-stop", ...roles_js_1.requireModo, async (req, res) => {
+    (0, race_lifecycle_js_1.clearCountdownTimer)(String(req.params.id));
     (0, emitter_js_1.emitAll)("race-event", { type: "countdown-stop" });
     res.json({ ok: true });
 });

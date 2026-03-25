@@ -17,7 +17,7 @@ export function useRaceSocket() {
     });
 
     socket.on('race-state', (data: RaceStatePayload) => {
-      setRaceState(data);
+      if (useRaceStore.getState().activeRaceId !== null) setRaceState(data);
     });
 
     socket.on('race-list-changed', () => {

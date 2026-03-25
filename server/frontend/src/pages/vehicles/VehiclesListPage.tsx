@@ -76,7 +76,7 @@ export default function VehiclesListPage() {
     {
       field: 'img',
       headerName: 'Image',
-      minWidth: 48,
+      minWidth: 60,
       sortable: false,
       renderCell: (params: GridRenderCellParams<Vehicle, string | null>) =>
         params.value ? (
@@ -91,8 +91,7 @@ export default function VehiclesListPage() {
     {
       field: 'type',
       headerName: 'Type',
-      flex: 1,
-      minWidth: 80,
+      minWidth: 60,
       renderCell: (params: GridRenderCellParams<Vehicle, string>) => (
         <Chip label={params.value ? params.value.charAt(0).toUpperCase() + params.value.slice(1) : ''} size="small" />
       ),
@@ -131,6 +130,7 @@ export default function VehiclesListPage() {
         onSortModelChange={handleSortChange}
         filterModel={filterModel}
         onFilterModelChange={handleFilterChange}
+        disableColumnResize
         disableRowSelectionOnClick
         slots={{ toolbar: CrudToolbar, noRowsOverlay: NoRowsOverlay }}
         sx={{ flex: 1 }}

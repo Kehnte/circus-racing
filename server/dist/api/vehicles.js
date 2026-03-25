@@ -14,6 +14,15 @@ router.get("/", async (_req, res) => {
     const vehicles = await db_js_1.db.select().from(schema_js_1.vehicle).all();
     res.json(vehicles);
 });
+/** GET /vehicles/:id — public */
+router.get("/:id", async (req, res) => {
+    const found = await db_js_1.db.select().from(schema_js_1.vehicle).where((0, drizzle_orm_1.eq)(schema_js_1.vehicle.id, String(req.params.id))).get();
+    if (!found) {
+        res.status(404).json({ error: "Vehicle not found" });
+        return;
+    }
+    res.json(found);
+});
 /** POST /vehicles — admin/modo */
 router.post("/", ...roles_js_1.requireModo, async (req, res) => {
     const { type, model, img } = req.body;

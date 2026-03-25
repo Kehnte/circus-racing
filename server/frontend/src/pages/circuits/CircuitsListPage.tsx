@@ -79,7 +79,7 @@ export default function CircuitsListPage() {
       field: 'checkpoints',
       headerName: 'Checkpoints',
       flex: 1,
-      minWidth: 110,
+      minWidth: 120,
       renderCell: (params: GridRenderCellParams<Racetrack, Checkpoint[]>) => (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, height: '100%' }}>
           <LocationOnOutlined fontSize="small" sx={{ color: 'text.secondary' }} />
@@ -95,7 +95,7 @@ export default function CircuitsListPage() {
       headerAlign: 'left',
       align: 'left',
       headerName: 'Actions',
-      minWidth: 80,
+      minWidth: 120,
       getActions: (params: GridRowParams<Racetrack>) => [
         <Tooltip title="Delete" placement="bottom"><GridActionsCellItem icon={<DeleteOutlined />} label="Delete" onClick={() => void handleDelete(params.row)} showInMenu={false} /></Tooltip>,
       ],
@@ -122,6 +122,7 @@ export default function CircuitsListPage() {
         onSortModelChange={handleSortChange}
         filterModel={filterModel}
         onFilterModelChange={handleFilterChange}
+        disableColumnResize
         disableRowSelectionOnClick
         slots={{ toolbar: CrudToolbar, noRowsOverlay: NoRowsOverlay }}
         sx={{ flex: 1 }}
