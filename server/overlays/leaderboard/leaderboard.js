@@ -464,7 +464,7 @@ function updateRaceStatusBlock(raceStatus, countdown, settings) {
     const wrapper = "race-status-wrapper";
 
     if (raceStatus === "standby" && countdown && countdown.active && countdown.remainingMs > 0) {
-        startCountdownDisplay(countdown.remainingMs);
+        if (!countdownInterval) startCountdownDisplay(countdown.remainingMs);
         wipeOutPaused();
         setRaceStatusBlock("rsb-countdown");
         setRaceStatusHeight("countdown");
@@ -861,10 +861,8 @@ socket.on("race-event", (event) => {
     if (event.type === "countdown") {
         currentCountdown = { active: true, remainingMs: event.seconds * 1000 };
         startCountdownDisplay(event.seconds * 1000);
-        if (lastRaceState) {
-            const adapted = adaptRaceState(lastRaceState);
-            updateRaceStatusBlock("standby", currentCountdown, adapted.settings);
-        }
+        const settings = lastRaceState ? adaptRaceState(lastRaceState).settings : {};
+        updateRaceStatusBlock("standby", currentCountdown, settings);
     } else if (event.type === "countdown-stop") {
         currentCountdown = null;
         stopCountdownDisplay();

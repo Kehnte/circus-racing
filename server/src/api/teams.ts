@@ -15,6 +15,13 @@ router.get("/", async (_req, res) => {
   res.json(teams);
 });
 
+/** GET /teams/:id — public */
+router.get("/:id", async (req, res) => {
+  const found = await db.select().from(team).where(eq(team.id, String(req.params.id))).get();
+  if (!found) { res.status(404).json({ error: "Team not found" }); return; }
+  res.json(found);
+});
+
 /** POST /teams — admin/modo */
 router.post("/", ...requireModo, async (req, res) => {
   const { name, acronym, color } = req.body;

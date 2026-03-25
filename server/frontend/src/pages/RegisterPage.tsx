@@ -1,4 +1,4 @@
-// LoginPage — Auth form with display name and password.
+// RegisterPage — Sign-up form with display name and password.
 
 import { useState, type ChangeEvent, type FormEvent } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
@@ -16,8 +16,8 @@ import VisibilityOutlined from '@mui/icons-material/VisibilityOutlined';
 import VisibilityOffOutlined from '@mui/icons-material/VisibilityOffOutlined';
 import { useAuth } from '../context/AuthContext.tsx';
 
-export default function LoginPage() {
-  const { login } = useAuth();
+export default function RegisterPage() {
+  const { register } = useAuth();
   const navigate = useNavigate();
 
   const [displayName, setDisplayName] = useState('');
@@ -31,11 +31,10 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      await login(displayName, password);
+      await register(displayName, password);
       void navigate('/');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
-      // Auto-hide after 3s
+      setError(err instanceof Error ? err.message : 'Registration failed');
       setTimeout(() => setError(''), 3000);
     } finally {
       setLoading(false);
@@ -63,7 +62,7 @@ export default function LoginPage() {
             Circus Racing
           </Typography>
           <Typography variant="body2" color="text.secondary" mt={0.5}>
-            Admin / Moderator access only
+            Create your account
           </Typography>
         </Box>
 
@@ -81,7 +80,7 @@ export default function LoginPage() {
           type={showPassword ? 'text' : 'password'}
           value={password}
           onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
-          autoComplete="current-password"
+          autoComplete="new-password"
           required
           fullWidth
           slotProps={{
@@ -111,11 +110,11 @@ export default function LoginPage() {
           fullWidth
           disabled={loading}
         >
-          Sign in
+          Sign up
         </Button>
         <Typography variant="body2" textAlign="center">
-          Don't have an account?{' '}
-          <Link component={RouterLink} to="/register">Sign up</Link>
+          Already have an account?{' '}
+          <Link component={RouterLink} to="/login">Sign in</Link>
         </Typography>
       </Paper>
     </Box>

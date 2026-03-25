@@ -20,12 +20,6 @@ interface Props {
 
 const columns: GridColDef<Pilot>[] = [
   { field: 'displayName', headerName: 'Name', flex: 1 },
-  {
-    field: 'country',
-    headerName: 'Country',
-    width: 80,
-    renderCell: (p) => p.value?.toUpperCase(),
-  },
 ];
 
 export default function AddPilotDialog({ open, raceState, onClose }: Props) {
@@ -58,7 +52,7 @@ export default function AddPilotDialog({ open, raceState, onClose }: Props) {
         <DataGrid
           rows={available}
           columns={columns}
-          density="compact"
+
           checkboxSelection
           disableColumnMenu
           autoHeight

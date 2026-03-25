@@ -75,8 +75,9 @@ export default function ChronoDisplay({ pilot, raceState }: Props) {
 
   return (
     <Typography
+      component="span"
       variant="body2"
-      sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: 12 }}
+      sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: 13 }}
     >
       {display}
     </Typography>

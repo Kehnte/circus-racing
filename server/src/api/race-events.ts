@@ -11,6 +11,7 @@ import {
   incrementLap, setManualPosition, reorderPilot, toggleDnf, setGridOrder,
 } from "../engine/race-context.js";
 import { emitAll, broadcastRaceState } from "../socket/emitter.js";
+import { setCountdownTimer, clearCountdownTimer, startRaceById } from "../engine/race-lifecycle.js";
 
 const router = Router();
 
@@ -220,12 +221,16 @@ router.post("/races/:id/grid-order", ...requireModo, async (req, res) => {
 // Body: { seconds: number }
 
 router.post("/races/:id/countdown", ...requireModo, async (req, res) => {
+  const raceId = String(req.params.id);
   const { seconds } = req.body;
   if (typeof seconds !== "number" || seconds < 1) {
     res.status(400).json({ error: "seconds must be a positive number" });
     return;
   }
 
+  setCountdownTimer(raceId, seconds, () => {
+    void startRaceById(raceId).catch(() => { /* race already started or invalid state */ });
+  });
   emitAll("race-event", { type: "countdown", seconds });
   res.json({ ok: true });
 });
@@ -233,6 +238,7 @@ router.post("/races/:id/countdown", ...requireModo, async (req, res) => {
 // POST /race-events/races/:id/countdown-stop — modo+
 
 router.post("/races/:id/countdown-stop", ...requireModo, async (req, res) => {
+  clearCountdownTimer(String(req.params.id));
   emitAll("race-event", { type: "countdown-stop" });
   res.json({ ok: true });
 });

@@ -80,13 +80,11 @@ app.get('/dashboard/*splat', (_req, res) => {
   res.sendFile(path.join(frontendDist, 'index.html'));
 });
 
-// Static files — dashboard, overlays, pilot-app
+// Static files — dashboard, overlays
 app.use(express.static(path.join(__dirname)));
 
 // Socket.IO — real-time overlay communication
 io.on('connection', (socket) => {
-  console.log('Socket connected:', socket.id);
-
   // Dashboard identifies itself to receive server-only events (dnf-warning, etc.)
   if (socket.handshake.query.role === 'dashboard') {
     socket.join('dashboard');
@@ -120,8 +118,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    console.log('Socket disconnected:', socket.id);
-  });
+    });
 });
 
 // Global error handler
@@ -141,7 +138,6 @@ server.listen(PORT, () => {
   console.log(`   Dashboard:   http://localhost:${PORT}/dashboard/`);
   console.log(`   Leaderboard: http://localhost:${PORT}/overlays/leaderboard/`);
   console.log(`   Race Alert:  http://localhost:${PORT}/overlays/race-alert/`);
-  console.log(`   Pilot app:   http://localhost:${PORT}/pilot-app/register.html`);
   console.log(`   API:         http://localhost:${PORT}/api/`);
   console.log('');
 });

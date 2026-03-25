@@ -1,15 +1,12 @@
 // RaceControlBar — Race lifecycle controls with status-aware button states.
 
-import { useState } from 'react';
-import type { ChangeEvent } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import Divider from '@mui/material/Divider';
 import Stack from '@mui/material/Stack';
-import TextField from '@mui/material/TextField';
 import PauseOutlined from '@mui/icons-material/PauseOutlined';
 import PlayArrowOutlined from '@mui/icons-material/PlayArrowOutlined';
 import RefreshOutlined from '@mui/icons-material/RefreshOutlined';
+import SyncOutlined from '@mui/icons-material/SyncOutlined';
 import StopOutlined from '@mui/icons-material/StopOutlined';
 import { apiFetch } from '../../api.ts';
 import type { RaceStatePayload } from '../../types.ts';
@@ -20,7 +17,6 @@ interface Props {
 
 export default function RaceControlBar({ raceState }: Props) {
   const { raceId, status } = raceState;
-  const [countdownSecs, setCountdownSecs] = useState('10');
 
   const isPending = status === 'PENDING' || status === 'SCHEDULED';
   const isStarted = status === 'STARTED';
@@ -33,7 +29,6 @@ export default function RaceControlBar({ raceState }: Props) {
 
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', mb: 2 }}>
-      {/* Lifecycle controls */}
       <Stack direction="row" spacing={1}>
         <Button
           variant="contained"
@@ -77,47 +72,12 @@ export default function RaceControlBar({ raceState }: Props) {
         </Button>
 
         <Button
-          variant="text"
+          variant="outlined"
           size="small"
+          startIcon={<SyncOutlined />}
           onClick={() => void call(`/api/races/${raceId}/load`)}
         >
           reload
-        </Button>
-      </Stack>
-
-      <Divider orientation="vertical" flexItem />
-
-      {/* Countdown */}
-      <Stack direction="row" spacing={1} alignItems="center">
-        <TextField
-          type="number"
-          label="Countdown (s)"
-          value={countdownSecs}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setCountdownSecs(e.target.value)}
-          size="small"
-          sx={{ width: 120 }}
-          inputProps={{ min: 1, max: 999 }}
-        />
-        <Button
-          variant="outlined"
-          size="small"
-          onClick={() =>
-            void apiFetch(`/api/race-events/races/${raceId}/countdown`, {
-              method: 'POST',
-              body: JSON.stringify({ seconds: Number(countdownSecs) }),
-            })
-          }
-        >
-          start
-        </Button>
-        <Button
-          variant="text"
-          size="small"
-          onClick={() =>
-            void apiFetch(`/api/race-events/races/${raceId}/countdown-stop`, { method: 'POST' })
-          }
-        >
-          stop
         </Button>
       </Stack>
     </Box>

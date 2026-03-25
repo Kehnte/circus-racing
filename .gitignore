@@ -2,6 +2,8 @@
 server/node_modules/
 server/db/
 server/dist/
+server/frontend/node_modules/
+server/frontend/dist/
 server/.env
 
 # Monitor

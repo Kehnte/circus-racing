@@ -9,6 +9,7 @@ import { requireModo } from "../middleware/roles.js";
 import {
   loadRace, getContext, clearContext, setPilotState, persistState, setGridOrder,
 } from "../engine/race-context.js";
+import { clearCountdownTimer } from "../engine/race-lifecycle.js";
 import { emitAll, emitDashboard, broadcastRaceState } from "../socket/emitter.js";
 
 const router = Router();
@@ -409,6 +410,7 @@ router.post("/:id/start", ...requireModo, async (req, res) => {
     if (!ctx || ctx.raceId !== raceId) {
       ctx = await loadRace(raceId);
     }
+    clearCountdownTimer(raceId);
     ctx.startedAt = new Date().toISOString();
     ctx.raceStatus = "STARTED";
     await db.update(race).set({ status: "STARTED" }).where(eq(race.id, raceId));

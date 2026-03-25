@@ -2,6 +2,7 @@
 
 import Box from '@mui/material/Box';
 import {
+  GridToolbarColumnsButton,
   GridToolbarContainer,
   GridToolbarDensitySelector,
   GridToolbarExport,
@@ -12,6 +13,7 @@ import {
 export default function CrudToolbar() {
   return (
     <GridToolbarContainer>
+      <GridToolbarColumnsButton />
       <GridToolbarFilterButton />
       <GridToolbarDensitySelector />
       <GridToolbarExport />

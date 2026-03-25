@@ -1,20 +1,37 @@
-// App.tsx — Application router: defines all routes with auth protection.
+// App.tsx — Application router: defines all routes with auth protection and nested CRUD sub-routes.
 
 import { createBrowserRouter } from 'react-router-dom';
 import AppLayout from './components/AppLayout.tsx';
+import PublicLayout from './components/PublicLayout.tsx';
 import ProtectedRoute from './components/ProtectedRoute.tsx';
 import LoginPage from './pages/LoginPage.tsx';
+import RegisterPage from './pages/RegisterPage.tsx';
+import ProfilePage from './pages/ProfilePage.tsx';
 import DashboardPage from './pages/DashboardPage.tsx';
-import PilotsPage from './pages/PilotsPage.tsx';
-import TeamsPage from './pages/TeamsPage.tsx';
-import VehiclesPage from './pages/VehiclesPage.tsx';
-import ControlsPage from './pages/ControlsPage.tsx';
-import CircuitsPage from './pages/CircuitsPage.tsx';
-import SettingsPage from './pages/SettingsPage.tsx';
+import PilotsListPage from './pages/pilots/PilotsListPage.tsx';
+import PilotCreatePage from './pages/pilots/PilotCreatePage.tsx';
+import PilotEditPage from './pages/pilots/PilotEditPage.tsx';
+import TeamsListPage from './pages/teams/TeamsListPage.tsx';
+import TeamCreatePage from './pages/teams/TeamCreatePage.tsx';
+import TeamEditPage from './pages/teams/TeamEditPage.tsx';
+import VehiclesListPage from './pages/vehicles/VehiclesListPage.tsx';
+import VehicleCreatePage from './pages/vehicles/VehicleCreatePage.tsx';
+import VehicleEditPage from './pages/vehicles/VehicleEditPage.tsx';
+import ControlsListPage from './pages/controls/ControlsListPage.tsx';
+import ControlCreatePage from './pages/controls/ControlCreatePage.tsx';
+import ControlEditPage from './pages/controls/ControlEditPage.tsx';
+import CircuitsListPage from './pages/circuits/CircuitsListPage.tsx';
+import CircuitCreatePage from './pages/circuits/CircuitCreatePage.tsx';
 
 const router = createBrowserRouter(
   [
-    { path: '/login', element: <LoginPage /> },
+    {
+      element: <PublicLayout />,
+      children: [
+        { path: '/login', element: <LoginPage /> },
+        { path: '/register', element: <RegisterPage /> },
+      ],
+    },
     {
       element: <ProtectedRoute />,
       children: [
@@ -22,12 +39,46 @@ const router = createBrowserRouter(
           element: <AppLayout />,
           children: [
             { index: true, element: <DashboardPage /> },
-            { path: 'pilots', element: <PilotsPage /> },
-            { path: 'teams', element: <TeamsPage /> },
-            { path: 'vehicles', element: <VehiclesPage /> },
-            { path: 'controls', element: <ControlsPage /> },
-            { path: 'circuits', element: <CircuitsPage /> },
-            { path: 'settings', element: <SettingsPage /> },
+            {
+              path: 'pilots',
+              children: [
+                { index: true, element: <PilotsListPage /> },
+                { path: 'new', element: <PilotCreatePage /> },
+                { path: ':pilotId/edit', element: <PilotEditPage /> },
+              ],
+            },
+            {
+              path: 'teams',
+              children: [
+                { index: true, element: <TeamsListPage /> },
+                { path: 'new', element: <TeamCreatePage /> },
+                { path: ':teamId/edit', element: <TeamEditPage /> },
+              ],
+            },
+            {
+              path: 'vehicles',
+              children: [
+                { index: true, element: <VehiclesListPage /> },
+                { path: 'new', element: <VehicleCreatePage /> },
+                { path: ':vehicleId/edit', element: <VehicleEditPage /> },
+              ],
+            },
+            {
+              path: 'controls',
+              children: [
+                { index: true, element: <ControlsListPage /> },
+                { path: 'new', element: <ControlCreatePage /> },
+                { path: ':controlId/edit', element: <ControlEditPage /> },
+              ],
+            },
+            {
+              path: 'circuits',
+              children: [
+                { index: true, element: <CircuitsListPage /> },
+                { path: 'new', element: <CircuitCreatePage /> },
+              ],
+            },
+            { path: 'profile', element: <ProfilePage /> },
           ],
         },
       ],

@@ -64,8 +64,8 @@ export default function RaceGrid({ raceState }: Props) {
     },
     {
       field: 'country',
-      headerName: '',
-      width: 36,
+      headerName: 'Country',
+      minWidth: 60,
       sortable: false,
       renderCell: (params: GridRenderCellParams<PilotRaceState>) => (
         <FlagIcon code={params.row.country} size={18} />
@@ -73,7 +73,7 @@ export default function RaceGrid({ raceState }: Props) {
     },
     {
       field: 'displayName',
-      headerName: 'Pilot',
+      headerName: 'Name',
       flex: 1,
       renderCell: (params: GridRenderCellParams<PilotRaceState>) => (
         <Typography component="span" variant="body2">{params.row.displayName}</Typography>
@@ -124,7 +124,7 @@ export default function RaceGrid({ raceState }: Props) {
     ...(isManual
       ? [{
           field: 'actions' as const,
-          headerName: '',
+          headerName: 'Controls',
           width: 170,
           sortable: false,
           renderCell: (params: GridRenderCellParams<PilotRaceState>) => {
@@ -162,14 +162,14 @@ export default function RaceGrid({ raceState }: Props) {
     <DataGrid
       rows={pilots}
       columns={columns}
-      density="compact"
+
       disableColumnFilter
       disableColumnMenu
-      autoHeight
       hideFooter={pilots.length <= 25}
       pageSizeOptions={[25, 50]}
       disableRowSelectionOnClick
       getRowId={(row) => row.id}
+      sx={{ width: '100%' }}
     />
   );
 }

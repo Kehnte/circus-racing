@@ -8,32 +8,27 @@ import AccordionSummary from '@mui/material/AccordionSummary';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Divider from '@mui/material/Divider';
-import FormControlLabel from '@mui/material/FormControlLabel';
 import Grid from '@mui/material/Grid';
 import InputLabel from '@mui/material/InputLabel';
 import FormControl from '@mui/material/FormControl';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
-import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { mutate } from 'swr';
 import { apiFetch } from '../../api.ts';
 import type { RaceStatePayload } from '../../types.ts';
-import ConfirmDialog from '../ConfirmDialog.tsx';
 import AddPilotDialog from './AddPilotDialog.tsx';
 
 interface Props {
   raceState: RaceStatePayload;
-  onDeleted: () => void;
 }
 
-export default function RaceSettingsPanel({ raceState, onDeleted }: Props) {
+export default function RaceSettingsPanel({ raceState }: Props) {
   const { raceId, status } = raceState;
   const isStarted = status === 'STARTED';
-  const canDelete = status !== 'STARTED' && status !== 'PAUSED';
 
   // Local controlled state for debounced text fields.
   const [name, setName] = useState(raceState.raceName);
@@ -42,7 +37,6 @@ export default function RaceSettingsPanel({ raceState, onDeleted }: Props) {
     raceState.sessionDurationMs ? String(Math.round(raceState.sessionDurationMs / 60000)) : ''
   );
 
-  const [confirmOpen, setConfirmOpen] = useState(false);
   const [addPilotOpen, setAddPilotOpen] = useState(false);
 
   // Sync local text state when a new race is loaded.
@@ -66,6 +60,18 @@ export default function RaceSettingsPanel({ raceState, onDeleted }: Props) {
     }, 600);
   }
 
+  // Name patch also revalidates the race list so the selector dropdown updates.
+  function debouncedPatchName(value: string) {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      await apiFetch(`/api/races/${raceId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ name: value }),
+      });
+      void mutate('/api/races');
+    }, 600);
+  }
+
   function immediatePatch(field: string, value: string | number | boolean) {
     void apiFetch(`/api/races/${raceId}`, {
       method: 'PATCH',
@@ -73,17 +79,11 @@ export default function RaceSettingsPanel({ raceState, onDeleted }: Props) {
     });
   }
 
-  async function handleDelete() {
-    await apiFetch(`/api/races/${raceId}`, { method: 'DELETE' });
-    await mutate('/api/races');
-    onDeleted();
-  }
-
   return (
     <>
-      <Accordion disableGutters defaultExpanded={false} sx={{ mb: 1 }}>
+      <Accordion disableGutters elevation={0} defaultExpanded={true} sx={{ mb: 1 }}>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          <Typography variant="overline">{raceState.raceName}</Typography>
+          <Typography variant="overline">Race settings</Typography>
         </AccordionSummary>
 
         <AccordionDetails>
@@ -95,7 +95,7 @@ export default function RaceSettingsPanel({ raceState, onDeleted }: Props) {
                 value={name}
                 size="small"
                 fullWidth
-                onChange={(e) => { setName(e.target.value); debouncedPatch('name', e.target.value); }}
+                onChange={(e) => { setName(e.target.value); debouncedPatchName(e.target.value); }}
               />
             </Grid>
 
@@ -187,72 +187,33 @@ export default function RaceSettingsPanel({ raceState, onDeleted }: Props) {
                 />
               </Grid>
             )}
-
-            {/* Display settings */}
-            <Grid size={4}>
-              <FormControl size="small" fullWidth>
-                <InputLabel>Team display</InputLabel>
-                <Select value={raceState.teamDisplayMode} label="Team display" onChange={(e) => immediatePatch('teamDisplayMode', e.target.value)}>
-                  <MenuItem value="color-bar">Color bar</MenuItem>
-                  <MenuItem value="acronym">Acronym</MenuItem>
-                  <MenuItem value="hidden">Hidden</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid size={4}>
-              <FormControl size="small" fullWidth>
-                <InputLabel>Chrono mode</InputLabel>
-                <Select value={raceState.chronoDisplayMode} label="Chrono mode" onChange={(e) => immediatePatch('chronoDisplayMode', e.target.value)}>
-                  <MenuItem value="leader">Leader</MenuItem>
-                  <MenuItem value="gap">Gap</MenuItem>
-                  <MenuItem value="best-lap">Best lap</MenuItem>
-                  <MenuItem value="last-lap">Last lap</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid size={4}>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={raceState.timingEnabled}
-                    onChange={(e) => immediatePatch('timingEnabled', e.target.checked)}
-                  />
-                }
-                label={<Typography variant="body2">Timing</Typography>}
-              />
-            </Grid>
           </Grid>
 
           <Divider sx={{ my: 2 }} />
 
           {/* Actions */}
           <Stack direction="row" spacing={1} flexWrap="wrap">
-            <Button size="small" variant="outlined" onClick={() => void apiFetch(`/api/races/${raceId}/open-registrations`, { method: 'POST' })}>
-              open registrations
-            </Button>
-            <Button size="small" variant="outlined" onClick={() => void apiFetch(`/api/races/${raceId}/close-registrations`, { method: 'POST' })}>
-              close registrations
+            <Button
+              size="small"
+              variant="outlined"
+              color={status === 'SCHEDULED' ? 'error' : 'primary'}
+              disabled={status !== 'PENDING' && status !== 'SCHEDULED'}
+              onClick={() => void apiFetch(
+                `/api/races/${raceId}/${status === 'SCHEDULED' ? 'close' : 'open'}-registrations`,
+                { method: 'POST' }
+              )}
+            >
+              {status === 'SCHEDULED' ? 'close registrations' : 'open registrations'}
             </Button>
             <Box sx={{ flex: 1 }} />
             <Button size="small" variant="outlined" onClick={() => setAddPilotOpen(true)}>
               + add pilot
-            </Button>
-            <Button size="small" color="error" variant="outlined" disabled={!canDelete} onClick={() => setConfirmOpen(true)}>
-              delete race
             </Button>
           </Stack>
         </AccordionDetails>
       </Accordion>
 
       <AddPilotDialog open={addPilotOpen} raceState={raceState} onClose={() => setAddPilotOpen(false)} />
-
-      <ConfirmDialog
-        open={confirmOpen}
-        title="Delete race"
-        description={`Delete "${raceState.raceName}"? This cannot be undone.`}
-        onConfirm={() => { setConfirmOpen(false); void handleDelete(); }}
-        onClose={() => setConfirmOpen(false)}
-      />
     </>
   );
 }

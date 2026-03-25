@@ -15,6 +15,13 @@ router.get("/", async (_req, res) => {
   res.json(all);
 });
 
+/** GET /controls/:id — public */
+router.get("/:id", async (req, res) => {
+  const found = await db.select().from(controls).where(eq(controls.id, String(req.params.id))).get();
+  if (!found) { res.status(404).json({ error: "Controls not found" }); return; }
+  res.json(found);
+});
+
 /** POST /controls — admin/modo */
 router.post("/", ...requireModo, async (req, res) => {
   const { type, img } = req.body;

@@ -1,6 +1,9 @@
 // theme.ts — MUI dark theme for the dashboard UI.
 
 import { createTheme } from '@mui/material/styles';
+import type {} from '@mui/x-data-grid/themeAugmentation';
+
+const BORDER = '1px solid #9E9E9E';
 
 const theme = createTheme({
   palette: {
@@ -23,8 +26,9 @@ const theme = createTheme({
     },
     background: {
       default: '#212121',
-      paper: '#2B2B2B',
+      paper: '#212121',
     },
+    divider: '#9E9E9E',
     text: {
       primary: '#FAFAFA',
     },
@@ -37,6 +41,45 @@ const theme = createTheme({
     fontWeightRegular: 500,
     overline: {
       lineHeight: 3.2,
+    },
+  },
+  components: {
+    MuiPaper: {
+      styleOverrides: {
+        root: { border: BORDER },
+      },
+    },
+    // AppBar spans the full viewport top — no outer border, just a bottom separator.
+    MuiAppBar: {
+      styleOverrides: {
+        root: { border: 'none', borderBottom: BORDER },
+      },
+    },
+    // Drawer flush against the left edge — only the right side acts as a separator.
+    MuiDrawer: {
+      styleOverrides: {
+        paper: { border: 'none', borderRight: BORDER },
+      },
+    },
+    MuiDataGrid: {
+      styleOverrides: {
+        root: {
+          '--DataGrid-rowBorderColor': '#9E9E9E',
+          '--DataGrid-columnSeparatorColor': '#9E9E9E',
+          borderColor: '#9E9E9E',
+        },
+      },
+    },
+    MuiOutlinedInput: {
+      styleOverrides: {
+        notchedOutline: { borderColor: '#9E9E9E' },
+      },
+    },
+    // Ensure the floating label is visible against both background colors.
+    MuiInputLabel: {
+      styleOverrides: {
+        root: { color: 'rgba(255,255,255,0.7)' },
+      },
     },
   },
 });

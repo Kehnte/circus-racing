@@ -10,6 +10,7 @@ import { useRaceSocket } from '../hooks/useRaceSocket.ts';
 import { useRaceStore } from '../store/raceStore.ts';
 import AddPilotDialog from '../components/race/AddPilotDialog.tsx';
 import DnfWarningPanel from '../components/race/DnfWarningPanel.tsx';
+import LeaderboardDisplayPanel from '../components/race/LeaderboardDisplayPanel.tsx';
 import RaceControlBar from '../components/race/RaceControlBar.tsx';
 import RaceGrid from '../components/race/RaceGrid.tsx';
 import RaceSelector from '../components/race/RaceSelector.tsx';
@@ -18,7 +19,7 @@ import RaceSettingsPanel from '../components/race/RaceSettingsPanel.tsx';
 export default function DashboardPage() {
   useRaceSocket();
 
-  const { raceState, setActiveRaceId } = useRaceStore();
+  const { raceState } = useRaceStore();
   const [addPilotOpen, setAddPilotOpen] = useState(false);
 
   return (
@@ -31,14 +32,13 @@ export default function DashboardPage() {
 
       {raceState && (
         <>
-          <RaceSettingsPanel
-            raceState={raceState}
-            onDeleted={() => setActiveRaceId(null)}
-          />
+          <RaceSettingsPanel raceState={raceState} />
 
           <Box sx={{ mt: 2 }}>
             <RaceControlBar raceState={raceState} />
           </Box>
+
+          <LeaderboardDisplayPanel raceState={raceState} />
 
           <DnfWarningPanel raceState={raceState} />
 

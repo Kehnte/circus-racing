@@ -4,6 +4,7 @@ import { createContext, useContext, useState, type ReactNode } from 'react';
 import { apiFetch } from '../api.ts';
 
 const TOKEN_KEY = 'circus_token';
+const DISPLAY_NAME_KEY = 'circus_display_name';
 
 interface AuthState {
   token: string | null;
@@ -13,6 +14,7 @@ interface AuthState {
 
 interface AuthContextValue extends AuthState {
   login: (displayName: string, password: string) => Promise<void>;
+  register: (displayName: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -32,7 +34,7 @@ function readStoredAuth(): AuthState {
   const payload = decodeToken(token);
   return {
     token,
-    displayName: (payload.displayName as string | null) ?? null,
+    displayName: (payload.displayName as string | null) ?? localStorage.getItem(DISPLAY_NAME_KEY),
     role: (payload.role as string | null) ?? null,
   };
 }
@@ -48,6 +50,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       body: JSON.stringify({ displayName, password }),
     });
     localStorage.setItem(TOKEN_KEY, res.token);
+    localStorage.setItem(DISPLAY_NAME_KEY, displayName);
+    const payload = decodeToken(res.token);
+    setAuth({
+      token: res.token,
+      displayName: (payload.displayName as string | null) ?? displayName,
+      role: (payload.role as string | null) ?? null,
+    });
+  }
+
+  async function register(displayName: string, password: string) {
+    const res = await apiFetch<{ token: string }>('/api/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ displayName, password }),
+    });
+    localStorage.setItem(TOKEN_KEY, res.token);
+    localStorage.setItem(DISPLAY_NAME_KEY, displayName);
     const payload = decodeToken(res.token);
     setAuth({
       token: res.token,
@@ -58,11 +76,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   function logout() {
     localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(DISPLAY_NAME_KEY);
     setAuth({ token: null, displayName: null, role: null });
   }
 
   return (
-    <AuthContext.Provider value={{ ...auth, login, logout }}>
+    <AuthContext.Provider value={{ ...auth, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );
