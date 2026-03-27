@@ -2,11 +2,11 @@
   "name": "circus-racing",
   "version": "2.0.0",
   "description": "Race management & streaming overlay tool for Star Citizen events",
-  "main": "server.js",
+  "main": "dist/server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node --watch server.js",
-    "dev:ts": "npx tsx server.js",
+    "start": "node dist/server.js",
+    "dev": "npx tsx --watch server.ts",
+    "dev:ts": "npx tsx server.ts",
     "build": "tsc --project tsconfig.json",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio"

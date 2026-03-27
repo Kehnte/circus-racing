@@ -16,6 +16,7 @@ RUN cd frontend && npm run build
 
 # Server TS build
 COPY tsconfig.json ./
+COPY server.ts ./
 COPY src/ src/
 RUN npm run build
 
@@ -33,7 +34,6 @@ COPY --from=builder /app/dist/ dist/
 COPY --from=builder /app/frontend/dist/ frontend/dist/
 
 # Static assets
-COPY server.js ./
 COPY overlays/ overlays/
 COPY shared/ shared/
 COPY drizzle.config.ts ./
@@ -42,4 +42,4 @@ COPY src/db/ src/db/
 EXPOSE 3000
 
 # Push DB schema at container startup so the mounted volume gets the schema applied
-CMD ["sh", "-c", "npx drizzle-kit push && node server.js"]
+CMD ["sh", "-c", "npx drizzle-kit push && node dist/server.js"]
