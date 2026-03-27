@@ -2,6 +2,10 @@
 server/node_modules/
 server/db/
 server/dist/
+server/packages/*/src/*.js
+server/packages/*/src/*.js.map
+server/packages/*/src/*.d.ts
+server/packages/*/src/*.d.ts.map
 server/frontend/node_modules/
 server/frontend/dist/
 server/.env
