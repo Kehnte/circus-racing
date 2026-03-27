@@ -23,6 +23,7 @@
     "@libsql/client": "^0.17.0",
     "@node-rs/bcrypt": "^1.10.4",
     "dotenv": "^17.3.1",
+    "drizzle-kit": "^0.31.10",
     "drizzle-orm": "^0.45.1",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.2",
@@ -33,7 +34,6 @@
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.9",
     "@types/node": "^22.0.0",
-    "drizzle-kit": "^0.31.9",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   }
