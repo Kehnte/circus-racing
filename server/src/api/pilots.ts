@@ -9,6 +9,8 @@ import { requireAuth } from "../middleware/auth.js";
 import { requireModo, requireAdmin } from "../middleware/roles.js";
 import { emitDashboard } from "../socket/emitter.js";
 import { refreshPilotEntrySnapshots } from "../engine/snapshot-refresh.js";
+import { validate } from "../middleware/validate.js";
+import { createPilotSchema, updatePilotSchema } from "../validation/schemas.js";
 
 const router = Router();
 
@@ -27,12 +29,8 @@ function safePublic(p: typeof pilot.$inferSelect) {
 // Creates a pilot manually for dashboard manual mode.
 // Generates a placeholder email/password; the pilot can be merged with a real
 // self-registered account later via the admin "rebind" flow.
-router.post("/", ...requireAdmin, async (req, res) => {
+router.post("/", ...requireAdmin, validate(createPilotSchema), async (req, res) => {
   const { displayName, country, avatarUrl, teamId, vehicleId, controlsId } = req.body;
-  if (!displayName?.trim()) {
-    res.status(400).json({ error: "displayName is required" });
-    return;
-  }
 
   const slug         = displayName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   const suffix       = randomBytes(4).toString("hex");
@@ -111,7 +109,7 @@ router.get("/:id", ...requireModo, async (req, res) => {
  * Lockable fields (teamId, vehicleId, controlsId) are blocked
  * once the pilot has a VALIDATED race_entry.
  */
-router.patch("/me", requireAuth, async (req, res) => {
+router.patch("/me", requireAuth, validate(updatePilotSchema), async (req, res) => {
   const pilotId = req.user!.id;
 
   // Check if pilot has a validated entry (locks certain fields)
@@ -155,7 +153,7 @@ router.patch("/me", requireAuth, async (req, res) => {
 /**
  * PATCH /pilots/:id — admin/modo edits any pilot's profile (no field locks)
  */
-router.patch("/:id", ...requireModo, async (req, res) => {
+router.patch("/:id", ...requireModo, validate(updatePilotSchema), async (req, res) => {
   const allowed = [...ALWAYS_EDITABLE, ...LOCKABLE_FIELDS, "role", "email"] as const;
   const patch: Record<string, unknown> = {};
   for (const field of allowed) {

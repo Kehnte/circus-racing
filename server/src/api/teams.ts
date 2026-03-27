@@ -6,6 +6,8 @@ import { team } from "../db/schema.js";
 import { requireModo } from "../middleware/roles.js";
 import { emitDashboard } from "../socket/emitter.js";
 import { refreshTeamSnapshots } from "../engine/snapshot-refresh.js";
+import { validate } from "../middleware/validate.js";
+import { createTeamSchema, updateTeamSchema } from "../validation/schemas.js";
 
 const router = Router();
 
@@ -23,19 +25,15 @@ router.get("/:id", async (req, res) => {
 });
 
 /** POST /teams — admin/modo */
-router.post("/", ...requireModo, async (req, res) => {
+router.post("/", ...requireModo, validate(createTeamSchema), async (req, res) => {
   const { name, acronym, color } = req.body;
-  if (!name || !acronym || !color) {
-    res.status(400).json({ error: "name, acronym and color are required" });
-    return;
-  }
   const [created] = await db.insert(team).values({ name, acronym, color }).returning();
   emitDashboard("data-changed", { resource: "teams" });
   res.status(201).json(created);
 });
 
 /** PATCH /teams/:id — admin/modo */
-router.patch("/:id", ...requireModo, async (req, res) => {
+router.patch("/:id", ...requireModo, validate(updateTeamSchema), async (req, res) => {
   const { name, acronym, color } = req.body;
   const [updated] = await db.update(team)
     .set({ ...(name && { name }), ...(acronym && { acronym }), ...(color && { color }) })

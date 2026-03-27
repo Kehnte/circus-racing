@@ -6,6 +6,8 @@ import { pilot } from "../db/schema.js";
 import { getContext, persistState } from "../engine/race-context.js";
 import { processPosition } from "../engine/race-engine.js";
 import { emitAll, emitDashboard, broadcastRaceState } from "../socket/emitter.js";
+import { validate } from "../middleware/validate.js";
+import { ocrPositionSchema } from "../validation/schemas.js";
 
 const router = Router();
 
@@ -35,14 +37,8 @@ async function requireOcrToken(req: Request, res: Response, next: NextFunction):
 // PUT /ocr/position
 // Body: { x: number, y: number, z: number }
 
-router.put("/position", requireOcrToken, async (req, res) => {
+router.put("/position", requireOcrToken, validate(ocrPositionSchema), async (req, res) => {
   const { x, y, z } = req.body;
-
-  if (typeof x !== "number" || typeof y !== "number" || typeof z !== "number") {
-    res.status(400).json({ error: "Body must be { x, y, z } numbers" });
-    return;
-  }
-
   const pilotId = req.user!.id;
   const result = processPosition(pilotId, [x, y, z], new Date());
 

@@ -11,6 +11,8 @@ import {
 } from "../engine/race-context.js";
 import { clearCountdownTimer } from "../engine/race-lifecycle.js";
 import { emitAll, emitDashboard, broadcastRaceState } from "../socket/emitter.js";
+import { validate } from "../middleware/validate.js";
+import { createRaceSchema, updateRaceSchema, addEntryAdminSchema } from "../validation/schemas.js";
 
 const router = Router();
 
@@ -36,17 +38,12 @@ router.get("/:id", async (req, res) => {
 });
 
 /** POST /races — modo+ */
-router.post("/", ...requireModo, async (req, res) => {
+router.post("/", ...requireModo, validate(createRaceSchema), async (req, res) => {
   const {
     name, racetrackId, lapCount, session, weather, startType,
     trackingMode, sessionMode, sessionDurationMs,
     teamDisplayMode, chronoDisplayMode, timingEnabled, eventDuration,
   } = req.body;
-
-  if (!name) {
-    res.status(400).json({ error: "name is required" });
-    return;
-  }
 
   const [created] = await db.insert(race).values({
     name,
@@ -69,7 +66,7 @@ router.post("/", ...requireModo, async (req, res) => {
 });
 
 /** PATCH /races/:id — modo+. Blocks trackingMode if STARTED. */
-router.patch("/:id", ...requireModo, async (req, res) => {
+router.patch("/:id", ...requireModo, validate(updateRaceSchema), async (req, res) => {
   const raceId = String(req.params.id);
   const found = await db.select().from(race).where(eq(race.id, raceId)).get();
   if (!found) { res.status(404).json({ error: "Race not found" }); return; }
@@ -196,11 +193,9 @@ router.post("/:id/entries", requireAuth, async (req, res) => {
 });
 
 /** POST /races/:id/entries/admin — modo+ (direct add as VALIDATED) */
-router.post("/:id/entries/admin", ...requireModo, async (req, res) => {
+router.post("/:id/entries/admin", ...requireModo, validate(addEntryAdminSchema), async (req, res) => {
   const raceId = String(req.params.id);
   const { pilotId } = req.body;
-
-  if (!pilotId) { res.status(400).json({ error: "pilotId is required" }); return; }
 
   const targetRace = await db.select().from(race).where(eq(race.id, raceId)).get();
   if (!targetRace) { res.status(404).json({ error: "Race not found" }); return; }

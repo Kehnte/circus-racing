@@ -5,8 +5,9 @@ import crypto from "crypto";
 import { eq } from "drizzle-orm";
 import { db } from "../db/db.js";
 import { pilot } from "../db/schema.js";
-import { signToken } from "../middleware/auth.js";
-import { requireAuth } from "../middleware/auth.js";
+import { signToken, requireAuth } from "../middleware/auth.js";
+import { validate } from "../middleware/validate.js";
+import { registerSchema, loginSchema } from "../validation/schemas.js";
 
 const router = Router();
 const SALT_ROUNDS = 12;
@@ -15,13 +16,8 @@ const SALT_ROUNDS = 12;
  * POST /auth/register
  * Body: { displayName, password, country?, avatarUrl?, teamId?, vehicleId?, controlsId? }
  */
-router.post("/register", async (req, res) => {
+router.post("/register", validate(registerSchema), async (req, res) => {
   const { displayName, password, country, avatarUrl, teamId, vehicleId, controlsId } = req.body;
-
-  if (!displayName || !password) {
-    res.status(400).json({ error: "displayName and password are required" });
-    return;
-  }
 
   const existingName = await db.select({ id: pilot.id })
     .from(pilot)
@@ -64,13 +60,8 @@ router.post("/register", async (req, res) => {
  * POST /auth/login
  * Body: { displayName, password }
  */
-router.post("/login", async (req, res) => {
+router.post("/login", validate(loginSchema), async (req, res) => {
   const { displayName, password } = req.body;
-
-  if (!displayName || !password) {
-    res.status(400).json({ error: "displayName and password are required" });
-    return;
-  }
 
   const found = await db.select().from(pilot).where(eq(pilot.displayName, displayName)).get();
   if (!found) {
