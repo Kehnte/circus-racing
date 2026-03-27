@@ -5,6 +5,7 @@ const VEHICLE_TYPES = ['ship', 'rover', 'bike'];
 export interface VehicleForm {
   model: string;
   type: string;
+  manufacturer: string;
   img: string;
 }
 
@@ -15,6 +16,9 @@ export function validateVehicleField(field: keyof VehicleForm, value: string): s
   }
   if (field === 'type') {
     if (!VEHICLE_TYPES.includes(value)) return 'Select a type';
+  }
+  if (field === 'manufacturer' && value) {
+    if (value.trim().length > 50) return 'Max 50 characters';
   }
   if (field === 'img' && value) {
     if (!value.startsWith('http') && !value.startsWith('/')) return 'Enter a valid URL';

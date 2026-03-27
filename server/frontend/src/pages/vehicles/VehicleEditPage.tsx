@@ -26,14 +26,14 @@ export default function VehicleEditPage() {
   const { vehicleId } = useParams<{ vehicleId: string }>();
   const navigate = useNavigate();
   const notifications = useNotifications();
-  const [form, setForm] = useState<VehicleForm>({ model: '', type: 'ship', img: '' });
+  const [form, setForm] = useState<VehicleForm>({ model: '', type: 'ship', manufacturer: '', img: '' });
   const [errors, setErrors] = useState<Partial<Record<keyof VehicleForm, string>>>({});
   const [submitting, setSubmitting] = useState(false);
 
   const { data: vehicle, error } = useSWR<Vehicle>(vehicleId ? `/api/vehicles/${vehicleId}` : null, fetcher);
 
   useEffect(() => {
-    if (vehicle) setForm({ model: vehicle.model, type: vehicle.type, img: vehicle.img ?? '' });
+    if (vehicle) setForm({ model: vehicle.model, type: vehicle.type, manufacturer: vehicle.manufacturer ?? '', img: vehicle.img ?? '' });
   }, [vehicle]);
 
   function handleChange(field: keyof VehicleForm, value: string) {
@@ -48,7 +48,7 @@ export default function VehicleEditPage() {
     if (Object.keys(formErrors).length > 0) { setErrors(formErrors); return; }
     setSubmitting(true);
     try {
-      await apiFetch(`/api/vehicles/${vehicleId}`, { method: 'PATCH', body: JSON.stringify({ ...form, img: form.img || null }) });
+      await apiFetch(`/api/vehicles/${vehicleId}`, { method: 'PATCH', body: JSON.stringify({ ...form, manufacturer: form.manufacturer || null, img: form.img || null }) });
       notifications.show('Vehicle updated.', { severity: 'success', autoHideDuration: 3000 });
       navigate('/vehicles');
     } catch (err) {
@@ -68,6 +68,16 @@ export default function VehicleEditPage() {
       <Box component="form" onSubmit={(e: React.FormEvent) => void handleSubmit(e)} noValidate sx={{ width: '100%' }}>
         <FormGroup>
           <Grid container spacing={2} sx={{ mb: 2, width: '100%' }}>
+            <Grid size={{ xs: 12, sm: 6 }} sx={{ display: 'flex' }}>
+              <TextField
+                label="Manufacturer"
+                value={form.manufacturer}
+                onChange={(e) => handleChange('manufacturer', e.target.value)}
+                error={!!errors.manufacturer}
+                helperText={errors.manufacturer ?? ' '}
+                fullWidth
+              />
+            </Grid>
             <Grid size={{ xs: 12, sm: 6 }} sx={{ display: 'flex' }}>
               <TextField
                 label="Model"

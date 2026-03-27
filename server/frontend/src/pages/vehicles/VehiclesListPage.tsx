@@ -87,11 +87,12 @@ export default function VehiclesListPage() {
           <Box sx={{ display: 'flex', alignItems: 'center', height: '100%', color: 'text.disabled' }}>—</Box>
         ),
     },
-    { field: 'model', headerName: 'Model', flex: 2, minWidth: 120 },
+    { field: 'manufacturer', headerName: 'Manufacturer', flex: 1, minWidth: 120 },
+    { field: 'model', headerName: 'Model', flex: 1, minWidth: 120 },
     {
       field: 'type',
       headerName: 'Type',
-      minWidth: 60,
+      minWidth: 90,
       renderCell: (params: GridRenderCellParams<Vehicle, string>) => (
         <Chip label={params.value ? params.value.charAt(0).toUpperCase() + params.value.slice(1) : ''} size="small" />
       ),
@@ -102,7 +103,7 @@ export default function VehiclesListPage() {
       headerAlign: 'left',
       align: 'left',
       headerName: 'Actions',
-      minWidth: 120,
+      minWidth: 90,
       getActions: (params: GridRowParams<Vehicle>) => [
         <Tooltip title="Edit" placement="bottom"><GridActionsCellItem icon={<EditOutlined />} label="Edit" onClick={() => navigate(`/vehicles/${params.row.id}/edit`)} showInMenu={false} /></Tooltip>,
         <Tooltip title="Delete" placement="bottom"><GridActionsCellItem icon={<DeleteOutlined />} label="Delete" onClick={() => void handleDelete(params.row)} showInMenu={false} /></Tooltip>,

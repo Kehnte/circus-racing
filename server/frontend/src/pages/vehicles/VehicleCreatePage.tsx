@@ -17,7 +17,7 @@ import { validateVehicleField, validateVehicleForm } from './validateVehicle.ts'
 import type { VehicleForm } from './validateVehicle.ts';
 
 const TYPES = ['ship', 'rover', 'bike'];
-const EMPTY: VehicleForm = { model: '', type: 'ship', img: '' };
+const EMPTY: VehicleForm = { model: '', type: 'ship', manufacturer: '', img: '' };
 
 export default function VehicleCreatePage() {
   const navigate = useNavigate();
@@ -38,7 +38,7 @@ export default function VehicleCreatePage() {
     if (Object.keys(formErrors).length > 0) { setErrors(formErrors); return; }
     setSubmitting(true);
     try {
-      await apiFetch('/api/vehicles', { method: 'POST', body: JSON.stringify({ ...form, img: form.img || null }) });
+      await apiFetch('/api/vehicles', { method: 'POST', body: JSON.stringify({ ...form, manufacturer: form.manufacturer || null, img: form.img || null }) });
       notifications.show('Vehicle created.', { severity: 'success', autoHideDuration: 3000 });
       navigate('/vehicles');
     } catch (err) {
@@ -55,6 +55,16 @@ export default function VehicleCreatePage() {
       <Box component="form" onSubmit={(e: React.FormEvent) => void handleSubmit(e)} noValidate sx={{ width: '100%' }}>
         <FormGroup>
           <Grid container spacing={2} sx={{ mb: 2, width: '100%' }}>
+            <Grid size={{ xs: 12, sm: 6 }} sx={{ display: 'flex' }}>
+              <TextField
+                label="Manufacturer"
+                value={form.manufacturer}
+                onChange={(e) => handleChange('manufacturer', e.target.value)}
+                error={!!errors.manufacturer}
+                helperText={errors.manufacturer ?? ' '}
+                fullWidth
+              />
+            </Grid>
             <Grid size={{ xs: 12, sm: 6 }} sx={{ display: 'flex' }}>
               <TextField
                 label="Model"
