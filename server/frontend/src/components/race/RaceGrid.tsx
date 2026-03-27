@@ -3,9 +3,9 @@
 import { DataGrid, GridActionsCellItem } from '@mui/x-data-grid';
 import type { GridColDef, GridRenderCellParams, GridRowParams } from '@mui/x-data-grid';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
-import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import AddOutlined from '@mui/icons-material/AddOutlined';
 import ArrowDownwardOutlined from '@mui/icons-material/ArrowDownwardOutlined';
@@ -18,6 +18,7 @@ import useNotifications from '../../hooks/useNotifications/useNotifications.tsx'
 import CrudToolbar from '../CrudToolbar.tsx';
 import FlagIcon from '../FlagIcon.tsx';
 import { NoRowsOverlay } from '../DataGridOverlays.tsx';
+import NumberSpinner from '../NumberSpinner.tsx';
 import type { PilotRaceState, RaceStatePayload } from '../../types.ts';
 import ChronoDisplay from './ChronoDisplay.tsx';
 
@@ -25,16 +26,15 @@ interface Props {
   raceState: RaceStatePayload;
 }
 
-function statusChipColor(status: string): 'success' | 'error' | 'default' {
-  if (status === 'FINISHED') return 'success';
-  if (status === 'DNF') return 'error';
-  return 'default';
-}
 
 export default function RaceGrid({ raceState }: Props) {
   const { raceId, pilots, trackingMode, status, teamDisplayMode, timingEnabled } = raceState;
   const isManual = trackingMode === 'manual';
   const canAct = status === 'STARTED';
+  // Pos and DNF editable before and during the race, locked when finished
+  const canEditGrid = status === 'PENDING' || status === 'STARTED';
+  // Remove only allowed before the race starts
+  const canRemove = status === 'PENDING';
 
   const { role } = useAuth();
   const notifications = useNotifications();
@@ -61,6 +61,27 @@ export default function RaceGrid({ raceState }: Props) {
       method: 'POST',
       body: JSON.stringify({ pilotId, direction }),
     });
+  }
+
+  async function setPosition(pilotId: string, position: number) {
+    await apiFetch(`/api/race-events/races/${raceId}/manual-position`, {
+      method: 'POST',
+      body: JSON.stringify({ pilotId, position }),
+    });
+  }
+
+  // Returns the allowed [min, max] position range for a pilot based on lap counts.
+  // Cannot move above a pilot with more laps, nor below a pilot with fewer laps.
+  function positionRange(pilot: PilotRaceState): { min: number; max: number } {
+    const activePilots = pilots.filter(p => p.status !== 'DNF' && p.status !== 'FINISHED');
+    let min = 1;
+    let max = activePilots.length || pilots.length;
+    for (const p of pilots) {
+      if (p.id === pilot.id) continue;
+      if (p.lap > pilot.lap && p.position >= min) min = p.position + 1;
+      if (p.lap < pilot.lap && p.position <= max) max = p.position - 1;
+    }
+    return { min: Math.max(1, min), max: Math.min(pilots.length, max) };
   }
 
   async function toggleDnf(pilotId: string) {
@@ -141,14 +162,13 @@ export default function RaceGrid({ raceState }: Props) {
         }]
       : []),
     ...(isManual
-      ? [{
-          field: 'actions' as const,
-          headerName: 'Controls',
-          minWidth: 210,
-          sortable: false,
-          renderCell: (params: GridRenderCellParams<PilotRaceState>) => {
-            const isDnf = params.row.status === 'DNF';
-            return (
+      ? [
+          {
+            field: 'ctrlLaps' as const,
+            headerName: 'Laps controls',
+            minWidth: 60,
+            sortable: false,
+            renderCell: (params: GridRenderCellParams<PilotRaceState>) => (
               <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
                 <IconButton size="small" disabled={!canAct} onClick={() => void changeLap(params.row.id, -1)}>
                   <RemoveOutlined fontSize="small" />
@@ -156,42 +176,76 @@ export default function RaceGrid({ raceState }: Props) {
                 <IconButton size="small" disabled={!canAct} onClick={() => void changeLap(params.row.id, 1)}>
                   <AddOutlined fontSize="small" />
                 </IconButton>
-                <IconButton size="small" disabled={!canAct} onClick={() => void reorder(params.row.id, 'up')}>
-                  <ArrowUpwardOutlined fontSize="small" />
-                </IconButton>
-                <IconButton size="small" disabled={!canAct} onClick={() => void reorder(params.row.id, 'down')}>
-                  <ArrowDownwardOutlined fontSize="small" />
-                </IconButton>
-                <Chip
-                  label="DNF"
-                  size="small"
-                  color={isDnf ? statusChipColor('DNF') : 'default'}
-                  variant={isDnf ? 'filled' : 'outlined'}
-                  onClick={canAct ? () => void toggleDnf(params.row.id) : undefined}
-                  sx={{ cursor: canAct ? 'pointer' : 'default', fontSize: 11 }}
-                />
               </Box>
-            );
+            ),
           },
-        }]
+          {
+            field: 'ctrlPos' as const,
+            headerName: 'Pos controls',
+            minWidth: 180,
+            sortable: false,
+            renderCell: (params: GridRenderCellParams<PilotRaceState>) => {
+              const { min, max } = positionRange(params.row);
+              return (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, height: '100%' }}>
+                  <IconButton size="small" disabled={!canEditGrid} onClick={() => void reorder(params.row.id, 'up')}>
+                    <ArrowUpwardOutlined fontSize="small" />
+                  </IconButton>
+                  <IconButton size="small" disabled={!canEditGrid} onClick={() => void reorder(params.row.id, 'down')}>
+                    <ArrowDownwardOutlined fontSize="small" />
+                  </IconButton>
+                  <NumberSpinner
+                    size="small"
+                    value={params.row.position}
+                    min={min}
+                    max={max}
+                    disabled={!canEditGrid}
+                    onCommit={(v) => { if (v !== params.row.position) void setPosition(params.row.id, v); }}
+                  />
+                </Box>
+              );
+            },
+          },
+          {
+            field: 'ctrlDnf' as const,
+            headerName: 'DNF',
+            minWidth: 60,
+            sortable: false,
+            renderCell: (params: GridRenderCellParams<PilotRaceState>) => {
+              const isDnf = params.row.status === 'DNF';
+              return (
+                <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+                  <Button
+                    size="small"
+                    variant={isDnf ? 'contained' : 'outlined'}
+                    color={isDnf ? 'error' : 'inherit'}
+                    disabled={!canEditGrid}
+                    onClick={() => void toggleDnf(params.row.id)}
+                  >
+                    DNF
+                  </Button>
+                </Box>
+              );
+            },
+          },
+        ]
       : []),
     {
       field: 'delete',
       type: 'actions' as const,
-      headerName: 'Actions',
+      headerName: 'Remove',
       headerAlign: 'left' as const,
       align: 'left' as const,
       minWidth: 60,
       getActions: (params: GridRowParams<PilotRaceState>) => [
         ...(canDelete ? [
-          <Tooltip title="Remove" placement="bottom">
-            <GridActionsCellItem
-              icon={<DeleteOutlined />}
-              label="Remove"
-              onClick={() => void handleRemovePilot(params.row)}
-              showInMenu={false}
-            />
-          </Tooltip>,
+          <GridActionsCellItem
+            icon={<DeleteOutlined />}
+            label="Remove"
+            onClick={() => void handleRemovePilot(params.row)}
+            showInMenu={false}
+            disabled={!canRemove}
+          />,
         ] : []),
       ],
     },
@@ -206,6 +260,7 @@ export default function RaceGrid({ raceState }: Props) {
       disableColumnResize
       disableRowSelectionOnClick
       getRowId={(row) => row.id}
+      density="compact"
       slots={{ toolbar: CrudToolbar, noRowsOverlay: NoRowsOverlay }}
       sx={{ flex: 1 }}
     />

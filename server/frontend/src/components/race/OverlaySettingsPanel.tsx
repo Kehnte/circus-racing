@@ -38,7 +38,7 @@ export default function OverlaySettingsPanel({ raceState }: Props) {
   }, [raceId]);
 
   useEffect(() => {
-    if (status === 'STARTED') setCountdownRunning(false);
+    if (status === 'STARTED' || status === 'PENDING') setCountdownRunning(false);
   }, [status]);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);

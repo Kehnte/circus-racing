@@ -264,9 +264,15 @@ export function reorderPilot(pilotId: string, direction: "up" | "down"): void {
   const idx = pilots.indexOf(pilotId);
   if (idx === -1) return;
 
+  const pilotLap = _ctx.pilotStates[pilotId]?.lap ?? 0;
+
   if (direction === "up" && idx > 0) {
+    const neighborLap = _ctx.pilotStates[pilots[idx - 1]]?.lap ?? 0;
+    if (neighborLap > pilotLap) return;
     [pilots[idx - 1], pilots[idx]] = [pilots[idx], pilots[idx - 1]];
   } else if (direction === "down" && idx < pilots.length - 1) {
+    const neighborLap = _ctx.pilotStates[pilots[idx + 1]]?.lap ?? 0;
+    if (neighborLap < pilotLap) return;
     [pilots[idx], pilots[idx + 1]] = [pilots[idx + 1], pilots[idx]];
   }
   reindexGrid(pilots);
@@ -369,6 +375,27 @@ export function incrementLap(
       });
     }
 
+    // In manual mode, place this pilot last among those with the same lap count
+    // so they don't jump ahead of pilots who reached that lap earlier.
+    if (_ctx.trackingMode === "manual") {
+      const sorted = getPilotsSortedByGrid();
+      const currentIdx = sorted.indexOf(pilotId);
+      if (currentIdx !== -1) {
+        // Find the last index among pilots (excluding self) that have newLap laps
+        let insertAfter = currentIdx;
+        for (let i = 0; i < sorted.length; i++) {
+          if (i === currentIdx) continue;
+          const s = _ctx.pilotStates[sorted[i]];
+          if (s && s.lap === newLap && i > insertAfter) insertAfter = i;
+        }
+        if (insertAfter !== currentIdx) {
+          sorted.splice(currentIdx, 1);
+          sorted.splice(insertAfter, 0, pilotId);
+          reindexGrid(sorted);
+        }
+      }
+    }
+
   } else {
     // delta === -1
     const newLap = Math.max(0, state.lap - 1);
@@ -396,6 +423,25 @@ export function incrementLap(
     }
     _ctx.globalFastestLapMs = newFastestMs;
     _ctx.globalFastestLapPilotId = newFastestPilotId;
+
+    // In manual mode, place this pilot last among those with the same (lower) lap count
+    if (_ctx.trackingMode === "manual") {
+      const sorted = getPilotsSortedByGrid();
+      const currentIdx = sorted.indexOf(pilotId);
+      if (currentIdx !== -1) {
+        let insertAfter = currentIdx;
+        for (let i = 0; i < sorted.length; i++) {
+          if (i === currentIdx) continue;
+          const s = _ctx.pilotStates[sorted[i]];
+          if (s && s.lap === newLap && i > insertAfter) insertAfter = i;
+        }
+        if (insertAfter !== currentIdx) {
+          sorted.splice(currentIdx, 1);
+          sorted.splice(insertAfter, 0, pilotId);
+          reindexGrid(sorted);
+        }
+      }
+    }
   }
 
   return { events };

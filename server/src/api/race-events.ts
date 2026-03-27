@@ -4,13 +4,13 @@
 import { Router } from "express";
 import { eq } from "drizzle-orm";
 import { db } from "../db/db.js";
-import { raceEntry } from "../db/schema.js";
+import { raceEntry, race } from "../db/schema.js";
 import { requireModo } from "../middleware/roles.js";
 import {
   getContext, setPilotState, persistState,
   incrementLap, setManualPosition, reorderPilot, toggleDnf, setGridOrder,
 } from "../engine/race-context.js";
-import { emitAll, broadcastRaceState } from "../socket/emitter.js";
+import { emitAll, broadcastRaceState, emitDashboard } from "../socket/emitter.js";
 import { setCountdownTimer, clearCountdownTimer, startRaceById } from "../engine/race-lifecycle.js";
 
 const router = Router();
@@ -77,7 +77,10 @@ router.post("/races/:id/manual-lap", ...requireModo, async (req, res) => {
         displayDuration: ctx.eventDuration,
       });
     } else if (event.type === "race-finished") {
+      ctx.raceStatus = "FINISHED";
       emitAll("race-event", { type: "race-finished" });
+      await db.update(race).set({ status: "FINISHED" }).where(eq(race.id, ctx.raceId));
+      emitDashboard("race-list-changed");
     }
   }
 
@@ -106,16 +109,16 @@ router.post("/races/:id/manual-position", ...requireModo, async (req, res) => {
 
   setManualPosition(pilotId, position);
 
-  // Persist gridPosition to DB
-  await db
-    .update(raceEntry)
-    .set({ gridPosition: ctx.pilotStates[pilotId].gridPosition })
-    .where(eq(raceEntry.pilotId, pilotId));
-
   broadcastRaceState(ctx);
   persistState();
-
   res.json({ ok: true, gridPosition: ctx.pilotStates[pilotId].gridPosition });
+
+  // Persist all grid positions (reindexGrid shifts everyone) — fire-and-forget
+  void Promise.all(
+    Object.entries(ctx.pilotStates).map(([pid, state]) =>
+      db.update(raceEntry).set({ gridPosition: state.gridPosition }).where(eq(raceEntry.pilotId, pid))
+    )
+  );
 });
 
 // POST /race-events/races/:id/manual-reorder — modo+
@@ -137,17 +140,16 @@ router.post("/races/:id/manual-reorder", ...requireModo, async (req, res) => {
 
   reorderPilot(pilotId, direction);
 
-  // Persist all grid positions to DB
-  await Promise.all(
+  broadcastRaceState(ctx);
+  res.json({ ok: true });
+
+  // Persist all grid positions to DB (fire-and-forget)
+  void Promise.all(
     Object.entries(ctx.pilotStates).map(([pid, state]) =>
       db.update(raceEntry).set({ gridPosition: state.gridPosition }).where(eq(raceEntry.pilotId, pid))
     )
   );
-
-  broadcastRaceState(ctx);
   persistState();
-
-  res.json({ ok: true });
 });
 
 // POST /race-events/races/:id/manual-dnf — modo+
@@ -181,6 +183,16 @@ router.post("/races/:id/manual-dnf", ...requireModo, async (req, res) => {
       teamColor: (profile?.teamSnapshot as Record<string, unknown>)?.color ?? null,
       displayDuration: ctx.eventDuration,
     });
+
+    const allDone = Object.values(ctx.pilotStates).every(
+      s => s.status === "FINISHED" || s.status === "DNF"
+    );
+    if (allDone) {
+      ctx.raceStatus = "FINISHED";
+      emitAll("race-event", { type: "race-finished" });
+      await db.update(race).set({ status: "FINISHED" }).where(eq(race.id, ctx.raceId));
+      emitDashboard("race-list-changed");
+    }
   }
 
   broadcastRaceState(ctx);

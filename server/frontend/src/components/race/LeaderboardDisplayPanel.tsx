@@ -26,9 +26,9 @@ export default function LeaderboardDisplayPanel({ raceState }: Props) {
   const [countdownSecs, setCountdownSecs] = useState('10');
   const [countdownRunning, setCountdownRunning] = useState(false);
 
-  // Reset button state when the race starts (countdown fired or manual start).
+  // Reset button state when the race starts or resets.
   useEffect(() => {
-    if (raceState.status === 'STARTED') setCountdownRunning(false);
+    if (raceState.status === 'STARTED' || raceState.status === 'PENDING') setCountdownRunning(false);
   }, [raceState.status]);
 
   function immediatePatch(field: string, value: string | number | boolean) {

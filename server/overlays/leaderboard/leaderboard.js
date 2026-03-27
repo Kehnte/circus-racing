@@ -663,7 +663,7 @@ function updatePage(pageSlice, teams, start, chronoDisplayMode, timingEnabled, t
 
 // Builds the chrono cell content and extra CSS class for a given pilot and display mode
 function buildChronoCell(pilot, globalIndex, chronoDisplayMode, timingEnabled) {
-    let chronoContent = "—";
+    let chronoContent = "--:--.---";
     let chronoExtraClass = "";
     if (timingEnabled) {
         if (pilot.dnf) {
@@ -839,7 +839,7 @@ function updateLeaderboard(data) {
         if (pilot.finished) setFinishedIcon(pilot.id);
     });
 
-    const newFastest = data.globalFastestLapPilotId ?? null;
+    const newFastest = timingEnabled ? (data.globalFastestLapPilotId ?? null) : null;
     if (newFastest !== fastestLapPilotId) {
         setFastestLapIcon(newFastest);
     }
@@ -898,18 +898,21 @@ socket.on("race-started", () => {
     fastestLapPilotId = null;
     finishedPilotIds.clear();
     if (pageTimer) { clearInterval(pageTimer); pageTimer = null; }
-    pilotElements.clear();
-    const container = document.getElementById("lb-pilots-container");
-    if (container) container.innerHTML = "";
+    pilotElements.forEach((els) => {
+        if (els.leftEl) { els.leftEl.className = "empty-cell"; els.leftEl.innerHTML = ""; }
+        if (els.rightEl) { els.rightEl.className = "empty-cell"; els.rightEl.innerHTML = ""; }
+    });
     updatePageIndicator(0, 1);
 });
 
 socket.on("race-reset", () => {
+    stopCountdownDisplay();
+    currentCountdown = null;
     fastestLapPilotId = null;
     finishedPilotIds.clear();
     pilotElements.forEach((els) => {
-        if (els.leftEl) els.leftEl.innerHTML = "";
-        if (els.rightEl) els.rightEl.innerHTML = "";
+        if (els.leftEl) { els.leftEl.className = "empty-cell"; els.leftEl.innerHTML = ""; }
+        if (els.rightEl) { els.rightEl.className = "empty-cell"; els.rightEl.innerHTML = ""; }
     });
 });
 

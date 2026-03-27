@@ -79,6 +79,7 @@ function getChronoDisplay(
 }
 
 // Sort pilots: FINISHED first (by frozenTime asc), then active, then DNF last.
+// DNF sub-sort: last to retire = better ranked (latest frozenTime first); equal frozenTime: most race progress first.
 
 function sortPilots(ctx: RaceContext): [string, import("../db/schema.js").PilotState][] {
   const entries = Object.entries(ctx.pilotStates) as [string, import("../db/schema.js").PilotState][];
@@ -93,6 +94,12 @@ function sortPilots(ctx: RaceContext): [string, import("../db/schema.js").PilotS
 
     if (a.status === "FINISHED" && b.status === "FINISHED") {
       return (a.frozenTime ?? "").localeCompare(b.frozenTime ?? "");
+    }
+
+    if (ra === 2) {
+      const ftCmp = (b.frozenTime ?? "").localeCompare(a.frozenTime ?? "");
+      if (ftCmp !== 0) return ftCmp;
+      return b.raceProgress - a.raceProgress;
     }
 
     if (ctx.trackingMode === "manual") {
