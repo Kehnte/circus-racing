@@ -133,7 +133,7 @@ export function buildRaceStateBroadcast(ctx: RaceContext): object {
         ? { name: team.name as string, color: team.color as string, acronym: team.acronym as string }
         : null,
       vehicleSnapshot: vehicle
-        ? { type: vehicle.type as string, manufacturer: (vehicle.manufacturer as string) ?? "", model: vehicle.model as string }
+        ? { type: vehicle.type as string, manufacturer: (vehicle.manufacturer as string | null) ?? "", model: vehicle.model as string }
         : null,
       position: index + 1,
       lap: state.lap,

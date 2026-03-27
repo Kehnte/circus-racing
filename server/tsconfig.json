@@ -5,12 +5,15 @@
     "moduleResolution": "node",
     "lib": ["ES2022"],
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDirs": ["./src", "./packages/types/src"],
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
+    "paths": {
+      "@circus-racing/types": ["./packages/types/src"]
+    },
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true

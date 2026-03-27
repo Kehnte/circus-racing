@@ -28,7 +28,7 @@ export default function CreateRaceDialog({ open, onClose, onCreated }: Props) {
   const [session, setSession] = useState('Race');
   const [weather, setWeather] = useState('Clear');
   const [startType, setStartType] = useState('Grid Start');
-  const [sessionMode, setSessionMode] = useState<'laps' | 'time'>('laps');
+  const [sessionMode, setSessionMode] = useState<'laps' | 'timed'>('laps');
   const [lapCount, setLapCount] = useState('5');
   const [durationMin, setDurationMin] = useState('30');
   const [loading, setLoading] = useState(false);
@@ -109,7 +109,7 @@ export default function CreateRaceDialog({ open, onClose, onCreated }: Props) {
           <Grid size={6}>
             <FormControl size="small" fullWidth>
               <InputLabel>Session mode</InputLabel>
-              <Select value={sessionMode} label="Session mode" onChange={(e) => setSessionMode(e.target.value as 'laps' | 'time')}>
+              <Select value={sessionMode} label="Session mode" onChange={(e) => setSessionMode(e.target.value as 'laps' | 'timed')}>
                 <MenuItem value="laps">Laps</MenuItem>
                 <MenuItem value="time">Timed</MenuItem>
               </Select>
