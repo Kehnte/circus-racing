@@ -1,22 +1,25 @@
-#!/usr/bin/env node
-// reset.js — Delete the SQLite database and re-run seed.js.
+#!/usr/bin/env npx tsx
+// reset.ts — Delete the SQLite database and re-run seed.ts.
 // Destructive — all existing data is lost.
-// Usage: node scripts/reset.js [--base-url http://localhost:3000]
+// Usage: npx tsx scripts/reset.ts [--base-url http://localhost:3000]
 
-'use strict';
+import * as path from 'path';
+import * as fs from 'fs';
+import { execSync, spawn } from 'child_process';
 
-const path = require('path');
-const fs   = require('fs');
-const { execSync, spawn } = require('child_process');
-try { require(path.join(__dirname, '../server/node_modules/dotenv')).config({ path: path.join(__dirname, '../server/.env') }); } catch {}
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  require(path.join(__dirname, '../server/node_modules/dotenv')).config({
+    path: path.join(__dirname, '../server/.env'),
+  });
+} catch {}
 
 const SERVER_DIR = path.join(__dirname, '../server');
-const DB_URL  = process.env.DATABASE_URL ?? 'file:./db/circus.db';
+const DB_URL  = process.env['DATABASE_URL'] ?? 'file:./db/circus.db';
 const DB_PATH = DB_URL.startsWith('file:')
   ? path.resolve(SERVER_DIR, DB_URL.slice(5))
   : null;
 
-// Parse --base-url from args (forwarded to seed)
 const baseUrlIdx = process.argv.indexOf('--base-url');
 const BASE_URL   = baseUrlIdx !== -1 ? process.argv[baseUrlIdx + 1] : 'http://localhost:3000';
 const HEALTH_URL = `${BASE_URL}/health`;
@@ -35,7 +38,7 @@ if (DB_PATH) {
   }
 }
 
-// recreate schema
+// Recreate schema
 console.log('\n📐 Recreating schema (drizzle-kit push)...');
 try {
   execSync('npm run db:push', { cwd: SERVER_DIR, stdio: 'inherit' });
@@ -44,8 +47,7 @@ try {
   process.exit(1);
 }
 
-// start server (unless already running)
-async function isServerReady() {
+async function isServerReady(): Promise<boolean> {
   try {
     const res = await fetch(HEALTH_URL);
     return res.ok;
@@ -54,7 +56,7 @@ async function isServerReady() {
   }
 }
 
-async function waitForServer(childProc, timeoutMs = 30_000) {
+async function waitForServer(childProc: ReturnType<typeof spawn> | null, timeoutMs = 30_000): Promise<boolean> {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     if (await isServerReady()) return true;
@@ -65,7 +67,7 @@ async function waitForServer(childProc, timeoutMs = 30_000) {
 }
 
 (async () => {
-  let serverChild = null;
+  let serverChild: ReturnType<typeof spawn> | null = null;
   const alreadyRunning = await isServerReady();
 
   if (alreadyRunning) {
@@ -89,11 +91,11 @@ async function waitForServer(childProc, timeoutMs = 30_000) {
     console.log('\n✅ Server ready.\n');
   }
 
-  // run seed
+  // Run seed
   console.log('🌱 Running seed...\n');
   const seedArgs = process.argv.slice(2).join(' ');
   try {
-    execSync(`node "${path.join(__dirname, 'seed.js')}" ${seedArgs}`, {
+    execSync(`npx tsx "${path.join(__dirname, 'seed.ts')}" ${seedArgs}`, {
       stdio: 'inherit',
     });
   } catch {

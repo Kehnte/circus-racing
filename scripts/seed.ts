@@ -1,9 +1,9 @@
-#!/usr/bin/env node
-// seed.js — Pre-fill the DB with a complete test dataset.
+#!/usr/bin/env npx tsx
+// seed.ts — Pre-fill the DB with a complete test dataset.
 // Requires the server to be running (npm run dev:ts in /server).
-// Usage: node scripts/seed.js [--base-url http://localhost:3000]
+// Usage: npx tsx scripts/seed.ts [--base-url http://localhost:3000]
 
-'use strict';
+import type { Team, Vehicle, Controls, Pilot, Race, Racetrack } from '@circus-racing/types';
 
 const BASE_URL = (() => {
   const i = process.argv.indexOf('--base-url');
@@ -12,8 +12,14 @@ const BASE_URL = (() => {
 
 // HTTP helpers
 
-async function api(method, path, body, token) {
-  const headers = { 'Content-Type': 'application/json' };
+interface AuthResponse {
+  token: string;
+  ocrToken: string;
+  pilot: Pilot;
+}
+
+async function api<T = unknown>(method: string, path: string, body?: unknown, token?: string): Promise<T> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
   const res = await fetch(`${BASE_URL}${path}`, {
@@ -28,44 +34,53 @@ async function api(method, path, body, token) {
   }
 
   const ct = res.headers.get('content-type') ?? '';
-  return ct.includes('application/json') ? res.json() : null;
+  return (ct.includes('application/json') ? res.json() : null) as Promise<T>;
 }
 
-// seed data
+// Seed data
 
-const TEAMS = [
-  { name: 'Lisoir Circus',  color: '#FFB74D', acronym: 'CIRC' },
-  { name: 'Pico Motors',  color: '#4FC3F7', acronym: 'PICO' },
-  { name: 'Finley Aeroview Racing Team',    color: '#F06292', acronym: 'FART' },
+const TEAMS: Array<Pick<Team, 'name' | 'color' | 'acronym'>> = [
+  { name: 'Lisoir Circus',              color: '#FFB74D', acronym: 'CIRC' },
+  { name: 'Pico Motors',               color: '#4FC3F7', acronym: 'PICO' },
+  { name: 'Finley Aeroview Racing Team', color: '#F06292', acronym: 'FART' },
 ];
 
-const VEHICLES = [
-  { type: 'ship',  manufacturer: 'Origin Jumpworks',    model: 'M50' },
-  { type: 'ship',  manufacturer: 'Mirai',                  model: 'Razor' },
-  { type: 'ship',  manufacturer: 'Mirai', model: 'Fury' },
-  { type: 'rover', manufacturer: 'RSI',   model: 'Ursa' },
-  { type: 'bike',  manufacturer: 'Aopao',   model: 'Nox' },
+const VEHICLES: Array<Pick<Vehicle, 'type' | 'manufacturer' | 'model'>> = [
+  { type: 'ship',  manufacturer: 'Origin Jumpworks', model: 'M50'   },
+  { type: 'ship',  manufacturer: 'Mirai',            model: 'Razor' },
+  { type: 'ship',  manufacturer: 'Mirai',            model: 'Fury'  },
+  { type: 'rover', manufacturer: 'RSI',              model: 'Ursa'  },
+  { type: 'bike',  manufacturer: 'Aopao',            model: 'Nox'   },
 ];
 
-const CONTROLS = [
+const CONTROLS: Array<Pick<Controls, 'type'>> = [
   { type: 'HOTAS' },
   { type: 'Mouse & Keyboard' },
   { type: 'Gamepad' },
 ];
 
-// the FIRST registered pilot automatically becomes ADMIN (see auth.ts)
-const PILOTS = [
-  { displayName: 'Kehnte',     password: 'kehnteazerty',  country: 'fr', teamIdx: 0, vehicleIdx: 0, controlsIdx: 0 },
-  { displayName: 'Neoscris',     password: 'pilot123',  country: 'gb', teamIdx: 0, vehicleIdx: 0, controlsIdx: 0 },
-  { displayName: 'Kainan',      password: 'pilot123',  country: 'de', teamIdx: 0, vehicleIdx: 1, controlsIdx: 1 },
-  { displayName: 'Heizenberg',  password: 'pilot123',  country: 'gb', teamIdx: 1, vehicleIdx: 1, controlsIdx: 0 },
-  { displayName: 'Hugo Lisoir',   password: 'pilot123',  country: 'ca', teamIdx: 1, vehicleIdx: 1, controlsIdx: 2 },
-  { displayName: 'Balokuclem',  password: 'pilot123',  country: 'au', teamIdx: 2, vehicleIdx: 1, controlsIdx: 1 },
-  { displayName: 'Ddurieux', password: 'pilot123',  country: 'jp', teamIdx: 2, vehicleIdx: 1, controlsIdx: 2 },
-  { displayName: 'Lapaixduslip',    password: 'pilot123',  country: 'br', teamIdx: 2, vehicleIdx: 1, controlsIdx: 0 },
+interface PilotDef {
+  displayName: string;
+  password: string;
+  country: string;
+  teamIdx: number;
+  vehicleIdx: number;
+  controlsIdx: number;
+}
+
+// The FIRST registered pilot automatically becomes ADMIN (see auth.ts)
+const PILOTS: PilotDef[] = [
+  { displayName: 'Kehnte',      password: 'kehnteazerty', country: 'fr', teamIdx: 0, vehicleIdx: 0, controlsIdx: 0 },
+  { displayName: 'Neoscris',    password: 'pilot123',     country: 'gb', teamIdx: 0, vehicleIdx: 0, controlsIdx: 0 },
+  { displayName: 'Kainan',      password: 'pilot123',     country: 'de', teamIdx: 0, vehicleIdx: 1, controlsIdx: 1 },
+  { displayName: 'Heizenberg',  password: 'pilot123',     country: 'gb', teamIdx: 1, vehicleIdx: 1, controlsIdx: 0 },
+  { displayName: 'Hugo Lisoir', password: 'pilot123',     country: 'ca', teamIdx: 1, vehicleIdx: 1, controlsIdx: 2 },
+  { displayName: 'Balokuclem',  password: 'pilot123',     country: 'au', teamIdx: 2, vehicleIdx: 1, controlsIdx: 1 },
+  { displayName: 'Ddurieux',    password: 'pilot123',     country: 'jp', teamIdx: 2, vehicleIdx: 1, controlsIdx: 2 },
+  { displayName: 'Lapaixduslip', password: 'pilot123',   country: 'br', teamIdx: 2, vehicleIdx: 1, controlsIdx: 0 },
 ];
 
-// test racetrack: simple oval with 6 checkpoints (fictitious coordinates)
+// Test racetrack: simple oval with 6 checkpoints (fictitious coordinates)
 const RACETRACK = {
   name: 'The Icebreaker',
   checkpoints: [
@@ -78,23 +93,20 @@ const RACETRACK = {
   ],
 };
 
-// main
-
-async function seed() {
+async function seed(): Promise<void> {
   console.log(`\n🌱 Seeding ${BASE_URL} ...\n`);
 
-  // --- 1. Register all pilots (first = ADMIN automatically) ---
+  // 1. Register all pilots (first = ADMIN automatically)
   console.log('1. Registering pilots');
-  const pilotTokens = {}; // displayName → { jwt, ocrToken, pilotId }
+  const pilotTokens: Record<string, { jwt: string; ocrToken: string; pilotId: string }> = {};
 
   for (let i = 0; i < PILOTS.length; i++) {
     const p = PILOTS[i];
-    const res = await api('POST', '/api/auth/register', {
+    const res = await api<AuthResponse>('POST', '/api/auth/register', {
       displayName: p.displayName,
       password:    p.password,
       country:     p.country,
     });
-    // response: { token (JWT), ocrToken, pilot }
     pilotTokens[p.displayName] = { jwt: res.token, ocrToken: res.ocrToken, pilotId: res.pilot.id };
     const role = i === 0 ? 'ADMIN' : 'PILOT';
     console.log(`  ✓ [${role.padEnd(9)}] ${p.displayName}`);
@@ -102,31 +114,31 @@ async function seed() {
 
   const adminJwt = pilotTokens[PILOTS[0].displayName].jwt;
 
-  // --- 2. Create teams, vehicles, controls (admin JWT) ---
+  // 2. Create teams, vehicles, controls (admin JWT)
   console.log('\n2. Creating entities');
 
-  const teams = [];
+  const teams: Team[] = [];
   for (const t of TEAMS) {
-    const created = await api('POST', '/api/teams', t, adminJwt);
+    const created = await api<Team>('POST', '/api/teams', t, adminJwt);
     teams.push(created);
     console.log(`  ✓ Team "${t.name}" [${t.acronym}]`);
   }
 
-  const vehicles = [];
+  const vehicles: Vehicle[] = [];
   for (const v of VEHICLES) {
-    const created = await api('POST', '/api/vehicles', v, adminJwt);
+    const created = await api<Vehicle>('POST', '/api/vehicles', v, adminJwt);
     vehicles.push(created);
     console.log(`  ✓ Vehicle "${v.manufacturer} ${v.model}"`);
   }
 
-  const controlsList = [];
+  const controlsList: Controls[] = [];
   for (const c of CONTROLS) {
-    const created = await api('POST', '/api/controls', c, adminJwt);
+    const created = await api<Controls>('POST', '/api/controls', c, adminJwt);
     controlsList.push(created);
     console.log(`  ✓ Controls "${c.type}"`);
   }
 
-  // --- 3. Update pilot profiles (admin patches all via /api/pilots/:id) ---
+  // 3. Update pilot profiles (admin patches all via /api/pilots/:id)
   console.log('\n3. Updating pilot profiles');
   for (const p of PILOTS) {
     const { pilotId } = pilotTokens[p.displayName];
@@ -138,14 +150,14 @@ async function seed() {
     console.log(`  ✓ Profile "${p.displayName}" — ${TEAMS[p.teamIdx].name} / ${VEHICLES[p.vehicleIdx].model}`);
   }
 
-  // --- 4. Racetrack ---
+  // 4. Racetrack
   console.log('\n4. Creating racetrack');
-  const track = await api('POST', '/api/racetracks', RACETRACK, adminJwt);
+  const track = await api<Racetrack>('POST', '/api/racetracks', RACETRACK, adminJwt);
   console.log(`  ✓ "${RACETRACK.name}" (${RACETRACK.checkpoints.length} checkpoints) [${track.id}]`);
 
-  // --- 5. Races ---
+  // 5. Races
   console.log('\n5. Creating races');
-  const raceManual = await api('POST', '/api/races', {
+  const raceManual = await api<Race>('POST', '/api/races', {
     name:         'Rikkord Memorial Raceway',
     trackingMode: 'manual',
     lapCount:     3,
@@ -156,7 +168,7 @@ async function seed() {
   }, adminJwt);
   console.log(`  ✓ MANUEL "${raceManual.name}" [${raceManual.id}]`);
 
-  const raceAuto = await api('POST', '/api/races', {
+  const raceAuto = await api<Race>('POST', '/api/races', {
     name:         'Yadar Valley',
     trackingMode: 'auto',
     racetrackId:  track.id,
@@ -168,7 +180,7 @@ async function seed() {
   }, adminJwt);
   console.log(`  ✓ AUTO   "${raceAuto.name}" [${raceAuto.id}]`);
 
-  // --- Summary ---
+  // Summary
   console.log('\n' + '═'.repeat(64));
   console.log('✅ Seed complete!\n');
   console.log('ACCOUNTS (displayName / password):');
@@ -184,7 +196,7 @@ async function seed() {
   console.log('═'.repeat(64) + '\n');
 }
 
-seed().catch(err => {
+seed().catch((err: Error) => {
   console.error('\n❌ Seed failed:', err.message);
   process.exit(1);
 });
