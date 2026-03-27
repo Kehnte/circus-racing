@@ -6,4 +6,4 @@ export type {
   RaceEntryStatus, Race, RaceMeta,
 } from "./race.js";
 export type { PilotRuntimeStatus, PilotRaceState, RaceStatePayload } from "./race-state.js";
-export type { ServerToClientEvents, RaceEventType, RaceEventPayload } from "./socket-events.js";
+export type { ServerToClientEvents, RaceEventType, RaceEventPayload, OcrStatus, OcrPilotStatusEntry, OcrStatusMap } from "./socket-events.js";

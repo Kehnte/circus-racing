@@ -1,18 +1,22 @@
 // raceStore.ts — Zustand store for live race state and active race selection.
 
 import { create } from 'zustand';
-import type { RaceStatePayload } from '../types.ts';
+import type { OcrStatusMap, RaceStatePayload } from '../types.ts';
 
 interface RaceStore {
   raceState: RaceStatePayload | null;
   activeRaceId: string | null;
+  ocrStatusMap: OcrStatusMap;
   setRaceState: (s: RaceStatePayload | null) => void;
   setActiveRaceId: (id: string | null) => void;
+  setOcrStatusMap: (m: OcrStatusMap) => void;
 }
 
 export const useRaceStore = create<RaceStore>((set) => ({
   raceState: null,
   activeRaceId: null,
+  ocrStatusMap: {},
   setRaceState: (s) => set({ raceState: s }),
   setActiveRaceId: (id) => set({ activeRaceId: id, ...(id === null ? { raceState: null } : {}) }),
+  setOcrStatusMap: (m) => set({ ocrStatusMap: m }),
 }));

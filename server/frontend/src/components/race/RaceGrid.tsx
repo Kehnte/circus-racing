@@ -6,6 +6,7 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import AddOutlined from '@mui/icons-material/AddOutlined';
 import ArrowDownwardOutlined from '@mui/icons-material/ArrowDownwardOutlined';
@@ -19,7 +20,8 @@ import CrudToolbar from '../CrudToolbar.tsx';
 import FlagIcon from '../FlagIcon.tsx';
 import { NoRowsOverlay } from '../DataGridOverlays.tsx';
 import NumberSpinner from '../NumberSpinner.tsx';
-import type { PilotRaceState, RaceStatePayload } from '../../types.ts';
+import type { OcrStatusMap, PilotRaceState, RaceStatePayload } from '../../types.ts';
+import { useRaceStore } from '../../store/raceStore.ts';
 import ChronoDisplay from './ChronoDisplay.tsx';
 
 interface Props {
@@ -27,8 +29,15 @@ interface Props {
 }
 
 
+function ocrTooltip(entry: OcrStatusMap[string] | undefined): string {
+  if (!entry || !entry.lastPositionAt) return 'No position received';
+  const ago = Math.round((Date.now() - new Date(entry.lastPositionAt).getTime()) / 1000);
+  return `Last position: ${ago}s ago`;
+}
+
 export default function RaceGrid({ raceState }: Props) {
   const { raceId, pilots, trackingMode, status, teamDisplayMode, timingEnabled } = raceState;
+  const ocrStatusMap = useRaceStore((s) => s.ocrStatusMap);
   const isManual = trackingMode === 'manual';
   const canAct = status === 'STARTED';
   // Pos and DNF editable before and during the race, locked when finished
@@ -207,6 +216,26 @@ export default function RaceGrid({ raceState }: Props) {
             },
           },
         ]
+      : []),
+    ...(!isManual
+      ? [{
+          field: 'ocrStatus' as const,
+          headerName: 'OCR',
+          minWidth: 70,
+          sortable: false,
+          renderCell: (params: GridRenderCellParams<PilotRaceState>) => {
+            const s = params.row.status;
+            if (s === 'FINISHED' || s === 'DNF') return null;
+            const entry = ocrStatusMap[params.row.id];
+            const ocrStatus = entry?.status ?? 'offline';
+            const color = ocrStatus === 'active' ? 'success' : ocrStatus === 'stale' ? 'warning' : 'error';
+            return (
+              <Tooltip title={ocrTooltip(entry)}>
+                <Chip label="OCR" color={color} size="small" variant="outlined" />
+              </Tooltip>
+            );
+          },
+        }]
       : []),
     {
       field: 'ctrlDnf' as const,

@@ -56,13 +56,21 @@ try {
 
   // 500ms broadcast interval — keeps overlays in sync whenever a race is loaded
   const { getContext }      = require('./src/engine/race-context');
-  const { broadcastRaceState } = require('./src/socket/emitter');
+  const { broadcastRaceState, emitDashboard } = require('./src/socket/emitter');
   setInterval(() => {
     try {
       const ctx = getContext();
       if (ctx) broadcastRaceState(ctx);
     } catch (err) { console.error('Broadcast error:', err); }
   }, 500);
+
+  // 2s OCR status broadcast — dashboard shows which pilots have an active monitor
+  const { getOcrStatusMap } = require('./src/engine/ocr-tracker');
+  setInterval(() => {
+    try {
+      emitDashboard('ocr-status', getOcrStatusMap());
+    } catch (err) { console.error('OCR status broadcast error:', err); }
+  }, 2000);
 
   console.log('✅ REST API routes loaded');
 } catch (err) {

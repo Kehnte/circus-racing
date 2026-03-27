@@ -2,10 +2,20 @@
 
 import type { RaceStatePayload } from "./race-state.js";
 
+export type OcrStatus = 'active' | 'stale' | 'offline';
+
+export interface OcrPilotStatusEntry {
+  status: OcrStatus;
+  lastPositionAt: string | null;
+}
+
+export type OcrStatusMap = Record<string, OcrPilotStatusEntry>;
+
 export interface ServerToClientEvents {
   "race-state": (payload: RaceStatePayload) => void;
   "race-event": (payload: RaceEventPayload) => void;
   "race-data": (payload: unknown) => void; // legacy overlay format
+  "ocr-status": (payload: OcrStatusMap) => void;
 }
 
 export type RaceEventType =

@@ -6,6 +6,7 @@ export type {
   RaceEntryStatus, Race, RaceMeta,
   PilotRuntimeStatus, PilotRaceState, RaceStatePayload,
   RaceEventType, RaceEventPayload,
+  OcrStatus, OcrPilotStatusEntry, OcrStatusMap,
 } from "@circus-racing/types";
 
 // PilotStatus is an alias kept for internal dashboard usage.
