@@ -1,4 +1,4 @@
-// RaceGrid — Live race DataGrid with per-pilot controls in MANUAL mode.
+// RaceGrid — Live race DataGrid with per-pilot controls (DNF available in all tracking modes).
 
 import { DataGrid, GridActionsCellItem } from '@mui/x-data-grid';
 import type { GridColDef, GridRenderCellParams, GridRowParams } from '@mui/x-data-grid';
@@ -206,30 +206,30 @@ export default function RaceGrid({ raceState }: Props) {
               );
             },
           },
-          {
-            field: 'ctrlDnf' as const,
-            headerName: 'DNF',
-            minWidth: 60,
-            sortable: false,
-            renderCell: (params: GridRenderCellParams<PilotRaceState>) => {
-              const isDnf = params.row.status === 'DNF';
-              return (
-                <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
-                  <Button
-                    size="small"
-                    variant={isDnf ? 'contained' : 'outlined'}
-                    color={isDnf ? 'error' : 'inherit'}
-                    disabled={!canEditGrid}
-                    onClick={() => void toggleDnf(params.row.id)}
-                  >
-                    DNF
-                  </Button>
-                </Box>
-              );
-            },
-          },
         ]
       : []),
+    {
+      field: 'ctrlDnf' as const,
+      headerName: 'DNF',
+      minWidth: 60,
+      sortable: false,
+      renderCell: (params: GridRenderCellParams<PilotRaceState>) => {
+        const isDnf = params.row.status === 'DNF';
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+            <Button
+              size="small"
+              variant={isDnf ? 'contained' : 'outlined'}
+              color={isDnf ? 'error' : 'inherit'}
+              disabled={!canEditGrid || params.row.status === 'FINISHED'}
+              onClick={() => void toggleDnf(params.row.id)}
+            >
+              DNF
+            </Button>
+          </Box>
+        );
+      },
+    },
     {
       field: 'delete',
       type: 'actions' as const,

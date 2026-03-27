@@ -67,7 +67,7 @@ function computeRaceElapsed(raceState, now) {
 }
 
 function computeChronoDisplay(pilot, raceState, leaderElapsedMs, now) {
-    const isDnf = pilot.status === "DNF" || pilot.status === "WARNING_DNF";
+    const isDnf = pilot.status === "DNF";
     if (!raceState.startedAt || isDnf) return "";
     const elapsedMs = computePilotElapsed(pilot, raceState, now);
     switch (raceState.chronoDisplayMode) {
@@ -100,7 +100,7 @@ function adaptRaceState(raceState) {
     };
     const raceStatus = statusMap[raceState.status] || "standby";
 
-    const activePilots = raceState.pilots.filter(p => p.status === "RUNNING" || p.status === "WARNING_DNF");
+    const activePilots = raceState.pilots.filter(p => p.status === "RUNNING");
     const leaderPilot = activePilots[0] ?? raceState.pilots[0];
     const leaderElapsedMs = leaderPilot ? computePilotElapsed(leaderPilot, raceState, now) : 0;
 
@@ -115,7 +115,7 @@ function adaptRaceState(raceState) {
         laps: pilot.lap,
         lapTimes: pilot.lapTimes,
         finished: pilot.status === "FINISHED",
-        dnf: pilot.status === "DNF" || pilot.status === "WARNING_DNF",
+        dnf: pilot.status === "DNF",
         frozenTime: pilot.frozenTime,
         chronoDisplay: computeChronoDisplay(pilot, raceState, leaderElapsedMs, now),
     }));
@@ -175,14 +175,14 @@ function refreshChronos() {
         setLapContainerToCountdown(Math.max(0, raceState.sessionDurationMs - elapsed), elapsed >= raceState.sessionDurationMs);
     }
 
-    const activePilots = raceState.pilots.filter(p => p.status === "RUNNING" || p.status === "WARNING_DNF");
+    const activePilots = raceState.pilots.filter(p => p.status === "RUNNING");
     const leaderPilot = activePilots[0] ?? raceState.pilots[0];
     const leaderElapsedMs = leaderPilot ? computePilotElapsed(leaderPilot, raceState, now) : 0;
 
     pilotElements.forEach((els, pilotId) => {
         const pilot = raceState.pilots.find(p => p.id === pilotId);
         if (!pilot || !els.rowEl) return;
-        const isDnf = pilot.status === "DNF" || pilot.status === "WARNING_DNF";
+        const isDnf = pilot.status === "DNF";
         if (!raceState.timingEnabled || isDnf) return;
         const pilotIdx = raceState.pilots.indexOf(pilot);
         if (pilotIdx === 0 && !pilot.frozenTime) return; // leader shows static label

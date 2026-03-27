@@ -510,7 +510,7 @@ router.post("/:id/finish", ...requireModo, async (req, res) => {
   if (ctx && ctx.raceId === raceId) {
     const nowIso = new Date().toISOString();
     for (const [pilotId, state] of Object.entries(ctx.pilotStates)) {
-      if (state.status === "RUNNING" || state.status === "WARNING_DNF") {
+      if (state.status === "RUNNING") {
         setPilotState(pilotId, { status: "FINISHED", frozenTime: nowIso });
       }
     }

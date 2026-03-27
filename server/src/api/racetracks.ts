@@ -22,7 +22,7 @@ router.get("/:id", async (req, res) => {
 
 /** POST /racetracks — admin/modo */
 router.post("/", ...requireModo, async (req, res) => {
-  const { name, checkpoints, bufferRadius } = req.body;
+  const { name, checkpoints } = req.body;
   if (!name) {
     res.status(400).json({ error: "name is required" });
     return;
@@ -33,17 +33,16 @@ router.post("/", ...requireModo, async (req, res) => {
     position: cp.position ?? cp,
   }));
   const [created] = await db.insert(racetrack)
-    .values({ name, checkpoints: normalized, bufferRadius: bufferRadius ?? null })
+    .values({ name, checkpoints: normalized })
     .returning();
   res.status(201).json(created);
 });
 
 /** PATCH /racetracks/:id — admin/modo */
 router.patch("/:id", ...requireModo, async (req, res) => {
-  const { name, checkpoints, bufferRadius } = req.body;
+  const { name, checkpoints } = req.body;
   const patch: Record<string, unknown> = {};
   if (name) patch.name = name;
-  if (bufferRadius !== undefined) patch.bufferRadius = bufferRadius;
   if (Array.isArray(checkpoints)) {
     patch.checkpoints = checkpoints.map((cp: any, i: number) => ({
       order: i,

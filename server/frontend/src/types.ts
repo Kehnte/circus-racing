@@ -29,7 +29,6 @@ export interface Racetrack {
   id: string;
   name: string;
   checkpoints: Checkpoint[];
-  bufferRadius: number | null;
 }
 
 export interface Pilot {
@@ -49,7 +48,7 @@ export interface Pilot {
 // Race engine types.
 
 export type RaceStatus = 'PENDING' | 'SCHEDULED' | 'STARTED' | 'PAUSED' | 'FINISHED';
-export type PilotStatus = 'RUNNING' | 'WARNING_DNF' | 'DNF' | 'FINISHED';
+export type PilotStatus = 'RUNNING' | 'DNF' | 'FINISHED';
 
 export interface PilotRaceState {
   id: string;

@@ -94,7 +94,7 @@ export default function RaceSettingsPanel({ raceState }: Props) {
     e.target.value = '';
     try {
       const text = await file.text();
-      const json = JSON.parse(text) as { name: string; checkpoints: unknown[]; bufferRadius?: number };
+      const json = JSON.parse(text) as { name: string; checkpoints: unknown[] };
       const created = await apiFetch<Racetrack>('/api/racetracks', {
         method: 'POST',
         body: JSON.stringify(json),

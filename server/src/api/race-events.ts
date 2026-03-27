@@ -1,5 +1,5 @@
 // race-events.ts — Live admin commands: manual controls, grid order,
-// countdown, AUTO DNF, AUTO position override.
+// countdown, DNF toggle, AUTO position override.
 
 import { Router } from "express";
 import { eq } from "drizzle-orm";
@@ -7,7 +7,7 @@ import { db } from "../db/db.js";
 import { raceEntry, race } from "../db/schema.js";
 import { requireModo } from "../middleware/roles.js";
 import {
-  getContext, setPilotState, persistState,
+  getContext, persistState,
   incrementLap, setManualPosition, reorderPilot, toggleDnf, setGridOrder,
 } from "../engine/race-context.js";
 import { emitAll, broadcastRaceState, emitDashboard } from "../socket/emitter.js";
@@ -252,59 +252,6 @@ router.post("/races/:id/countdown", ...requireModo, async (req, res) => {
 router.post("/races/:id/countdown-stop", ...requireModo, async (req, res) => {
   clearCountdownTimer(String(req.params.id));
   emitAll("race-event", { type: "countdown-stop" });
-  res.json({ ok: true });
-});
-
-// POST /race-events/races/:id/confirm-dnf/:pilotId — modo+ (AUTO)
-// Confirms a WARNING_DNF as official DNF.
-
-router.post("/races/:id/confirm-dnf/:pilotId", ...requireModo, async (req, res) => {
-  const raceId  = String(req.params.id);
-  const pilotId = String(req.params.pilotId);
-  const ctx = requireContext(raceId, res);
-  if (!ctx) return;
-
-  const state = ctx.pilotStates[pilotId];
-  if (!state) { res.status(404).json({ error: "Pilot not in race" }); return; }
-
-  setPilotState(pilotId, {
-    status: "DNF",
-    frozenTime: new Date().toISOString(),
-    dnfWarning: false,
-  });
-
-  const profile = ctx.pilotProfiles[pilotId];
-  emitAll("race-event", {
-    type: "dnf",
-    pilotId,
-    pilotName: profile?.displayName ?? pilotId,
-    pilotCountry: profile?.country ?? "un",
-    teamName:  (profile?.teamSnapshot as Record<string, unknown>)?.name ?? null,
-    teamColor: (profile?.teamSnapshot as Record<string, unknown>)?.color ?? null,
-    displayDuration: ctx.eventDuration,
-  });
-
-  broadcastRaceState(ctx);
-  persistState();
-
-  res.json({ ok: true });
-});
-
-// POST /race-events/races/:id/ignore-dnf/:pilotId — modo+ (AUTO)
-// False positive: clears the WARNING_DNF.
-
-router.post("/races/:id/ignore-dnf/:pilotId", ...requireModo, async (req, res) => {
-  const raceId  = String(req.params.id);
-  const pilotId = String(req.params.pilotId);
-  const ctx = requireContext(raceId, res);
-  if (!ctx) return;
-
-  const state = ctx.pilotStates[pilotId];
-  if (!state) { res.status(404).json({ error: "Pilot not in race" }); return; }
-
-  setPilotState(pilotId, { status: "RUNNING", dnfWarning: false });
-  persistState();
-
   res.json({ ok: true });
 });
 

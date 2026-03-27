@@ -29,7 +29,6 @@ export const racetrack = sqliteTable("racetrack", {
   id:           text().primaryKey().$defaultFn(() => crypto.randomUUID()),
   name:         text().notNull().unique(),
   checkpoints:  text({ mode: "json" }).$type<Array<{ order: number; position: [number, number, number] }>>().notNull(),
-  bufferRadius: integer(), // override for DNF_BUFFER_RADIUS env
 });
 
 // Pilot (permanent account)
@@ -96,7 +95,7 @@ export const raceEntry = sqliteTable("race_entry", {
 
 // Race state (runtime — persisted for crash recovery)
 
-export type PilotRuntimeStatus = "RUNNING" | "FINISHED" | "DNF" | "WARNING_DNF";
+export type PilotRuntimeStatus = "RUNNING" | "FINISHED" | "DNF";
 
 export interface PilotState {
   position: [number, number, number];
@@ -107,7 +106,6 @@ export interface PilotState {
   lapTimes: number[];       // ms per completed lap
   status: PilotRuntimeStatus;
   frozenTime: string | null;  // ISO timestamp when finished/DNF
-  dnfWarning: boolean;        // transient, not shown on overlays
   lastCheckpointTime: string | null;
   nextCheckpointOrder: number;
 }

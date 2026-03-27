@@ -58,12 +58,6 @@ router.put("/position", requireOcrToken, async (req, res) => {
   // Emit events
   for (const event of result.events) {
     switch (event.type) {
-      case "dnf-warning":
-        emitDashboard("dnf-warning", { pilotId: event.pilotId, cleared: false });
-        break;
-      case "dnf-cleared":
-        emitDashboard("dnf-warning", { pilotId: event.pilotId, cleared: true });
-        break;
       case "fastest-lap":
         emitAll("race-event", {
           type: "fastest-lap",

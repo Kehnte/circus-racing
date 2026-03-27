@@ -1,5 +1,5 @@
-// race-engine.ts — AUTO mode race engine (checkpoint detection, lap counting, DNF warnings).
-import { distance3D, distanceToSegment3D, type Vec3 } from "./math.js";
+// race-engine.ts — AUTO mode race engine (checkpoint detection, lap counting).
+import { distance3D, type Vec3 } from "./math.js";
 import {
   getContext, setPilotState, CHECKPOINT_RADIUS,
   type RaceContext,
@@ -11,8 +11,6 @@ import type { PilotState } from "../db/schema.js";
 export type EngineEvent =
   | { type: "fastest-lap"; pilotId: string; lapMs: number; lapFormatted: string }
   | { type: "finished";    pilotId: string }
-  | { type: "dnf-warning"; pilotId: string }
-  | { type: "dnf-cleared"; pilotId: string }
   | { type: "race-finished" };
 
 export interface ProcessPositionResult {
@@ -107,34 +105,6 @@ export function processPosition(
 
       state.nextCheckpointOrder = (nextIdx + 1) % cpLen;
       state.lastCheckpointTime = nowIso;
-      state.dnfWarning = false;
-      if (state.status === "WARNING_DNF") state.status = "RUNNING";
-    }
-  }
-
-  // DNF buffer detection (only when RUNNING or WARNING_DNF)
-  if (
-    (state.status === "RUNNING" || state.status === "WARNING_DNF") &&
-    cpLen >= 2
-  ) {
-    const nextIdx = state.nextCheckpointOrder % cpLen;
-    const prevIdx = (nextIdx - 1 + cpLen) % cpLen;
-    const segA = cps[prevIdx].position as Vec3;
-    const segB = cps[nextIdx].position as Vec3;
-    const dist = distanceToSegment3D(position, segA, segB);
-
-    if (dist > ctx.bufferRadius) {
-      if (!state.dnfWarning) {
-        state.dnfWarning = true;
-        state.status = "WARNING_DNF";
-        events.push({ type: "dnf-warning", pilotId });
-      }
-    } else {
-      if (state.dnfWarning) {
-        state.dnfWarning = false;
-        state.status = "RUNNING";
-        events.push({ type: "dnf-cleared", pilotId });
-      }
     }
   }
 

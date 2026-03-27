@@ -1,5 +1,5 @@
 // DashboardPage — Live race management dashboard.
-// Composes race selector, settings, controls, grid and DNF panel.
+// Composes race selector, settings, controls and grid.
 
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -10,7 +10,6 @@ import { useRaceSocket } from '../hooks/useRaceSocket.ts';
 import { useRaceStore } from '../store/raceStore.ts';
 import PageContainer from '../components/PageContainer.tsx';
 import AddPilotDialog from '../components/race/AddPilotDialog.tsx';
-import DnfWarningPanel from '../components/race/DnfWarningPanel.tsx';
 import OverlaySettingsPanel from '../components/race/OverlaySettingsPanel.tsx';
 import RaceControlBar from '../components/race/RaceControlBar.tsx';
 import RaceGrid from '../components/race/RaceGrid.tsx';
@@ -32,7 +31,6 @@ export default function DashboardPage() {
             <RaceSettingsPanel raceState={raceState} />
             <OverlaySettingsPanel raceState={raceState} />
             <RaceControlBar raceState={raceState} />
-            <DnfWarningPanel raceState={raceState} />
           </>
         )}
       </Stack>

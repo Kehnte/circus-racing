@@ -30,7 +30,6 @@ export interface RaceContext {
   sessionMode: SessionMode;
   sessionDurationMs: number | null;
   checkpoints: Array<{ order: number; position: [number, number, number] }>;
-  bufferRadius: number;
   pilotStates: Record<string, PilotState>;
   pilotProfiles: Record<string, PilotProfile>;
   entryIds: Record<string, string>;
@@ -103,7 +102,6 @@ export async function loadRace(raceId: string): Promise<RaceContext> {
     lapTimes: [],
     status: "RUNNING",
     frozenTime: null,
-    dnfWarning: false,
     lastCheckpointTime: null,
     nextCheckpointOrder: 0,
   });
@@ -126,10 +124,6 @@ export async function loadRace(raceId: string): Promise<RaceContext> {
     };
   }
 
-  const bufferRadius =
-    track?.bufferRadius ??
-    parseInt(process.env.DNF_BUFFER_RADIUS ?? "200");
-
   _ctx = {
     raceId,
     racetrackId: raceRow.racetrackId ?? null,
@@ -139,7 +133,6 @@ export async function loadRace(raceId: string): Promise<RaceContext> {
     sessionMode: raceRow.sessionMode,
     sessionDurationMs: raceRow.sessionDurationMs ?? null,
     checkpoints: track?.checkpoints ?? [],
-    bufferRadius,
     pilotStates,
     pilotProfiles,
     entryIds,
@@ -286,13 +279,9 @@ export function toggleDnf(pilotId: string): void {
   if (!state) return;
 
   if (state.status === "DNF") {
-    setPilotState(pilotId, { status: "RUNNING", frozenTime: null, dnfWarning: false });
+    setPilotState(pilotId, { status: "RUNNING", frozenTime: null });
   } else if (state.status !== "FINISHED") {
-    setPilotState(pilotId, {
-      status: "DNF",
-      frozenTime: new Date().toISOString(),
-      dnfWarning: false,
-    });
+    setPilotState(pilotId, { status: "DNF", frozenTime: new Date().toISOString() });
   }
 }
 

@@ -1,5 +1,4 @@
-// emitter.ts — Socket.IO broadcast: race-state (unified format)
-// and race-data (legacy format for backward-compatible overlays).
+// emitter.ts — Socket.IO broadcast: race-state (unified) and race-data (legacy overlay format).
 
 import type { Server } from "socket.io";
 import type { RaceContext } from "../engine/race-context.js";
@@ -87,7 +86,7 @@ function sortPilots(ctx: RaceContext): [string, import("../db/schema.js").PilotS
   return entries.sort(([, a], [, b]) => {
     const rank = (s: import("../db/schema.js").PilotState) =>
       s.status === "FINISHED" ? 0 :
-      (s.status === "RUNNING" || s.status === "WARNING_DNF") ? 1 : 2;
+      s.status === "RUNNING" ? 1 : 2;
 
     const ra = rank(a), rb = rank(b);
     if (ra !== rb) return ra - rb;
@@ -198,7 +197,7 @@ export function buildRaceUpdatePayload(ctx: RaceContext): object {
       laps: state.lap,
       lapTimes: state.lapTimes,
       finished: state.status === "FINISHED",
-      dnf: state.status === "DNF" || state.status === "WARNING_DNF",
+      dnf: state.status === "DNF",
       frozenTime: state.frozenTime,
       chronoDisplay: getChronoDisplay(ctx, pilotId, leaderElapsedMs, now),
     };
