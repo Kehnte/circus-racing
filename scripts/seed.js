@@ -76,7 +76,6 @@ const RACETRACK = {
     { order: 4, position: [800,  -50, 1000] },
     { order: 5, position: [200,  0,   600 ] },
   ],
-  bufferRadius: 500,
 };
 
 // main

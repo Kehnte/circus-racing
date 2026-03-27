@@ -61,7 +61,7 @@ try {
     try {
       const ctx = getContext();
       if (ctx) broadcastRaceState(ctx);
-    } catch { /* ignore */ }
+    } catch (err) { console.error('Broadcast error:', err); }
   }, 500);
 
   console.log('✅ REST API routes loaded');
@@ -85,7 +85,7 @@ app.use(express.static(path.join(__dirname)));
 
 // Socket.IO — real-time overlay communication
 io.on('connection', (socket) => {
-  // Dashboard identifies itself to receive server-only events (dnf-warning, etc.)
+  // Dashboard identifies itself to receive server-only events
   if (socket.handshake.query.role === 'dashboard') {
     socket.join('dashboard');
   }
@@ -96,29 +96,7 @@ io.on('connection', (socket) => {
     const { broadcastRaceState: sendState } = require('./src/socket/emitter');
     const ctx = getCtx();
     if (ctx) sendState(ctx);
-  } catch { /* ignore */ }
-
-  // Broadcast full race state to all clients (leaderboard overlay)
-  socket.on('race-update', (data) => {
-    socket.broadcast.emit('race-data', data);
-  });
-
-  // Broadcast race events: finished, incident, fastest-lap
-  socket.on('race-event', (data) => {
-    socket.broadcast.emit('race-event', data);
-  });
-
-  // Race lifecycle signals → overlay banners
-  socket.on('race-restarted', () => {
-    socket.broadcast.emit('race-restarted');
-  });
-
-  socket.on('race-resumed', () => {
-    socket.broadcast.emit('race-resumed');
-  });
-
-  socket.on('disconnect', () => {
-    });
+  } catch (err) { console.error('Socket connect broadcast error:', err); }
 });
 
 // Global error handler

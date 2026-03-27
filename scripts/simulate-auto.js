@@ -37,7 +37,7 @@ async function api(method, path, body, token) {
 
 async function pushOcrPosition(token, x, y, z) {
   const res = await fetch(`${BASE_URL}/api/ocr/position`, {
-    method: 'POST',
+    method: 'PUT',
     headers: { 'Content-Type': 'application/json', 'x-token': token },
     body: JSON.stringify({ x, y, z }),
   });

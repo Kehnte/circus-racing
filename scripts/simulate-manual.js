@@ -57,7 +57,7 @@ async function simulate() {
   // 1. Login admin
   log('1. Admin authentication');
   const loginRes = await step('Login', () =>
-    api('POST', '/api/auth/login', { email: 'admin@circus.local', password: 'admin123' })
+    api('POST', '/api/auth/login', { displayName: 'Kehnte', password: 'kehnteazerty' })
   );
   const jwt = loginRes.token; // response: { token (JWT), ocrToken, pilot }
 
