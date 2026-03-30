@@ -8,6 +8,7 @@ import AddOutlined from '@mui/icons-material/AddOutlined';
 import { useState } from 'react';
 import { useRaceSocket } from '../hooks/useRaceSocket.ts';
 import { useRaceStore } from '../store/raceStore.ts';
+import { useAuth } from '../context/AuthContext.tsx';
 import PageContainer from '../components/PageContainer.tsx';
 import AddPilotDialog from '../components/race/AddPilotDialog.tsx';
 import OverlaySettingsPanel from '../components/race/OverlaySettingsPanel.tsx';
@@ -20,13 +21,15 @@ export default function DashboardPage() {
   useRaceSocket();
 
   const { raceState } = useRaceStore();
+  const { role } = useAuth();
+  const isModo = role === 'ADMIN' || role === 'MODERATOR';
   const [addPilotOpen, setAddPilotOpen] = useState(false);
 
   return (
     <PageContainer title="Dashboard">
       <Stack spacing={2}>
         <RaceSelector />
-        {raceState && (
+        {raceState && isModo && (
           <>
             <RaceSettingsPanel raceState={raceState} />
             <OverlaySettingsPanel raceState={raceState} />
@@ -41,21 +44,25 @@ export default function DashboardPage() {
             <RaceGrid raceState={raceState} />
           </Box>
 
-          <Button
-            size="small"
-            variant="contained"
-            startIcon={<AddOutlined />}
-            onClick={() => setAddPilotOpen(true)}
-            sx={{ alignSelf: 'flex-start', mt: 1 }}
-          >
-            add pilot
-          </Button>
+          {isModo && (
+            <>
+              <Button
+                size="small"
+                variant="contained"
+                startIcon={<AddOutlined />}
+                onClick={() => setAddPilotOpen(true)}
+                sx={{ alignSelf: 'flex-start', mt: 1 }}
+              >
+                add pilot
+              </Button>
 
-          <AddPilotDialog
-            open={addPilotOpen}
-            raceState={raceState}
-            onClose={() => setAddPilotOpen(false)}
-          />
+              <AddPilotDialog
+                open={addPilotOpen}
+                raceState={raceState}
+                onClose={() => setAddPilotOpen(false)}
+              />
+            </>
+          )}
         </>
       )}
     </PageContainer>

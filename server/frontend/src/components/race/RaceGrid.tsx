@@ -23,7 +23,7 @@ import CrudToolbar from '../CrudToolbar.tsx';
 import FlagIcon from '../FlagIcon.tsx';
 import { NoRowsOverlay } from '../DataGridOverlays.tsx';
 import NumberSpinner from '../NumberSpinner.tsx';
-import type { OcrStatusMap, PilotRaceState, RaceStatePayload } from '../../types.ts';
+import type { OcrStatusMap, PilotRaceState, RaceStatePayload, Team } from '../../types.ts';
 import { useRaceStore } from '../../store/raceStore.ts';
 import ChronoDisplay from './ChronoDisplay.tsx';
 
@@ -48,7 +48,7 @@ interface RaceEntryEnriched {
   teamSnapshot: Record<string, unknown> | null;
   vehicleSnapshot: Record<string, unknown> | null;
   controlsSnapshot: Record<string, unknown> | null;
-  pilot: { id: string; displayName: string; country: string } | null;
+  pilot: { id: string; displayName: string; country: string; teamId: string | null } | null;
 }
 
 type GridRow = (PilotRaceState & { _kind: 'validated' }) | PendingEntryRow;
@@ -72,30 +72,35 @@ export default function RaceGrid({ raceState }: Props) {
   // Pos and DNF editable before and during the race, locked when finished
   const canEditGrid = status === 'PENDING' || status === 'STARTED';
   // Remove only allowed before the race starts
-  const canRemove = status === 'PENDING';
+  const canRemove = status === 'PENDING' || status === 'SCHEDULED';
 
   const { role } = useAuth();
   const notifications = useNotifications();
-  const canDelete = role === 'ADMIN' || role === 'MODERATOR';
+  const isModo = role === 'ADMIN' || role === 'MODERATOR';
+  const canDelete = isModo;
 
   const { data: entriesData, mutate: mutateEntries } = useSWR<RaceEntryEnriched[]>(
     canDelete ? `/api/races/${raceId}/entries` : null,
     fetcher,
   );
+  const { data: teams } = useSWR<Team[]>(canDelete ? '/api/teams' : null, fetcher);
 
   const pendingRows: PendingEntryRow[] = (entriesData ?? [])
     .filter((e) => e.status === 'PENDING')
-    .map((e) => ({
-      _kind: 'pending' as const,
-      id: e.id,
-      entryId: e.id,
-      raceId: e.raceId,
-      pilotId: e.pilotId,
-      displayName: e.pilot?.displayName ?? '(unknown)',
-      country: e.pilot?.country ?? 'un',
-      teamSnapshot: e.teamSnapshot as PendingEntryRow['teamSnapshot'],
-      vehicleSnapshot: e.vehicleSnapshot as PendingEntryRow['vehicleSnapshot'],
-    }));
+    .map((e) => {
+      const team = (teams ?? []).find((t) => t.id === e.pilot?.teamId) ?? null;
+      return {
+        _kind: 'pending' as const,
+        id: e.id,
+        entryId: e.id,
+        raceId: e.raceId,
+        pilotId: e.pilotId,
+        displayName: e.pilot?.displayName ?? '(unknown)',
+        country: e.pilot?.country ?? 'un',
+        teamSnapshot: team ? { name: team.name, color: team.color, acronym: team.acronym } : null,
+        vehicleSnapshot: e.vehicleSnapshot as PendingEntryRow['vehicleSnapshot'],
+      };
+    });
 
   const validatedRows = pilots.map((p) => ({ ...p, _kind: 'validated' as const }));
   const rows: GridRow[] = [...validatedRows, ...pendingRows];
@@ -176,14 +181,11 @@ export default function RaceGrid({ raceState }: Props) {
       field: 'position',
       headerName: 'Pos',
       minWidth: 60,
-      renderCell: (params: GridRenderCellParams<GridRow, number>) => {
-        if (params.row._kind === 'pending') return null;
-        return (
-          <Typography component="span" variant="body2" sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: 13, fontWeight: 700 }}>
-            {params.value}
-          </Typography>
-        );
-      },
+      renderCell: (params: GridRenderCellParams<GridRow, number>) => (
+        <Typography component="span" variant="body2" sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: 13, fontWeight: 700 }}>
+          {params.row._kind === 'pending' ? '—' : params.value}
+        </Typography>
+      ),
     },
     {
       field: 'country',
@@ -223,7 +225,9 @@ export default function RaceGrid({ raceState }: Props) {
       headerName: 'Laps',
       minWidth: 60,
       renderCell: (params: GridRenderCellParams<GridRow>) => {
-        if (params.row._kind === 'pending') return null;
+        if (params.row._kind === 'pending') return (
+          <Typography component="span" variant="body2" sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: 13 }}>—</Typography>
+        );
         const s = params.row.status;
         if (s === 'FINISHED') return <Chip label="Finished" color="success" size="small" />;
         if (s === 'DNF') return <Chip label="DNF" color="error" size="small" />;
@@ -241,31 +245,28 @@ export default function RaceGrid({ raceState }: Props) {
           minWidth: 150,
           sortable: false,
           renderCell: (params: GridRenderCellParams<GridRow>) => {
-            if (params.row._kind === 'pending') return null;
+            if (params.row._kind === 'pending') return <Typography variant="body2">—</Typography>;
             return <ChronoDisplay pilot={params.row} raceState={raceState} />;
           },
         }]
       : []),
-    ...(isManual
+    ...(isManual && isModo
       ? [
           {
             field: 'ctrlLaps' as const,
             headerName: 'Laps controls',
             minWidth: 60,
             sortable: false,
-            renderCell: (params: GridRenderCellParams<GridRow>) => {
-              if (params.row._kind === 'pending') return null;
-              return (
-                <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
-                  <IconButton size="small" disabled={!canAct} onClick={() => void changeLap(params.row.id, -1)}>
-                    <RemoveOutlined fontSize="small" />
-                  </IconButton>
-                  <IconButton size="small" disabled={!canAct} onClick={() => void changeLap(params.row.id, 1)}>
-                    <AddOutlined fontSize="small" />
-                  </IconButton>
-                </Box>
-              );
-            },
+            renderCell: (params: GridRenderCellParams<GridRow>) => (
+              <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+                <IconButton size="small" disabled={!canAct || params.row._kind === 'pending'} onClick={() => params.row._kind !== 'pending' && void changeLap(params.row.id, -1)}>
+                  <RemoveOutlined fontSize="small" />
+                </IconButton>
+                <IconButton size="small" disabled={!canAct || params.row._kind === 'pending'} onClick={() => params.row._kind !== 'pending' && void changeLap(params.row.id, 1)}>
+                  <AddOutlined fontSize="small" />
+                </IconButton>
+              </Box>
+            ),
           },
           {
             field: 'ctrlPos' as const,
@@ -273,38 +274,43 @@ export default function RaceGrid({ raceState }: Props) {
             minWidth: 180,
             sortable: false,
             renderCell: (params: GridRenderCellParams<GridRow>) => {
-              if (params.row._kind === 'pending') return null;
-              const { min, max } = positionRange(params.row);
+              const isPending = params.row._kind === 'pending';
+              const { min, max } = isPending ? { min: 1, max: 1 } : positionRange(params.row as PilotRaceState);
+              const validatedRow = isPending ? null : (params.row as PilotRaceState);
               return (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, height: '100%' }}>
-                  <IconButton size="small" disabled={!canEditGrid} onClick={() => void reorder(params.row.id, 'up')}>
+                  <IconButton size="small" disabled={!canEditGrid || isPending} onClick={() => validatedRow && void reorder(validatedRow.id, 'up')}>
                     <ArrowUpwardOutlined fontSize="small" />
                   </IconButton>
-                  <IconButton size="small" disabled={!canEditGrid} onClick={() => void reorder(params.row.id, 'down')}>
+                  <IconButton size="small" disabled={!canEditGrid || isPending} onClick={() => validatedRow && void reorder(validatedRow.id, 'down')}>
                     <ArrowDownwardOutlined fontSize="small" />
                   </IconButton>
-                  <NumberSpinner
-                    size="small"
-                    value={params.row.position}
-                    min={min}
-                    max={max}
-                    disabled={!canEditGrid}
-                    onCommit={(v) => { const row = params.row as PilotRaceState; if (v !== row.position) void setPosition(row.id, v); }}
-                  />
+                  {validatedRow ? (
+                    <NumberSpinner
+                      size="small"
+                      value={validatedRow.position}
+                      min={min}
+                      max={max}
+                      disabled={!canEditGrid}
+                      onCommit={(v) => { if (v !== validatedRow.position) void setPosition(validatedRow.id, v); }}
+                    />
+                  ) : (
+                    <NumberSpinner size="small" disabled min={1} max={1} />
+                  )}
                 </Box>
               );
             },
           },
         ]
       : []),
-    ...(!isManual
+    ...(!isManual && isModo
       ? [{
           field: 'ocrStatus' as const,
           headerName: 'OCR',
           minWidth: 70,
           sortable: false,
           renderCell: (params: GridRenderCellParams<GridRow>) => {
-            if (params.row._kind === 'pending') return null;
+            if (params.row._kind === 'pending') return null; // OCR not applicable for pending
             const s = params.row.status;
             if (s === 'FINISHED' || s === 'DNF') return null;
             const entry = ocrStatusMap[params.row.id];
@@ -318,75 +324,80 @@ export default function RaceGrid({ raceState }: Props) {
           },
         }]
       : []),
-    {
-      field: 'ctrlDnf' as const,
-      headerName: 'DNF',
-      minWidth: 60,
-      sortable: false,
-      renderCell: (params: GridRenderCellParams<GridRow>) => {
-        if (params.row._kind === 'pending') return null;
-        const isDnf = params.row.status === 'DNF';
-        return (
-          <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
-            <Button
-              size="small"
-              variant={isDnf ? 'contained' : 'outlined'}
-              color={isDnf ? 'error' : 'inherit'}
-              disabled={!canEditGrid || params.row.status === 'FINISHED'}
-              onClick={() => void toggleDnf(params.row.id)}
-            >
-              DNF
-            </Button>
-          </Box>
-        );
-      },
-    },
-    {
-      field: 'delete',
-      type: 'actions' as const,
-      headerName: 'Actions',
-      headerAlign: 'left' as const,
-      align: 'left' as const,
-      minWidth: 120,
-      getActions: (params: GridRowParams<GridRow>) => {
-        if (!canDelete) return [];
-        if (params.row._kind === 'pending') {
-          return [
-            <GridActionsCellItem
-              key="remove"
-              icon={<DeleteOutlined />}
-              label="Remove"
-              disabled
-              showInMenu={false}
-            />,
-            <GridActionsCellItem
-              key="approve"
-              icon={<CheckOutlined />}
-              label="Approve"
-              onClick={() => void handleApprovePending(params.row as PendingEntryRow)}
-              showInMenu={false}
-            />,
-            <GridActionsCellItem
-              key="reject"
-              icon={<CloseOutlined />}
-              label="Reject"
-              onClick={() => void handleRejectPending(params.row as PendingEntryRow)}
-              showInMenu={false}
-            />,
-          ];
-        }
-        return [
-          <GridActionsCellItem
-            key="remove"
-            icon={<DeleteOutlined />}
-            label="Remove"
-            onClick={() => void handleRemovePilot(params.row as PilotRaceState)}
-            showInMenu={false}
-            disabled={!canRemove}
-          />,
-        ];
-      },
-    },
+    ...(isModo
+      ? [{
+          field: 'ctrlDnf' as const,
+          headerName: 'DNF',
+          minWidth: 60,
+          sortable: false,
+          renderCell: (params: GridRenderCellParams<GridRow>) => {
+            const isPending = params.row._kind === 'pending';
+            const validated = isPending ? null : (params.row as PilotRaceState);
+            const isDnf = validated?.status === 'DNF';
+            const isFinished = validated?.status === 'FINISHED';
+            return (
+              <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+                <Button
+                  size="small"
+                  variant={isDnf ? 'contained' : 'outlined'}
+                  color={isDnf ? 'error' : 'inherit'}
+                  disabled={!canEditGrid || isFinished || isPending}
+                  onClick={() => !isPending && void toggleDnf(params.row.id)}
+                >
+                  DNF
+                </Button>
+              </Box>
+            );
+          },
+        }]
+      : []),
+    ...(isModo
+      ? [{
+          field: 'delete',
+          type: 'actions' as const,
+          headerName: 'Actions',
+          headerAlign: 'left' as const,
+          align: 'left' as const,
+          minWidth: 120,
+          getActions: (params: GridRowParams<GridRow>) => {
+            if (params.row._kind === 'pending') {
+              return [
+                <GridActionsCellItem
+                  key="remove"
+                  icon={<DeleteOutlined />}
+                  label="Remove"
+                  disabled
+                  showInMenu={false}
+                />,
+                <GridActionsCellItem
+                  key="approve"
+                  icon={<CheckOutlined />}
+                  label="Approve"
+                  onClick={() => void handleApprovePending(params.row as PendingEntryRow)}
+                  showInMenu={false}
+                />,
+                <GridActionsCellItem
+                  key="reject"
+                  icon={<CloseOutlined />}
+                  label="Reject"
+                  onClick={() => void handleRejectPending(params.row as PendingEntryRow)}
+                  showInMenu={false}
+                />,
+              ];
+            }
+            return [
+              <GridActionsCellItem
+                key="remove"
+                icon={<DeleteOutlined />}
+                label="Remove"
+                onClick={() => void handleRemovePilot(params.row as PilotRaceState)}
+                showInMenu={false}
+                disabled={!canRemove}
+              />,
+            ];
+          },
+        }]
+      : []),
   ];
 
   return (
@@ -402,7 +413,7 @@ export default function RaceGrid({ raceState }: Props) {
       getRowClassName={(params) => (params.row as GridRow)._kind === 'pending' ? 'row-pending' : ''}
       sx={{
         flex: 1,
-        '& .row-pending': { opacity: 0.5, fontStyle: 'italic' },
+        '& .row-pending': { opacity: 0.5 },
         '& .row-pending:hover': { opacity: 0.7 },
       }}
     />

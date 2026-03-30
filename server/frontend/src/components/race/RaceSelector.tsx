@@ -16,9 +16,12 @@ import useDialogs from '../../hooks/useDialogs/useDialogs.tsx';
 import useNotifications from '../../hooks/useNotifications/useNotifications.tsx';
 import type { RaceMeta } from '../../types.ts';
 import CreateRaceDialog from './CreateRaceDialog.tsx';
+import { useAuth } from '../../context/AuthContext.tsx';
 
 export default function RaceSelector() {
   const { activeRaceId, setActiveRaceId } = useRaceStore();
+  const { role } = useAuth();
+  const isModo = role === 'ADMIN' || role === 'MODERATOR';
   const [createOpen, setCreateOpen] = useState(false);
   const dialogs = useDialogs();
   const notifications = useNotifications();
@@ -31,21 +34,24 @@ export default function RaceSelector() {
     selectedRace.status !== 'PAUSED';
 
   async function handleUnload() {
-    try {
-      await apiFetch('/api/races/unload', { method: 'POST' });
-    } catch (err) {
-      notifications.show((err as Error).message, { severity: 'error' });
+    if (isModo) {
+      try {
+        await apiFetch('/api/races/unload', { method: 'POST' });
+      } catch (err) {
+        notifications.show((err as Error).message, { severity: 'error' });
+      }
     }
     setActiveRaceId(null);
   }
 
   async function handleSelect(raceId: string) {
-    try {
-      await apiFetch(`/api/races/${raceId}/load`, { method: 'POST' });
-    } catch (err) {
-      notifications.show((err as Error).message, { severity: 'error' });
+    if (isModo) {
+      try {
+        await apiFetch(`/api/races/${raceId}/load`, { method: 'POST' });
+      } catch (err) {
+        notifications.show((err as Error).message, { severity: 'error' });
+      }
     }
-    // Set even on failure so the dropdown stays selected and delete is accessible.
     setActiveRaceId(raceId);
   }
 
@@ -86,25 +92,29 @@ export default function RaceSelector() {
           </Select>
         </FormControl>
 
-        <Button
-          variant="outlined"
-          size="small"
-          startIcon={<AddOutlined />}
-          onClick={() => setCreateOpen(true)}
-        >
-          new race
-        </Button>
+        {isModo && (
+          <>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<AddOutlined />}
+              onClick={() => setCreateOpen(true)}
+            >
+              new race
+            </Button>
 
-        <Button
-          variant="outlined"
-          size="small"
-          color="error"
-          startIcon={<DeleteOutlined />}
-          disabled={!canDelete}
-          onClick={() => void handleDelete()}
-        >
-          delete race
-        </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              color="error"
+              startIcon={<DeleteOutlined />}
+              disabled={!canDelete}
+              onClick={() => void handleDelete()}
+            >
+              delete race
+            </Button>
+          </>
+        )}
       </Box>
 
       <CreateRaceDialog open={createOpen} onClose={() => setCreateOpen(false)} onCreated={handleCreated} />

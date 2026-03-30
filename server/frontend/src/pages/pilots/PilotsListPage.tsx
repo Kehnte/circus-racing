@@ -112,7 +112,7 @@ export default function PilotsListPage() {
       headerName: 'Role',
       minWidth: 90,
       renderCell: (params: GridRenderCellParams<Pilot, string>) => (
-        <Chip label={params.value ? params.value.charAt(0) + params.value.slice(1).toLowerCase() : ''} color={roleChipColor(params.value ?? '')} size="small" />
+        <Chip label={params.value === 'MODERATOR' ? 'Mod' : params.value ? params.value.charAt(0) + params.value.slice(1).toLowerCase() : ''} color={roleChipColor(params.value ?? '')} size="small" />
       ),
     },
     {

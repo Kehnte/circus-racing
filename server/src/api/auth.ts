@@ -7,7 +7,7 @@ import { db } from "../db/db.js";
 import { pilot } from "../db/schema.js";
 import { signToken, requireAuth } from "../middleware/auth.js";
 import { validate } from "../middleware/validate.js";
-import { registerSchema, loginSchema } from "../validation/schemas.js";
+import { registerSchema, loginSchema, changePasswordSchema } from "../validation/schemas.js";
 
 const router = Router();
 const SALT_ROUNDS = 12;
@@ -92,6 +92,31 @@ router.post("/regenerate-token", ...([requireAuth] as any), async (req, res) => 
   const newToken = generateOcrToken();
   await db.update(pilot).set({ token: newToken }).where(eq(pilot.id, req.user!.id));
   res.json({ ocrToken: newToken });
+});
+
+/**
+ * POST /auth/change-password
+ * Body: { currentPassword, newPassword }
+ */
+router.post("/change-password", validate(changePasswordSchema), ...([requireAuth] as any), async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+
+  const found = await db.select().from(pilot).where(eq(pilot.id, req.user!.id)).get();
+  if (!found) {
+    res.status(404).json({ error: "Pilot not found" });
+    return;
+  }
+
+  const match = await bcrypt.compare(currentPassword, found.passwordHash);
+  if (!match) {
+    res.status(401).json({ error: "Current password is incorrect" });
+    return;
+  }
+
+  const newHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+  await db.update(pilot).set({ passwordHash: newHash }).where(eq(pilot.id, req.user!.id));
+
+  res.json({ ok: true });
 });
 
 // Helpers

@@ -1,6 +1,6 @@
 // AppLayout — Full-width AppBar (toggle + logo + page title) with independent collapsible sidebar.
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import AppBar from '@mui/material/AppBar';
 import Avatar from '@mui/material/Avatar';
@@ -31,7 +31,10 @@ import { useAuth } from '../context/AuthContext.tsx';
 const DRAWER_WIDTH = 240;
 const MINI_WIDTH = 64;
 
-const NAV_SECTIONS = [
+interface NavItem { label: string; path: string; href?: string; icon: ReactNode }
+interface NavSection { label: string; items: NavItem[] }
+
+const NAV_SECTIONS_MODO: NavSection[] = [
   {
     label: 'Race',
     items: [
@@ -51,29 +54,25 @@ const NAV_SECTIONS = [
   },
 ];
 
-const PAGE_TITLES: Record<string, string> = {
-  '/': 'Dashboard',
-  '/pilots': 'Pilots',
-  '/teams': 'Teams',
-  '/vehicles': 'Vehicles',
-  '/controls': 'Controls',
-};
+const NAV_SECTIONS_PILOT: NavSection[] = [
+  {
+    label: 'Race',
+    items: [
+      { label: 'Dashboard', path: '/', icon: <SpaceDashboardOutlined /> },
+    ],
+  },
+];
 
-function resolvePageTitle(pathname: string): string {
-  const match = Object.keys(PAGE_TITLES)
-    .filter((k) => pathname === k || (k !== '/' && pathname.startsWith(k + '/')))
-    .sort((a, b) => b.length - a.length)[0];
-  return match ? PAGE_TITLES[match] : 'Circus Racing';
-}
 
 export default function AppLayout() {
-  const { logout, displayName } = useAuth();
+  const { logout, displayName, role } = useAuth();
+  const isPilot = role === 'PILOT';
+  const navSections = isPilot ? NAV_SECTIONS_PILOT : NAV_SECTIONS_MODO;
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [open, setOpen] = useState(true);
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
 
-  const pageTitle = resolvePageTitle(pathname);
 
 
   const drawer = (
@@ -81,7 +80,7 @@ export default function AppLayout() {
       {/* Spacer matching AppBar height */}
       <Toolbar sx={{ minHeight: 64 }} />
       <Box sx={{ overflow: 'hidden', flex: 1 }}>
-        {NAV_SECTIONS.map((section) => (
+        {navSections.map((section, sectionIndex) => (
           <Box key={section.label}>
             {open && (
               <Typography
@@ -91,7 +90,7 @@ export default function AppLayout() {
                 {section.label}
               </Typography>
             )}
-            {!open && <Box sx={{ height: 8 }} />}
+            {!open && sectionIndex > 0 && <Box sx={{ height: 8 }} />}
             <List dense disablePadding>
               {section.items.map((item) => {
                 const active = !item.href && (pathname === item.path || (item.path !== '/' && pathname.startsWith(item.path + '/')));
@@ -101,7 +100,7 @@ export default function AppLayout() {
                       key={item.label}
                       selected={active}
                       onClick={() => item.href ? window.open(item.href, '_blank') : navigate(item.path)}
-                      sx={{ px: open ? 2 : 0, justifyContent: 'center' }}
+                      sx={{ px: open ? 2 : 0, justifyContent: 'center', ...(open ? {} : { height: MINI_WIDTH }) }}
                     >
                       <ListItemIcon
                         sx={{
@@ -145,8 +144,8 @@ export default function AppLayout() {
             {open ? <MenuOpenOutlined /> : <MenuOutlined />}
           </IconButton>
           <EmojiEventsOutlined sx={{ mr: 1, color: 'primary.main' }} />
-          <Typography variant="h6" fontWeight={700} sx={{ flex: 1 }}>
-            {pageTitle}
+          <Typography variant="h6" fontWeight={800} fontStyle="italic" sx={{ flex: 1 }}>
+            Circus Racing
           </Typography>
           <Tooltip title="Account settings">
             <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} size="small" sx={{ ml: 1 }}>
@@ -205,7 +204,7 @@ export default function AppLayout() {
         }}
       >
         <Toolbar /> {/* AppBar spacer */}
-        <Box sx={{ flex: 1, overflow: 'hidden', p: 3, display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{ flex: 1, overflow: 'auto', p: 3, display: 'flex', flexDirection: 'column' }}>
           <Outlet />
         </Box>
         <Box

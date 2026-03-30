@@ -103,7 +103,7 @@ export default function VehiclesListPage() {
       headerAlign: 'left',
       align: 'left',
       headerName: 'Actions',
-      minWidth: 90,
+      minWidth: 120,
       getActions: (params: GridRowParams<Vehicle>) => [
         <Tooltip title="Edit" placement="bottom"><GridActionsCellItem icon={<EditOutlined />} label="Edit" onClick={() => navigate(`/vehicles/${params.row.id}/edit`)} showInMenu={false} /></Tooltip>,
         <Tooltip title="Delete" placement="bottom"><GridActionsCellItem icon={<DeleteOutlined />} label="Delete" onClick={() => void handleDelete(params.row)} showInMenu={false} /></Tooltip>,

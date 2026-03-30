@@ -11,15 +11,22 @@ import CircularProgress from '@mui/material/CircularProgress';
 import Grid from '@mui/material/Grid';
 import IconButton from '@mui/material/IconButton';
 import MenuItem from '@mui/material/MenuItem';
+import Accordion from '@mui/material/Accordion';
+import AccordionDetails from '@mui/material/AccordionDetails';
+import AccordionSummary from '@mui/material/AccordionSummary';
+import ExpandMoreOutlined from '@mui/icons-material/ExpandMoreOutlined';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+import InputAdornment from '@mui/material/InputAdornment';
 import ContentCopyOutlined from '@mui/icons-material/ContentCopyOutlined';
 import DownloadOutlined from '@mui/icons-material/DownloadOutlined';
 import KeyOutlined from '@mui/icons-material/KeyOutlined';
 import RefreshOutlined from '@mui/icons-material/RefreshOutlined';
 import SettingsOutlined from '@mui/icons-material/SettingsOutlined';
+import VisibilityOutlined from '@mui/icons-material/VisibilityOutlined';
+import VisibilityOffOutlined from '@mui/icons-material/VisibilityOffOutlined';
 import { apiFetch, fetcher } from '../api.ts';
 import CountrySelect from '../components/CountrySelect.tsx';
 import PageContainer from '../components/PageContainer.tsx';
@@ -99,7 +106,12 @@ function RaceEnrollCard({ race }: { race: OpenRace }) {
               </Button>
             </>
           )}
-          {entry?.status === 'VALIDATED' && <Chip label="Validated" color="success" size="small" />}
+          {entry?.status === 'VALIDATED' && (
+            <>
+              <Chip label="Validated" color="success" size="small" />
+              <Button variant="outlined" size="small" color="error" disabled={acting} onClick={() => void handleCancel()}>leave</Button>
+            </>
+          )}
         </Box>
       </Stack>
     </Paper>
@@ -125,6 +137,13 @@ export default function ProfilePage() {
   const [controlsId, setControlsId] = useState('');
   const [locked, setLocked]         = useState(false);
   const [configSaving, setConfigSaving] = useState(false);
+
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword]         = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordSaving, setPasswordSaving]   = useState(false);
+  const [showNewPassword, setShowNewPassword]         = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
     if (me) {
@@ -171,6 +190,28 @@ export default function ProfilePage() {
       notifications.show(msg, { severity: 'error', autoHideDuration: 5000 });
     } finally {
       setConfigSaving(false);
+    }
+  }
+
+  async function handleChangePassword() {
+    if (newPassword !== confirmPassword) {
+      notifications.show('New passwords do not match.', { severity: 'error', autoHideDuration: 4000 });
+      return;
+    }
+    setPasswordSaving(true);
+    try {
+      await apiFetch('/api/auth/change-password', {
+        method: 'POST',
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      notifications.show('Password changed.', { severity: 'success', autoHideDuration: 3000 });
+    } catch (err) {
+      notifications.show((err as Error).message, { severity: 'error', autoHideDuration: 5000 });
+    } finally {
+      setPasswordSaving(false);
     }
   }
 
@@ -306,37 +347,94 @@ export default function ProfilePage() {
             </Paper>
 
             {/* Race configuration form */}
-            <Paper sx={{ p: 2 }}>
-              <Typography variant="subtitle2" sx={{ mb: 2 }}>Race configuration</Typography>
-              {locked && (
-                <Alert severity="info" sx={{ mb: 2 }}>
-                  Locked after validation. Contact an admin to change these fields.
-                </Alert>
-              )}
-              <Stack spacing={2}>
-                <TextField select label="Team" value={teamId} onChange={(e) => setTeamId(e.target.value)} disabled={locked} fullWidth>
-                  <MenuItem value="">none</MenuItem>
-                  {(teams ?? []).map((t) => <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>)}
-                </TextField>
-                <TextField select label="Vehicle" value={vehicleId} onChange={(e) => setVehicleId(e.target.value)} disabled={locked} fullWidth>
-                  <MenuItem value="">none</MenuItem>
-                  {(vehicles ?? []).map((v) => (
-                    <MenuItem key={v.id} value={v.id}>
-                      {v.type.charAt(0).toUpperCase() + v.type.slice(1)} — {v.model}
-                    </MenuItem>
-                  ))}
-                </TextField>
-                <TextField select label="Controls" value={controlsId} onChange={(e) => setControlsId(e.target.value)} disabled={locked} fullWidth>
-                  <MenuItem value="">none</MenuItem>
-                  {(controls ?? []).map((c) => <MenuItem key={c.id} value={c.id}>{c.type}</MenuItem>)}
-                </TextField>
-                <Box>
-                  <Button variant="contained" onClick={() => void handleSaveRaceConfig()} disabled={locked || configSaving}>
-                    save
-                  </Button>
-                </Box>
-              </Stack>
-            </Paper>
+            <Accordion disableGutters elevation={1} sx={{ borderRadius: 1 }}>
+              <AccordionSummary expandIcon={<ExpandMoreOutlined />}>
+                <Typography variant="subtitle2">Race configuration</Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                {locked && (
+                  <Alert severity="info" sx={{ mb: 2 }}>
+                    Locked after validation. Contact an admin to change these fields.
+                  </Alert>
+                )}
+                <Stack spacing={2}>
+                  <TextField select label="Team" value={teamId} onChange={(e) => setTeamId(e.target.value)} disabled={locked} fullWidth>
+                    <MenuItem value="">none</MenuItem>
+                    {(teams ?? []).map((t) => <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>)}
+                  </TextField>
+                  <TextField select label="Vehicle" value={vehicleId} onChange={(e) => setVehicleId(e.target.value)} disabled={locked} fullWidth>
+                    <MenuItem value="">none</MenuItem>
+                    {(vehicles ?? []).map((v) => (
+                      <MenuItem key={v.id} value={v.id}>
+                        {v.type.charAt(0).toUpperCase() + v.type.slice(1)} — {v.model}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                  <TextField select label="Controls" value={controlsId} onChange={(e) => setControlsId(e.target.value)} disabled={locked} fullWidth>
+                    <MenuItem value="">none</MenuItem>
+                    {(controls ?? []).map((c) => <MenuItem key={c.id} value={c.id}>{c.type}</MenuItem>)}
+                  </TextField>
+                  <Box>
+                    <Button variant="contained" onClick={() => void handleSaveRaceConfig()} disabled={locked || configSaving}>
+                      save
+                    </Button>
+                  </Box>
+                </Stack>
+              </AccordionDetails>
+            </Accordion>
+
+            {/* Security form */}
+            <Accordion disableGutters elevation={1} sx={{ borderRadius: 1 }}>
+              <AccordionSummary expandIcon={<ExpandMoreOutlined />}>
+                <Typography variant="subtitle2">Security</Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Stack spacing={2}>
+                  <TextField
+                    label="Current password"
+                    type="password"
+                    value={currentPassword}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setCurrentPassword(e.target.value)}
+                    fullWidth
+                  />
+                  <TextField
+                    label="New password"
+                    type={showNewPassword ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setNewPassword(e.target.value)}
+                    fullWidth
+                    slotProps={{ input: { endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton size="small" onClick={() => setShowNewPassword((v) => !v)} edge="end">
+                          {showNewPassword ? <VisibilityOffOutlined fontSize="small" /> : <VisibilityOutlined fontSize="small" />}
+                        </IconButton>
+                      </InputAdornment>
+                    )}}}
+                  />
+                  <TextField
+                    label="Confirm new password"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
+                    fullWidth
+                    error={confirmPassword.length > 0 && confirmPassword !== newPassword}
+                    helperText={confirmPassword.length > 0 && confirmPassword !== newPassword ? 'Passwords do not match' : undefined}
+                    slotProps={{ input: { endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton size="small" onClick={() => setShowConfirmPassword((v) => !v)} edge="end">
+                          {showConfirmPassword ? <VisibilityOffOutlined fontSize="small" /> : <VisibilityOutlined fontSize="small" />}
+                        </IconButton>
+                      </InputAdornment>
+                    )}}}
+                  />
+                  <Box>
+                    <Button variant="contained" onClick={() => void handleChangePassword()} disabled={passwordSaving}>
+                      save
+                    </Button>
+                  </Box>
+                </Stack>
+              </AccordionDetails>
+            </Accordion>
 
           </Stack>
         </Grid>

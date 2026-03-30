@@ -14,7 +14,7 @@ export default function FlagIcon({ code, size = 16 }: Props) {
     <Tooltip title={name} placement="bottom" arrow>
       <span
         className={`fi fi-${code.toLowerCase()} fis`}
-        style={{ width: size, height: size, borderRadius: 2, flexShrink: 0, display: 'inline-block', cursor: 'default' }}
+        style={{ width: size, height: size, borderRadius: 0, flexShrink: 0, display: 'inline-block', cursor: 'default' }}
       />
     </Tooltip>
   );

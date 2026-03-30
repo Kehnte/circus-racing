@@ -9,7 +9,6 @@ import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import FormGroup from '@mui/material/FormGroup';
 import Grid from '@mui/material/Grid';
-import InputAdornment from '@mui/material/InputAdornment';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -18,6 +17,7 @@ import PageContainer from '../../components/PageContainer.tsx';
 import useNotifications from '../../hooks/useNotifications/useNotifications.tsx';
 import type { Team } from '../../types.ts';
 import { validateTeamField, validateTeamForm } from './validateTeam.ts';
+import TeamColorPicker from './TeamColorPicker.tsx';
 import type { TeamForm } from './validateTeam.ts';
 
 export default function TeamEditPage() {
@@ -80,30 +80,8 @@ export default function TeamEditPage() {
                 fullWidth
               />
             </Grid>
-            <Grid size={{ xs: 12, sm: 6 }} sx={{ display: 'flex' }}>
-              <TextField
-                label="Color"
-                value={form.color}
-                onChange={(e) => handleChange('color', e.target.value)}
-                error={!!errors.color}
-                helperText={errors.color ?? ' '}
-                fullWidth
-                slotProps={{
-                  input: {
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Box
-                          component="input"
-                          type="color"
-                          value={form.color}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleChange('color', e.target.value)}
-                          sx={{ width: 28, height: 28, border: 'none', p: 0, cursor: 'pointer', bgcolor: 'transparent' }}
-                        />
-                      </InputAdornment>
-                    ),
-                  },
-                }}
-              />
+            <Grid size={{ xs: 12 }} sx={{ display: 'flex' }}>
+              <TeamColorPicker value={form.color} onChange={(c) => handleChange('color', c)} error={!!errors.color} helperText={errors.color} />
             </Grid>
           </Grid>
         </FormGroup>
