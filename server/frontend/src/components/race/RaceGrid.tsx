@@ -289,7 +289,7 @@ export default function RaceGrid({ raceState }: Props) {
                     min={min}
                     max={max}
                     disabled={!canEditGrid}
-                    onCommit={(v) => { if (v !== params.row.position) void setPosition(params.row.id, v); }}
+                    onCommit={(v) => { const row = params.row as PilotRaceState; if (v !== row.position) void setPosition(row.id, v); }}
                   />
                 </Box>
               );
