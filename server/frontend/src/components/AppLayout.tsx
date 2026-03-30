@@ -26,7 +26,10 @@ import PersonOutlined from '@mui/icons-material/PersonOutlined';
 import RocketLaunchOutlined from '@mui/icons-material/RocketLaunchOutlined';
 import SpaceDashboardOutlined from '@mui/icons-material/SpaceDashboardOutlined';
 import TuneOutlined from '@mui/icons-material/TuneOutlined';
+import useSWR from 'swr';
+import { fetcher } from '../api.ts';
 import { useAuth } from '../context/AuthContext.tsx';
+import type { Pilot } from '../types.ts';
 
 const DRAWER_WIDTH = 240;
 const MINI_WIDTH = 64;
@@ -66,6 +69,7 @@ const NAV_SECTIONS_PILOT: NavSection[] = [
 
 export default function AppLayout() {
   const { logout, displayName, role } = useAuth();
+  const { data: me } = useSWR<Pilot>('/api/pilots/me', fetcher);
   const isPilot = role === 'PILOT';
   const navSections = isPilot ? NAV_SECTIONS_PILOT : NAV_SECTIONS_MODO;
   const navigate = useNavigate();
@@ -149,7 +153,10 @@ export default function AppLayout() {
           </Typography>
           <Tooltip title="Account settings">
             <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} size="small" sx={{ ml: 1 }}>
-              <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main', fontSize: 14 }}>
+              <Avatar
+                src={me?.avatarUrl ?? undefined}
+                sx={{ width: 32, height: 32, bgcolor: 'primary.main', fontSize: 14, border: 2, borderColor: 'primary.main' }}
+              >
                 {displayName ? displayName[0].toUpperCase() : <PersonOutlined fontSize="small" />}
               </Avatar>
             </IconButton>

@@ -1,6 +1,6 @@
 // ProfilePage — pilot profile: identity, race config, OCR token, open races enrollment.
 
-import { useCallback, useEffect, useState, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
 import useSWR from 'swr';
 import { DataGrid, GridActionsCellItem } from '@mui/x-data-grid';
 import type { GridActionsColDef, GridColDef, GridFilterModel, GridPaginationModel, GridRenderCellParams, GridRowParams, GridSortModel } from '@mui/x-data-grid';
@@ -168,10 +168,12 @@ export default function ProfilePage() {
     },
   ];
 
-  const [displayName, setDisplayName]     = useState('');
-  const [country, setCountry]             = useState('un');
-  const [avatarUrl, setAvatarUrl]         = useState('');
+  const [displayName, setDisplayName]       = useState('');
+  const [country, setCountry]               = useState('un');
   const [identitySaving, setIdentitySaving] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarPreview, setAvatarPreview]   = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   const [teamId, setTeamId]         = useState('');
   const [vehicleId, setVehicleId]   = useState('');
@@ -190,7 +192,6 @@ export default function ProfilePage() {
     if (me) {
       setDisplayName(me.displayName);
       setCountry(me.country ?? 'un');
-      setAvatarUrl(me.avatarUrl ?? '');
       setTeamId(me.teamId ?? '');
       setVehicleId(me.vehicleId ?? '');
       setControlsId(me.controlsId ?? '');
@@ -202,7 +203,7 @@ export default function ProfilePage() {
     try {
       await apiFetch('/api/pilots/me', {
         method: 'PATCH',
-        body: JSON.stringify({ displayName, country, avatarUrl: avatarUrl || null }),
+        body: JSON.stringify({ displayName, country }),
       });
       void mutateMe();
       notifications.show('Profile saved.', { severity: 'success', autoHideDuration: 3000 });
@@ -210,6 +211,52 @@ export default function ProfilePage() {
       notifications.show((err as Error).message, { severity: 'error', autoHideDuration: 5000 });
     } finally {
       setIdentitySaving(false);
+    }
+  }
+
+  async function handleAvatarChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Local preview
+    const reader = new FileReader();
+    reader.onload = (ev) => setAvatarPreview(ev.target?.result as string);
+    reader.readAsDataURL(file);
+    // Upload
+    setAvatarUploading(true);
+    try {
+      const token = localStorage.getItem(TOKEN_KEY);
+      const form = new FormData();
+      form.append('avatar', file);
+      const res = await fetch('/api/pilots/me/avatar', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: form,
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        let msg = 'Upload failed';
+        try { msg = (JSON.parse(text) as { error?: string }).error ?? msg; } catch { /* non-JSON body */ }
+        throw new Error(msg);
+      }
+      void mutateMe();
+      notifications.show('Avatar updated.', { severity: 'success', autoHideDuration: 3000 });
+    } catch (err) {
+      setAvatarPreview(null);
+      notifications.show((err as Error).message, { severity: 'error', autoHideDuration: 5000 });
+    } finally {
+      setAvatarUploading(false);
+      if (avatarInputRef.current) avatarInputRef.current.value = '';
+    }
+  }
+
+  async function handleRemoveAvatar() {
+    try {
+      await apiFetch('/api/pilots/me/avatar', { method: 'DELETE' });
+      setAvatarPreview(null);
+      void mutateMe();
+      notifications.show('Avatar removed.', { severity: 'success', autoHideDuration: 3000 });
+    } catch (err) {
+      notifications.show((err as Error).message, { severity: 'error', autoHideDuration: 5000 });
     }
   }
 
@@ -306,16 +353,40 @@ export default function ProfilePage() {
 
             {/* Avatar card */}
             <Paper elevation={0} sx={{ p: 2, textAlign: 'center' }}>
-              <Avatar
-                src={me.avatarUrl ?? undefined}
-                sx={{ width: 80, height: 80, bgcolor: 'primary.main', fontSize: 32, mx: 'auto', mb: 1 }}
+              <Box
+                sx={{ position: 'relative', width: 80, mx: 'auto', mb: 1, cursor: 'pointer' }}
+                onClick={() => avatarInputRef.current?.click()}
+                title="Click to change avatar"
               >
-                {me.displayName[0].toUpperCase()}
-              </Avatar>
+                <Avatar
+                  src={avatarPreview ?? me.avatarUrl ?? undefined}
+                  sx={{ width: 80, height: 80, bgcolor: 'primary.main', fontSize: 32, border: 3, borderColor: 'primary.main' }}
+                >
+                  {me.displayName[0].toUpperCase()}
+                </Avatar>
+                {avatarUploading && (
+                  <CircularProgress size={24} sx={{ position: 'absolute', top: '50%', left: '50%', mt: '-12px', ml: '-12px' }} />
+                )}
+              </Box>
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                style={{ display: 'none' }}
+                onChange={(e) => void handleAvatarChange(e)}
+              />
               <Typography variant="subtitle1" fontWeight={700}>{me.displayName}</Typography>
               <Box sx={{ mt: 0.5 }}>
                 <Chip label={me.role.charAt(0) + me.role.slice(1).toLowerCase()} color={roleChipColor(me.role)} size="small" />
               </Box>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                JPEG, PNG or WebP · max 2 MB
+              </Typography>
+              {(avatarPreview ?? me.avatarUrl) && (
+                <Button variant="outlined" size="small" color="error" onClick={() => void handleRemoveAvatar()} sx={{ mt: 1 }}>
+                  remove
+                </Button>
+              )}
             </Paper>
 
             {/* OCR Token card */}
@@ -373,12 +444,6 @@ export default function ProfilePage() {
                   fullWidth
                 />
                 <CountrySelect value={country} onChange={setCountry} />
-                <TextField
-                  label="Avatar URL"
-                  value={avatarUrl}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => setAvatarUrl(e.target.value)}
-                  fullWidth
-                />
                 <Box>
                   <Button variant="contained" onClick={() => void handleSaveIdentity()} disabled={identitySaving}>
                     save

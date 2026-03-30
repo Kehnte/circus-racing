@@ -2,6 +2,9 @@
 server/node_modules/
 server/db/
 server/dist/
+server/uploads/**/*
+!server/uploads/**/
+!server/uploads/**/.gitkeep
 server/packages/*/src/*.js
 server/packages/*/src/*.js.map
 server/packages/*/src/*.d.ts

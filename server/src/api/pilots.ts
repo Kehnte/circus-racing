@@ -2,6 +2,9 @@
 import { Router } from "express";
 import { eq } from "drizzle-orm";
 import { randomBytes } from "crypto";
+import * as fs from "fs";
+import * as path from "path";
+import multer from "multer";
 import { hash } from "@node-rs/bcrypt";
 import { db } from "../db/db.js";
 import { pilot, raceEntry } from "../db/schema.js";
@@ -11,6 +14,27 @@ import { emitDashboard } from "../socket/emitter.js";
 import { refreshPilotEntrySnapshots } from "../engine/snapshot-refresh.js";
 import { validate } from "../middleware/validate.js";
 import { createPilotSchema, updatePilotSchema } from "../validation/schemas.js";
+
+const AVATAR_MAX_BYTES = 2 * 1024 * 1024; // 2 MB
+const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
+const UPLOADS_DIR = path.resolve(process.cwd(), "uploads", "avatars");
+
+fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+
+const avatarUpload = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname).toLowerCase() || ".jpg";
+      cb(null, `${randomBytes(16).toString("hex")}${ext}`);
+    },
+  }),
+  limits: { fileSize: AVATAR_MAX_BYTES },
+  fileFilter: (_req, file, cb) => {
+    if (ALLOWED_MIME.has(file.mimetype)) cb(null, true);
+    else cb(new Error("Only JPEG, PNG and WebP images are allowed"));
+  },
+});
 
 const router = Router();
 
@@ -95,6 +119,47 @@ router.get("/me/config", requireAuth, async (req, res) => {
   res.setHeader("Content-Type", "application/octet-stream");
   res.setHeader("Content-Disposition", 'attachment; filename="config.cfg"');
   res.send(cfg);
+});
+
+/** POST /pilots/me/avatar — upload a profile picture (JPEG/PNG/WebP, max 2 MB) */
+router.post("/me/avatar", requireAuth, (req, res, next) => {
+  avatarUpload.single("avatar")(req, res, (err) => {
+    if (err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE") {
+      res.status(413).json({ error: "File too large. Maximum size is 2 MB." });
+      return;
+    }
+    if (err) { res.status(400).json({ error: (err as Error).message }); return; }
+    next();
+  });
+}, async (req, res) => {
+  if (!req.file) { res.status(400).json({ error: "No file provided" }); return; }
+
+  const pilotId = req.user!.id;
+  const newUrl = `/uploads/avatars/${req.file.filename}`;
+
+  // Delete previous uploaded avatar if it was a local file
+  const current = await db.select({ avatarUrl: pilot.avatarUrl }).from(pilot).where(eq(pilot.id, pilotId)).get();
+  if (current?.avatarUrl?.startsWith("/uploads/avatars/")) {
+    const oldPath = path.resolve(process.cwd(), current.avatarUrl.slice(1));
+    fs.unlink(oldPath, () => {});
+  }
+
+  const [updated] = await db.update(pilot).set({ avatarUrl: newUrl }).where(eq(pilot.id, pilotId)).returning();
+  emitDashboard("data-changed", { resource: "pilots" });
+  res.json(safePublic(updated));
+});
+
+/** DELETE /pilots/me/avatar — remove avatar and delete local file if any */
+router.delete("/me/avatar", requireAuth, async (req, res) => {
+  const pilotId = req.user!.id;
+  const current = await db.select({ avatarUrl: pilot.avatarUrl }).from(pilot).where(eq(pilot.id, pilotId)).get();
+  if (current?.avatarUrl?.startsWith("/uploads/avatars/")) {
+    const oldPath = path.resolve(process.cwd(), current.avatarUrl.slice(1));
+    fs.unlink(oldPath, () => {});
+  }
+  const [updated] = await db.update(pilot).set({ avatarUrl: null }).where(eq(pilot.id, pilotId)).returning();
+  emitDashboard("data-changed", { resource: "pilots" });
+  res.json(safePublic(updated));
 });
 
 /** GET /pilots/:id — admin/modo only */

@@ -76,6 +76,9 @@ app.get('/dashboard/*splat', (_req: Request, res: Response) => {
   res.sendFile(path.join(frontendDist, 'index.html'));
 });
 
+// Uploaded avatars
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Static files — overlays and shared assets
 app.use(express.static(path.join(__dirname)));
 
