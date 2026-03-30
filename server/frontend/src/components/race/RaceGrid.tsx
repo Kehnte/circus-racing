@@ -11,9 +11,12 @@ import Typography from '@mui/material/Typography';
 import AddOutlined from '@mui/icons-material/AddOutlined';
 import ArrowDownwardOutlined from '@mui/icons-material/ArrowDownwardOutlined';
 import ArrowUpwardOutlined from '@mui/icons-material/ArrowUpwardOutlined';
+import CheckOutlined from '@mui/icons-material/CheckOutlined';
+import CloseOutlined from '@mui/icons-material/CloseOutlined';
 import DeleteOutlined from '@mui/icons-material/DeleteOutlined';
 import RemoveOutlined from '@mui/icons-material/RemoveOutlined';
-import { apiFetch } from '../../api.ts';
+import useSWR from 'swr';
+import { apiFetch, fetcher } from '../../api.ts';
 import { useAuth } from '../../context/AuthContext.tsx';
 import useNotifications from '../../hooks/useNotifications/useNotifications.tsx';
 import CrudToolbar from '../CrudToolbar.tsx';
@@ -23,6 +26,32 @@ import NumberSpinner from '../NumberSpinner.tsx';
 import type { OcrStatusMap, PilotRaceState, RaceStatePayload } from '../../types.ts';
 import { useRaceStore } from '../../store/raceStore.ts';
 import ChronoDisplay from './ChronoDisplay.tsx';
+
+interface PendingEntryRow {
+  _kind: 'pending';
+  id: string;
+  entryId: string;
+  raceId: string;
+  pilotId: string;
+  displayName: string;
+  country: string;
+  teamSnapshot: { name: string; color: string; acronym: string } | null;
+  vehicleSnapshot: { type: string; manufacturer: string; model: string } | null;
+}
+
+interface RaceEntryEnriched {
+  id: string;
+  raceId: string;
+  pilotId: string;
+  status: 'PENDING' | 'VALIDATED';
+  gridPosition: number | null;
+  teamSnapshot: Record<string, unknown> | null;
+  vehicleSnapshot: Record<string, unknown> | null;
+  controlsSnapshot: Record<string, unknown> | null;
+  pilot: { id: string; displayName: string; country: string } | null;
+}
+
+type GridRow = (PilotRaceState & { _kind: 'validated' }) | PendingEntryRow;
 
 interface Props {
   raceState: RaceStatePayload;
@@ -49,12 +78,54 @@ export default function RaceGrid({ raceState }: Props) {
   const notifications = useNotifications();
   const canDelete = role === 'ADMIN' || role === 'MODERATOR';
 
+  const { data: entriesData, mutate: mutateEntries } = useSWR<RaceEntryEnriched[]>(
+    canDelete ? `/api/races/${raceId}/entries` : null,
+    fetcher,
+  );
+
+  const pendingRows: PendingEntryRow[] = (entriesData ?? [])
+    .filter((e) => e.status === 'PENDING')
+    .map((e) => ({
+      _kind: 'pending' as const,
+      id: e.id,
+      entryId: e.id,
+      raceId: e.raceId,
+      pilotId: e.pilotId,
+      displayName: e.pilot?.displayName ?? '(unknown)',
+      country: e.pilot?.country ?? 'un',
+      teamSnapshot: e.teamSnapshot as PendingEntryRow['teamSnapshot'],
+      vehicleSnapshot: e.vehicleSnapshot as PendingEntryRow['vehicleSnapshot'],
+    }));
+
+  const validatedRows = pilots.map((p) => ({ ...p, _kind: 'validated' as const }));
+  const rows: GridRow[] = [...validatedRows, ...pendingRows];
+
   async function handleRemovePilot(pilot: PilotRaceState) {
     try {
       await apiFetch(`/api/races/${raceId}/entries/${pilot.entryId}`, { method: 'DELETE' });
       notifications.show('Pilot removed.', { severity: 'success', autoHideDuration: 3000 });
     } catch (err) {
       notifications.show(`Remove failed: ${(err as Error).message}`, { severity: 'error', autoHideDuration: 5000 });
+    }
+  }
+
+  async function handleApprovePending(row: PendingEntryRow) {
+    try {
+      await apiFetch(`/api/races/${raceId}/entries/${row.id}/validate`, { method: 'PATCH' });
+      notifications.show('Entry approved.', { severity: 'success', autoHideDuration: 3000 });
+      void mutateEntries();
+    } catch (err) {
+      notifications.show(`Approve failed: ${(err as Error).message}`, { severity: 'error', autoHideDuration: 5000 });
+    }
+  }
+
+  async function handleRejectPending(row: PendingEntryRow) {
+    try {
+      await apiFetch(`/api/races/${raceId}/entries/${row.id}`, { method: 'DELETE' });
+      notifications.show('Entry rejected.', { severity: 'success', autoHideDuration: 3000 });
+      void mutateEntries();
+    } catch (err) {
+      notifications.show(`Reject failed: ${(err as Error).message}`, { severity: 'error', autoHideDuration: 5000 });
     }
   }
 
@@ -100,23 +171,26 @@ export default function RaceGrid({ raceState }: Props) {
     });
   }
 
-  const columns: GridColDef<PilotRaceState>[] = [
+  const columns: GridColDef<GridRow>[] = [
     {
       field: 'position',
       headerName: 'Pos',
       minWidth: 60,
-      renderCell: (params: GridRenderCellParams<PilotRaceState, number>) => (
-        <Typography component="span" variant="body2" sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: 13, fontWeight: 700 }}>
-          {params.value}
-        </Typography>
-      ),
+      renderCell: (params: GridRenderCellParams<GridRow, number>) => {
+        if (params.row._kind === 'pending') return null;
+        return (
+          <Typography component="span" variant="body2" sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: 13, fontWeight: 700 }}>
+            {params.value}
+          </Typography>
+        );
+      },
     },
     {
       field: 'country',
       headerName: 'Country',
       minWidth: 60,
       sortable: false,
-      renderCell: (params: GridRenderCellParams<PilotRaceState>) => (
+      renderCell: (params: GridRenderCellParams<GridRow>) => (
         <FlagIcon code={params.row.country} size={18} />
       ),
     },
@@ -124,7 +198,7 @@ export default function RaceGrid({ raceState }: Props) {
       field: 'displayName',
       headerName: 'Name',
       flex: 1,
-      renderCell: (params: GridRenderCellParams<PilotRaceState>) => (
+      renderCell: (params: GridRenderCellParams<GridRow>) => (
         <Typography component="span" variant="body2">{params.row.displayName}</Typography>
       ),
     },
@@ -133,7 +207,7 @@ export default function RaceGrid({ raceState }: Props) {
           field: 'teamSnapshot' as const,
           headerName: 'Team',
           minWidth: 60,
-          renderCell: (params: GridRenderCellParams<PilotRaceState>) => {
+          renderCell: (params: GridRenderCellParams<GridRow>) => {
             const t = params.row.teamSnapshot;
             if (!t) return <Typography color="text.disabled">—</Typography>;
             return (
@@ -148,13 +222,14 @@ export default function RaceGrid({ raceState }: Props) {
       field: 'lap',
       headerName: 'Laps',
       minWidth: 60,
-      renderCell: (params: GridRenderCellParams<PilotRaceState>) => {
+      renderCell: (params: GridRenderCellParams<GridRow>) => {
+        if (params.row._kind === 'pending') return null;
         const s = params.row.status;
         if (s === 'FINISHED') return <Chip label="Finished" color="success" size="small" />;
         if (s === 'DNF') return <Chip label="DNF" color="error" size="small" />;
         return (
           <Typography component="span" variant="body2" sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: 13 }}>
-            {params.value}
+            {params.row.lap}
           </Typography>
         );
       },
@@ -165,9 +240,10 @@ export default function RaceGrid({ raceState }: Props) {
           headerName: 'Chrono',
           minWidth: 150,
           sortable: false,
-          renderCell: (params: GridRenderCellParams<PilotRaceState>) => (
-            <ChronoDisplay pilot={params.row} raceState={raceState} />
-          ),
+          renderCell: (params: GridRenderCellParams<GridRow>) => {
+            if (params.row._kind === 'pending') return null;
+            return <ChronoDisplay pilot={params.row} raceState={raceState} />;
+          },
         }]
       : []),
     ...(isManual
@@ -177,23 +253,27 @@ export default function RaceGrid({ raceState }: Props) {
             headerName: 'Laps controls',
             minWidth: 60,
             sortable: false,
-            renderCell: (params: GridRenderCellParams<PilotRaceState>) => (
-              <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
-                <IconButton size="small" disabled={!canAct} onClick={() => void changeLap(params.row.id, -1)}>
-                  <RemoveOutlined fontSize="small" />
-                </IconButton>
-                <IconButton size="small" disabled={!canAct} onClick={() => void changeLap(params.row.id, 1)}>
-                  <AddOutlined fontSize="small" />
-                </IconButton>
-              </Box>
-            ),
+            renderCell: (params: GridRenderCellParams<GridRow>) => {
+              if (params.row._kind === 'pending') return null;
+              return (
+                <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+                  <IconButton size="small" disabled={!canAct} onClick={() => void changeLap(params.row.id, -1)}>
+                    <RemoveOutlined fontSize="small" />
+                  </IconButton>
+                  <IconButton size="small" disabled={!canAct} onClick={() => void changeLap(params.row.id, 1)}>
+                    <AddOutlined fontSize="small" />
+                  </IconButton>
+                </Box>
+              );
+            },
           },
           {
             field: 'ctrlPos' as const,
             headerName: 'Pos controls',
             minWidth: 180,
             sortable: false,
-            renderCell: (params: GridRenderCellParams<PilotRaceState>) => {
+            renderCell: (params: GridRenderCellParams<GridRow>) => {
+              if (params.row._kind === 'pending') return null;
               const { min, max } = positionRange(params.row);
               return (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, height: '100%' }}>
@@ -223,7 +303,8 @@ export default function RaceGrid({ raceState }: Props) {
           headerName: 'OCR',
           minWidth: 70,
           sortable: false,
-          renderCell: (params: GridRenderCellParams<PilotRaceState>) => {
+          renderCell: (params: GridRenderCellParams<GridRow>) => {
+            if (params.row._kind === 'pending') return null;
             const s = params.row.status;
             if (s === 'FINISHED' || s === 'DNF') return null;
             const entry = ocrStatusMap[params.row.id];
@@ -242,7 +323,8 @@ export default function RaceGrid({ raceState }: Props) {
       headerName: 'DNF',
       minWidth: 60,
       sortable: false,
-      renderCell: (params: GridRenderCellParams<PilotRaceState>) => {
+      renderCell: (params: GridRenderCellParams<GridRow>) => {
+        if (params.row._kind === 'pending') return null;
         const isDnf = params.row.status === 'DNF';
         return (
           <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
@@ -262,36 +344,67 @@ export default function RaceGrid({ raceState }: Props) {
     {
       field: 'delete',
       type: 'actions' as const,
-      headerName: 'Remove',
+      headerName: 'Actions',
       headerAlign: 'left' as const,
       align: 'left' as const,
-      minWidth: 60,
-      getActions: (params: GridRowParams<PilotRaceState>) => [
-        ...(canDelete ? [
+      minWidth: 120,
+      getActions: (params: GridRowParams<GridRow>) => {
+        if (!canDelete) return [];
+        if (params.row._kind === 'pending') {
+          return [
+            <GridActionsCellItem
+              key="remove"
+              icon={<DeleteOutlined />}
+              label="Remove"
+              disabled
+              showInMenu={false}
+            />,
+            <GridActionsCellItem
+              key="approve"
+              icon={<CheckOutlined />}
+              label="Approve"
+              onClick={() => void handleApprovePending(params.row as PendingEntryRow)}
+              showInMenu={false}
+            />,
+            <GridActionsCellItem
+              key="reject"
+              icon={<CloseOutlined />}
+              label="Reject"
+              onClick={() => void handleRejectPending(params.row as PendingEntryRow)}
+              showInMenu={false}
+            />,
+          ];
+        }
+        return [
           <GridActionsCellItem
+            key="remove"
             icon={<DeleteOutlined />}
             label="Remove"
-            onClick={() => void handleRemovePilot(params.row)}
+            onClick={() => void handleRemovePilot(params.row as PilotRaceState)}
             showInMenu={false}
             disabled={!canRemove}
           />,
-        ] : []),
-      ],
+        ];
+      },
     },
   ];
 
   return (
     <DataGrid
-      rows={pilots}
+      rows={rows}
       columns={columns}
-
       pageSizeOptions={[25, 50]}
       disableColumnResize
       disableRowSelectionOnClick
       getRowId={(row) => row.id}
       density="compact"
       slots={{ toolbar: CrudToolbar, noRowsOverlay: NoRowsOverlay }}
-      sx={{ flex: 1 }}
+      getRowClassName={(params) => (params.row as GridRow)._kind === 'pending' ? 'row-pending' : ''}
+      sx={{
+        flex: 1,
+        '& .row-pending': { opacity: 0.5, fontStyle: 'italic' },
+        '& .row-pending:hover': { opacity: 0.7 },
+      }}
     />
   );
 }
