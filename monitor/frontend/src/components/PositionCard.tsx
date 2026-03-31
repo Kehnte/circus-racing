@@ -1,7 +1,6 @@
 // PositionCard.tsx — Live X/Y/Z coordinates from OCR and detection status chip.
 
-import Card from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
+import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
@@ -33,16 +32,14 @@ export default function PositionCard({ state }: Props) {
   const ocrColor = state?.last_ocr_at ? 'success' : 'warning';
 
   return (
-    <Card>
-      <CardContent>
-        <Typography variant="overline" color="text.secondary">Position</Typography>
-        <Box sx={{ display: 'flex', my: 1.5 }}>
-          {AXES.map((axis, i) => (
-            <CoordColumn key={axis} axis={axis} value={pos ? pos[i].toFixed(3) : '—'} />
-          ))}
-        </Box>
-        <Chip label={ocrLabel} color={ocrColor} size="medium" />
-      </CardContent>
-    </Card>
+    <Paper elevation={0} sx={{ p: 2 }}>
+      <Typography variant="overline" color="text.secondary">Position</Typography>
+      <Box sx={{ display: 'flex', my: 1.5 }}>
+        {AXES.map((axis, i) => (
+          <CoordColumn key={axis} axis={axis} value={pos ? pos[i].toFixed(3) : '—'} />
+        ))}
+      </Box>
+      <Chip label={ocrLabel} color={ocrColor} size="medium" />
+    </Paper>
   );
 }

@@ -11,6 +11,15 @@ export interface MonitorState {
   trace_count: number;
   marks: { order: number; trace_idx: number; type_hint: string }[];
   finished: boolean;
+  last_capture_test: CaptureTestResult | null;
+}
+
+export interface CaptureTestResult {
+  ok: boolean;
+  ocr_text: string;
+  position: [number, number, number] | null;
+  image_b64: string | null;
+  captured_at: string;
 }
 
 export interface MonitorConfig {

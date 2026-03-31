@@ -8,6 +8,7 @@ import ModeCard from './components/ModeCard';
 import PositionCard from './components/PositionCard';
 import RecordCard from './components/RecordCard';
 import ConfigCard from './components/ConfigCard';
+import CaptureTestCard from './components/CaptureTestCard';
 
 async function setMode(mode: 'RACE' | 'RECORD') {
   await fetch('/api/mode', {
@@ -29,6 +30,7 @@ export default function App() {
           <ModeCard mode={state?.mode} onSetMode={setMode} />
           <PositionCard state={state} />
           {isRecord && state && <RecordCard state={state} />}
+          <CaptureTestCard captureTest={state?.last_capture_test ?? null} />
           <ConfigCard recordMode={isRecord} />
         </Box>
       </Container>

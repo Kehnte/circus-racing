@@ -19,7 +19,7 @@ export default function AppHeader({ state, pollError }: Props) {
   const sendDim = sendStatus === null || sendStatus === undefined;
 
   return (
-    <AppBar position="static" color="default" elevation={1}>
+    <AppBar position="static" color="default" elevation={0}>
       <Toolbar variant="dense" sx={{ gap: 1 }}>
         <Typography variant="subtitle1" sx={{ flexGrow: 1, fontWeight: 700, fontStyle: 'italic' }}>
           Circus Racing Monitor

@@ -89,9 +89,16 @@ def _load_config() -> configparser.ConfigParser:
             config.read(bundle_cfg)
             return config
 
-    raise FileNotFoundError(
-        "config.cfg not found. Copy config.example.cfg to config.cfg and adjust the values."
-    )
+    # No config found — create a blank one so the UI can guide the user.
+    config["auth"] = {"token": ""}
+    config["server"] = {"url": ""}
+    config["screen"] = {"monitor_index": "1"}
+    config["debug"] = {
+        "delta_time_s": "1",
+        "checkpoint_save": "false",
+        "checkpoint_save_distance": "150",
+    }
+    return config
 
 
 config = _load_config()
@@ -124,6 +131,9 @@ class MonitorState:
     finished: bool = False
     circuit_name: str = "Circuit"
     circuit_type: str = "LOOP"
+
+    # Last Ctrl+Shift+T capture test result
+    last_capture_test: Optional[dict] = None
 
     # Restart signal for mode switches
     restart_event: threading.Event = field(default_factory=threading.Event)
@@ -649,6 +659,7 @@ def api_state():
             "trace_count": len(state.raw_trace),
             "marks": state.marks,
             "finished": state.finished,
+            "last_capture_test": state.last_capture_test,
         })
 
 
@@ -735,6 +746,65 @@ def api_monitors():
     return jsonify(monitors)
 
 
+@flask_app.route("/api/screens")
+def api_screens():
+    with mss.mss() as sct:
+        screens = [
+            {"index": i, "width": m["width"], "height": m["height"], "left": m["left"], "top": m["top"]}
+            for i, m in enumerate(sct.monitors[1:], start=1)
+        ]
+    return jsonify(screens)
+
+
+@flask_app.route("/api/test-capture", methods=["POST"])
+def api_test_capture():
+    import base64
+    try:
+        monitor_index = config.getint("screen", "monitor_index", fallback=1)
+        with mss.mss() as sct:
+            mon = sct.monitors[monitor_index]
+            mon_w, mon_h = mon["width"], mon["height"]
+            cap_left, cap_top, cap_w, cap_h = _get_capture_zone(mon_w, mon_h)
+            region = {
+                "top": cap_top + mon["top"],
+                "left": cap_left + mon["left"],
+                "width": cap_w,
+                "height": cap_h,
+            }
+            capture = sct.grab(region)
+            mss.tools.to_png(capture.rgb, capture.size, output=str(DATA_DIR / "capture_test.png"))
+
+        img = cv2.imread(str(DATA_DIR / "capture_test.png"), cv2.IMREAD_GRAYSCALE)
+        img = cv2.resize(img, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
+        img = cv2.GaussianBlur(img, (3, 3), 0)
+        _, thresh = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+        processed = cv2.bitwise_not(thresh)
+        cv2.imwrite(str(DATA_DIR / "capture_test_processed.png"), processed)
+
+        ocr_text = pytesseract.image_to_string(processed, config="--oem 3 --psm 7 -c tessedit_char_whitelist=0123456789.km-Pos: ")
+        parsed = parse_pos(ocr_text)
+
+        with open(DATA_DIR / "capture_test.png", "rb") as f:
+            image_b64 = base64.b64encode(f.read()).decode()
+
+        result = {
+            "ok": parsed is not None,
+            "ocr_text": ocr_text.strip(),
+            "position": parsed,
+            "image_b64": image_b64,
+            "captured_at": datetime.datetime.now(datetime.UTC).isoformat(),
+        }
+        with state.lock:
+            state.last_capture_test = result
+        return jsonify(result)
+    except Exception as e:
+        log.warning("test-capture failed: %s", e)
+        result = {"ok": False, "ocr_text": "", "position": None, "image_b64": None, "captured_at": datetime.datetime.now(datetime.UTC).isoformat()}
+        with state.lock:
+            state.last_capture_test = result
+        return jsonify(result), 500
+
+
 @flask_app.route("/api/config", methods=["GET"])
 def api_get_config():
     return jsonify({
@@ -789,6 +859,52 @@ def main():
 
     t_ping = threading.Thread(target=_ping_loop, daemon=True)
     t_ping.start()
+
+    def _on_test_capture_hotkey():
+        import base64
+        try:
+            monitor_index = config.getint("screen", "monitor_index", fallback=1)
+            with mss.mss() as sct:
+                mon = sct.monitors[monitor_index]
+                mon_w, mon_h = mon["width"], mon["height"]
+                cap_left, cap_top, cap_w, cap_h = _get_capture_zone(mon_w, mon_h)
+                region = {
+                    "top": cap_top + mon["top"],
+                    "left": cap_left + mon["left"],
+                    "width": cap_w,
+                    "height": cap_h,
+                }
+                capture = sct.grab(region)
+                mss.tools.to_png(capture.rgb, capture.size, output=str(DATA_DIR / "capture_test.png"))
+
+            img = cv2.imread(str(DATA_DIR / "capture_test.png"), cv2.IMREAD_GRAYSCALE)
+            img = cv2.resize(img, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
+            img = cv2.GaussianBlur(img, (3, 3), 0)
+            _, thresh = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+            processed = cv2.bitwise_not(thresh)
+
+            ocr_text = pytesseract.image_to_string(processed, config="--oem 3 --psm 7 -c tessedit_char_whitelist=0123456789.km-Pos: ")
+            parsed = parse_pos(ocr_text)
+
+            with open(DATA_DIR / "capture_test.png", "rb") as f:
+                image_b64 = base64.b64encode(f.read()).decode()
+
+            result = {
+                "ok": parsed is not None,
+                "ocr_text": ocr_text.strip(),
+                "position": parsed,
+                "image_b64": image_b64,
+                "captured_at": datetime.datetime.now(datetime.UTC).isoformat(),
+            }
+        except Exception as e:
+            log.warning("Ctrl+Shift+T capture failed: %s", e)
+            result = {"ok": False, "ocr_text": "", "position": None, "image_b64": None, "captured_at": datetime.datetime.now(datetime.UTC).isoformat()}
+
+        with state.lock:
+            state.last_capture_test = result
+        log.info("[Ctrl+Shift+T] capture test: ok=%s", result["ok"])
+
+    keyboard.add_hotkey("alt+t", _on_test_capture_hotkey)
 
     # Give Flask a moment to bind before opening the browser
     time.sleep(0.8)

@@ -97,15 +97,13 @@ export default function ConfigCard({ recordMode }: Props) {
           onChange={e => set('token', e.target.value)}
           error={tokenError}
           helperText={tokenError ? 'Expected 64-character hex token (from your pilot profile)' : ' '}
-          InputProps={{
-            endAdornment: (
-              <InputAdornment position="end">
-                <IconButton size="small" edge="end" onClick={() => setTokenVisible(v => !v)}>
-                  {tokenVisible ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
-                </IconButton>
-              </InputAdornment>
-            ),
-          }}
+          slotProps={{ input: { endAdornment: (
+            <InputAdornment position="end">
+              <IconButton size="small" edge="end" onClick={() => setTokenVisible(v => !v)}>
+                {tokenVisible ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
+              </IconButton>
+            </InputAdornment>
+          )}}}
         />
 
         <TextField
