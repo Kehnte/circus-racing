@@ -46,15 +46,17 @@ export default function TeamColorPicker({ value, onChange, error, helperText }: 
           px: 1.75,
           pt: 1,
           pb: 1.25,
-          borderColor: error ? 'error.main' : '#9E9E9E',
+          backgroundColor: '#0a0a0a',
+          backgroundImage: 'none',
+          borderColor: error ? 'error.main' : 'divider',
           borderWidth: '1px',
           borderStyle: 'solid',
           borderRadius: 1,
-          transition: 'none',
-          '&:hover': { borderColor: error ? 'error.main' : 'common.white' },
+          transition: 'border-color 0.15s',
+          '&:hover': { borderColor: error ? 'error.main' : 'text.primary' },
           '&:focus-within': {
             borderColor: error ? 'error.main' : 'primary.main',
-            boxShadow: (theme) => `inset 0 0 0 1px ${error ? theme.palette.error.main : theme.palette.primary.main}`,
+            outline: (theme) => `1px solid ${error ? theme.palette.error.main : theme.palette.primary.main}`,
           },
         }}
       >
@@ -86,9 +88,7 @@ export default function TeamColorPicker({ value, onChange, error, helperText }: 
                   '&:hover': { bgcolor: c.value, opacity: 0.85 },
                   '&.Mui-selected': {
                     bgcolor: c.value,
-                    outline: '2px solid',
-                    outlineColor: 'text.primary',
-                    outlineOffset: '2px',
+                    boxShadow: `0 0 0 2px #171717, 0 0 0 4px ${c.value}`,
                     '&:hover': { bgcolor: c.value },
                   },
                 }}

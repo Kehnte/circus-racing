@@ -6,7 +6,6 @@ import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
 import AddOutlined from '@mui/icons-material/AddOutlined';
 import { useState } from 'react';
-import { useRaceSocket } from '../hooks/useRaceSocket.ts';
 import { useRaceStore } from '../store/raceStore.ts';
 import { useAuth } from '../context/AuthContext.tsx';
 import PageContainer from '../components/PageContainer.tsx';
@@ -18,8 +17,6 @@ import RaceSelector from '../components/race/RaceSelector.tsx';
 import RaceSettingsPanel from '../components/race/RaceSettingsPanel.tsx';
 
 export default function DashboardPage() {
-  useRaceSocket();
-
   const { raceState } = useRaceStore();
   const { role } = useAuth();
   const isModo = role === 'ADMIN' || role === 'MODERATOR';

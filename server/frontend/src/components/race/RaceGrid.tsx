@@ -230,7 +230,6 @@ export default function RaceGrid({ raceState }: Props) {
         );
         const s = params.row.status;
         if (s === 'FINISHED') return <Chip label="Finished" color="success" size="small" />;
-        if (s === 'DNF') return <Chip label="DNF" color="error" size="small" />;
         return (
           <Typography component="span" variant="body2" sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: 13 }}>
             {params.row.lap}
@@ -257,16 +256,21 @@ export default function RaceGrid({ raceState }: Props) {
             headerName: 'Laps controls',
             minWidth: 60,
             sortable: false,
-            renderCell: (params: GridRenderCellParams<GridRow>) => (
-              <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
-                <IconButton size="small" disabled={!canAct || params.row._kind === 'pending'} onClick={() => params.row._kind !== 'pending' && void changeLap(params.row.id, -1)}>
-                  <RemoveOutlined fontSize="small" />
-                </IconButton>
-                <IconButton size="small" disabled={!canAct || params.row._kind === 'pending'} onClick={() => params.row._kind !== 'pending' && void changeLap(params.row.id, 1)}>
-                  <AddOutlined fontSize="small" />
-                </IconButton>
-              </Box>
-            ),
+            renderCell: (params: GridRenderCellParams<GridRow>) => {
+              const isPending = params.row._kind === 'pending';
+              const isDnf = !isPending && (params.row as PilotRaceState).status === 'DNF';
+              const dnfSx = isDnf ? { '&.Mui-disabled': { color: '#f87171' } } : undefined;
+              return (
+                <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+                  <IconButton size="small" disabled={!canAct || isPending || isDnf} sx={dnfSx} onClick={() => !isPending && void changeLap(params.row.id, -1)}>
+                    <RemoveOutlined fontSize="small" />
+                  </IconButton>
+                  <IconButton size="small" disabled={!canAct || isPending || isDnf} sx={dnfSx} onClick={() => !isPending && void changeLap(params.row.id, 1)}>
+                    <AddOutlined fontSize="small" />
+                  </IconButton>
+                </Box>
+              );
+            },
           },
           {
             field: 'ctrlPos' as const,
@@ -275,14 +279,16 @@ export default function RaceGrid({ raceState }: Props) {
             sortable: false,
             renderCell: (params: GridRenderCellParams<GridRow>) => {
               const isPending = params.row._kind === 'pending';
+              const isDnf = !isPending && (params.row as PilotRaceState).status === 'DNF';
               const { min, max } = isPending ? { min: 1, max: 1 } : positionRange(params.row as PilotRaceState);
               const validatedRow = isPending ? null : (params.row as PilotRaceState);
+              const ctrlDisabled = !canEditGrid || isPending || isDnf;
               return (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, height: '100%' }}>
-                  <IconButton size="small" disabled={!canEditGrid || isPending} onClick={() => validatedRow && void reorder(validatedRow.id, 'up')}>
+                  <IconButton size="small" disabled={ctrlDisabled} sx={isDnf ? { '&.Mui-disabled': { color: '#f87171' } } : undefined} onClick={() => validatedRow && void reorder(validatedRow.id, 'up')}>
                     <ArrowUpwardOutlined fontSize="small" />
                   </IconButton>
-                  <IconButton size="small" disabled={!canEditGrid || isPending} onClick={() => validatedRow && void reorder(validatedRow.id, 'down')}>
+                  <IconButton size="small" disabled={ctrlDisabled} sx={isDnf ? { '&.Mui-disabled': { color: '#f87171' } } : undefined} onClick={() => validatedRow && void reorder(validatedRow.id, 'down')}>
                     <ArrowDownwardOutlined fontSize="small" />
                   </IconButton>
                   {validatedRow ? (
@@ -291,7 +297,7 @@ export default function RaceGrid({ raceState }: Props) {
                       value={validatedRow.position}
                       min={min}
                       max={max}
-                      disabled={!canEditGrid}
+                      disabled={ctrlDisabled}
                       onCommit={(v) => { if (v !== validatedRow.position) void setPosition(validatedRow.id, v); }}
                     />
                   ) : (
@@ -340,7 +346,7 @@ export default function RaceGrid({ raceState }: Props) {
                 <Button
                   size="small"
                   variant={isDnf ? 'contained' : 'outlined'}
-                  color={isDnf ? 'error' : 'inherit'}
+                  color={isDnf ? 'error' : 'primary'}
                   disabled={!canEditGrid || isFinished || isPending}
                   onClick={() => !isPending && void toggleDnf(params.row.id)}
                 >

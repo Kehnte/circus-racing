@@ -6,7 +6,6 @@ import Stack from '@mui/material/Stack';
 import PauseOutlined from '@mui/icons-material/PauseOutlined';
 import PlayArrowOutlined from '@mui/icons-material/PlayArrowOutlined';
 import RefreshOutlined from '@mui/icons-material/RefreshOutlined';
-import SyncOutlined from '@mui/icons-material/SyncOutlined';
 import StopOutlined from '@mui/icons-material/StopOutlined';
 import { apiFetch } from '../../api.ts';
 import type { RaceStatePayload } from '../../types.ts';
@@ -61,25 +60,17 @@ export default function RaceControlBar({ raceState }: Props) {
           finish
         </Button>
 
-        <Button
-          variant="outlined"
-          size="small"
-          color="warning"
-          startIcon={<RefreshOutlined />}
-          disabled={isFinished ? false : !(isStarted || isPaused)}
-          onClick={() => void call(`/api/races/${raceId}/reset`)}
-        >
-          reset
-        </Button>
-
-        <Button
-          variant="outlined"
-          size="small"
-          startIcon={<SyncOutlined />}
-          onClick={() => void call(`/api/races/${raceId}/load`)}
-        >
-          reload
-        </Button>
+        {(isStarted || isPaused || isFinished) && (
+          <Button
+            variant="outlined"
+            size="small"
+            color="warning"
+            startIcon={<RefreshOutlined />}
+            onClick={() => void call(`/api/races/${raceId}/reset`)}
+          >
+            reset
+          </Button>
+        )}
       </Stack>
     </Box>
   );

@@ -29,8 +29,6 @@ import HowToRegOutlined from '@mui/icons-material/HowToRegOutlined';
 import KeyOutlined from '@mui/icons-material/KeyOutlined';
 import LogoutOutlined from '@mui/icons-material/LogoutOutlined';
 import RefreshOutlined from '@mui/icons-material/RefreshOutlined';
-import SettingsOutlined from '@mui/icons-material/SettingsOutlined';
-
 import VisibilityOutlined from '@mui/icons-material/VisibilityOutlined';
 import VisibilityOffOutlined from '@mui/icons-material/VisibilityOffOutlined';
 import { apiFetch, fetcher } from '../api.ts';
@@ -46,8 +44,8 @@ const TOKEN_KEY = 'circus_token';
 interface OpenRace { id: string; name: string; lapCount: number; trackingMode: string; sessionMode: string; session: string; startType: string; status: string; }
 interface RaceEntry { id: string; status: 'PENDING' | 'VALIDATED'; }
 
-function roleChipColor(role: string): 'primary' | 'warning' | 'default' {
-  if (role === 'ADMIN') return 'primary';
+function roleChipColor(role: string): 'error' | 'warning' | 'default' {
+  if (role === 'ADMIN') return 'error';
   if (role === 'MODERATOR') return 'warning';
   return 'default';
 }
@@ -323,21 +321,13 @@ export default function ProfilePage() {
     }
   }
 
-  async function handleDownloadConfig() {
-    const token = localStorage.getItem(TOKEN_KEY);
-    const res = await fetch('/api/pilots/me/config', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!res.ok) return;
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'config.cfg'; a.click();
-    URL.revokeObjectURL(url);
-  }
-
-  function handleDownloadMonitor() {
-    window.open('https://github.com/Kehnte/circus-racing/releases/latest', '_blank');
+  async function handleCopyServerUrl() {
+    try {
+      await navigator.clipboard.writeText(window.location.origin);
+      notifications.show('Server URL copied to clipboard.', { severity: 'success', autoHideDuration: 2000 });
+    } catch {
+      notifications.show('Could not copy — select and copy manually.', { severity: 'error' });
+    }
   }
 
   if (meError) return <Alert severity="error">Failed to load profile.</Alert>;
@@ -360,7 +350,7 @@ export default function ProfilePage() {
               >
                 <Avatar
                   src={avatarPreview ?? me.avatarUrl ?? undefined}
-                  sx={{ width: 80, height: 80, bgcolor: 'primary.main', fontSize: 32, border: 3, borderColor: 'primary.main' }}
+                  sx={{ width: 80, height: 80, bgcolor: '#0a0a0a', fontSize: 32 }}
                 >
                   {me.displayName[0].toUpperCase()}
                 </Avatar>
@@ -410,18 +400,21 @@ export default function ProfilePage() {
               </Button>
             </Paper>
 
-            {/* Monitor download card */}
+            {/* Setup Monitor card */}
             <Paper elevation={0} sx={{ p: 2 }}>
-              <Typography variant="subtitle2" sx={{ mb: 2 }}>OCR Monitor</Typography>
+              <Typography variant="subtitle2" sx={{ mb: 2 }}>Setup Monitor</Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-                Download the Monitor to push your position in AUTO mode.
+                Paste these values in the Monitor settings.
               </Typography>
               <Stack spacing={1}>
-                <Button variant="outlined" size="small" startIcon={<DownloadOutlined />} onClick={handleDownloadMonitor} fullWidth>
+                <Paper variant="outlined" sx={{ p: 1.5, display: 'flex', alignItems: 'center', gap: 1, fontSize: 12, wordBreak: 'break-all' }}>
+                  <Box sx={{ flex: 1, color: 'text.secondary' }}>{window.location.origin}</Box>
+                  <IconButton size="small" onClick={() => void handleCopyServerUrl()} title="Copy server URL">
+                    <ContentCopyOutlined fontSize="small" />
+                  </IconButton>
+                </Paper>
+                <Button variant="outlined" size="small" startIcon={<DownloadOutlined />} onClick={() => window.open('https://github.com/Kehnte/circus-racing/releases/latest', '_blank')} fullWidth>
                   Download Monitor (.exe)
-                </Button>
-                <Button variant="outlined" size="small" startIcon={<SettingsOutlined />} onClick={() => void handleDownloadConfig()} fullWidth>
-                  Download my config.cfg
                 </Button>
               </Stack>
             </Paper>
@@ -453,7 +446,7 @@ export default function ProfilePage() {
             </Paper>
 
             {/* Race configuration form */}
-            <Accordion disableGutters elevation={0} sx={{ borderRadius: 1, bgcolor: 'transparent' }}>
+            <Accordion disableGutters>
               <AccordionSummary expandIcon={<ExpandMoreOutlined />}>
                 <Typography variant="subtitle2">Race configuration</Typography>
               </AccordionSummary>
@@ -490,7 +483,7 @@ export default function ProfilePage() {
             </Accordion>
 
             {/* Security form */}
-            <Accordion disableGutters elevation={0} sx={{ borderRadius: 1, bgcolor: 'transparent' }}>
+            <Accordion disableGutters>
               <AccordionSummary expandIcon={<ExpandMoreOutlined />}>
                 <Typography variant="subtitle2">Security</Typography>
               </AccordionSummary>

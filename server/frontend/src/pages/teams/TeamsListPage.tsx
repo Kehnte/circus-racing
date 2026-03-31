@@ -82,7 +82,7 @@ export default function TeamsListPage() {
       minWidth: 60,
       renderCell: (params: GridRenderCellParams<Team, string>) => (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, height: '100%' }}>
-          <Box sx={{ width: 16, height: 16, bgcolor: params.value, flexShrink: 0 }} />
+          <Box sx={{ width: 16, height: 16, borderRadius: '50%', bgcolor: params.value, flexShrink: 0 }} />
           <Typography variant="body2" sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: 12 }}>{params.value}</Typography>
         </Box>
       ),

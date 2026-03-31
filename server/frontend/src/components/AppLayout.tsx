@@ -29,6 +29,7 @@ import TuneOutlined from '@mui/icons-material/TuneOutlined';
 import useSWR from 'swr';
 import { fetcher } from '../api.ts';
 import { useAuth } from '../context/AuthContext.tsx';
+import { useRaceSocket } from '../hooks/useRaceSocket.ts';
 import type { Pilot } from '../types.ts';
 
 const DRAWER_WIDTH = 240;
@@ -68,6 +69,7 @@ const NAV_SECTIONS_PILOT: NavSection[] = [
 
 
 export default function AppLayout() {
+  useRaceSocket();
   const { logout, displayName, role } = useAuth();
   const { data: me } = useSWR<Pilot>('/api/pilots/me', fetcher);
   const isPilot = role === 'PILOT';
@@ -155,7 +157,7 @@ export default function AppLayout() {
             <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} size="small" sx={{ ml: 1 }}>
               <Avatar
                 src={me?.avatarUrl ?? undefined}
-                sx={{ width: 32, height: 32, bgcolor: 'primary.main', fontSize: 14, border: 2, borderColor: 'primary.main' }}
+                sx={{ width: 32, height: 32, bgcolor: '#0a0a0a', fontSize: 14 }}
               >
                 {displayName ? displayName[0].toUpperCase() : <PersonOutlined fontSize="small" />}
               </Avatar>

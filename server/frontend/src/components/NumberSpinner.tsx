@@ -105,10 +105,13 @@ export default function NumberSpinner({
 
         <InputBase
           inputRef={inputRef}
-          type="number"
+          type="text"
+          inputMode="numeric"
           disabled={disabled}
           value={draft ?? current}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={(e) => {
+            if (/^-?\d*$/.test(e.target.value)) setDraft(e.target.value);
+          }}
           onBlur={() => {
             if (draft !== null) {
               const parsed = parseInt(draft, 10);
@@ -134,21 +137,15 @@ export default function NumberSpinner({
             }
           }}
           inputProps={{
-            min,
-            max,
             style: {
               textAlign: 'center',
               padding: 0,
               width: inputW,
               fontSize,
               fontFamily: 'Roboto Mono, monospace',
-              MozAppearance: 'textfield',
             },
           }}
           sx={{
-            '& input[type=number]::-webkit-outer-spin-button, & input[type=number]::-webkit-inner-spin-button': {
-              WebkitAppearance: 'none',
-            },
             borderLeft: '1px solid',
             borderRight: '1px solid',
             borderColor: 'divider',

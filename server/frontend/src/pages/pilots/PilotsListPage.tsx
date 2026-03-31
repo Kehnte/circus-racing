@@ -23,8 +23,8 @@ import useDialogs from '../../hooks/useDialogs/useDialogs.tsx';
 import useNotifications from '../../hooks/useNotifications/useNotifications.tsx';
 import type { Controls, Pilot, Team, Vehicle } from '../../types.ts';
 
-function roleChipColor(role: string): 'primary' | 'warning' | 'default' {
-  if (role === 'ADMIN') return 'primary';
+function roleChipColor(role: string): 'error' | 'warning' | 'default' {
+  if (role === 'ADMIN') return 'error';
   if (role === 'MODERATOR') return 'warning';
   return 'default';
 }

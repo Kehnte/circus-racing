@@ -103,16 +103,17 @@ export default function RaceSelector() {
               new race
             </Button>
 
-            <Button
-              variant="outlined"
-              size="small"
-              color="error"
-              startIcon={<DeleteOutlined />}
-              disabled={!canDelete}
-              onClick={() => void handleDelete()}
-            >
-              delete race
-            </Button>
+            {canDelete && (
+              <Button
+                variant="outlined"
+                size="small"
+                color="error"
+                startIcon={<DeleteOutlined />}
+                onClick={() => void handleDelete()}
+              >
+                delete race
+              </Button>
+            )}
           </>
         )}
       </Box>
