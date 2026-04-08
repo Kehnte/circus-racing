@@ -69,6 +69,9 @@ setInterval(() => {
 // Health check — used by reset.js to wait for server readiness
 app.get('/health', (_req: Request, res: Response) => res.json({ ok: true }));
 
+// Redirect root to dashboard
+app.get('/', (_req: Request, res: Response) => res.redirect('/dashboard/'));
+
 // React dashboard SPA — served under /dashboard, before generic static middleware
 const frontendDist = path.join(__dirname, 'frontend', 'dist');
 app.use('/dashboard', express.static(frontendDist));
