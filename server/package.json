@@ -19,10 +19,6 @@
   "author": "Kehnte",
   "license": "GPL-3.0",
   "type": "commonjs",
-  "workspaces": [
-    "packages/*",
-    "frontend"
-  ],
   "dependencies": {
     "@libsql/client": "^0.17.0",
     "@node-rs/bcrypt": "^1.10.4",
