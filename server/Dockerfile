@@ -33,8 +33,8 @@ RUN npm ci --omit=dev
 # Compiled server
 COPY --from=builder /app/dist/ dist/
 
-# Built frontend (served as static files by Express)
-COPY --from=builder /app/frontend/dist/ frontend/dist/
+# Built frontend (served as static files by Express at /app/dist/frontend/dist)
+COPY --from=builder /app/frontend/dist/ dist/frontend/dist/
 
 # Static assets
 COPY overlays/ overlays/
