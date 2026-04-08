@@ -8,6 +8,9 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 
+# Shared types package (resolved via tsconfig paths, must exist before frontend build)
+COPY packages/ packages/
+
 # Frontend deps + build
 COPY frontend/package*.json frontend/
 RUN cd frontend && npm ci
