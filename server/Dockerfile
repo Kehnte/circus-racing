@@ -36,9 +36,9 @@ COPY --from=builder /app/dist/ dist/
 # Built frontend (served as static files by Express at /app/dist/frontend/dist)
 COPY --from=builder /app/frontend/dist/ dist/frontend/dist/
 
-# Static assets
-COPY overlays/ overlays/
-COPY shared/ shared/
+# Static assets (copied into dist/ so Express can serve them via __dirname)
+COPY overlays/ dist/overlays/
+COPY shared/ dist/shared/
 COPY drizzle.config.ts ./
 COPY src/db/ src/db/
 

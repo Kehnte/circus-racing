@@ -159,7 +159,7 @@ export default function AppLayout() {
             <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} size="small" sx={{ ml: 1 }}>
               <Avatar
                 src={me?.avatarUrl ?? undefined}
-                sx={{ width: 32, height: 32, bgcolor: '#0a0a0a', fontSize: 14 }}
+                sx={{ width: 32, height: 32, fontSize: 14 }}
               >
                 {displayName ? displayName[0].toUpperCase() : <PersonOutlined fontSize="small" />}
               </Avatar>
