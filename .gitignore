@@ -2,9 +2,20 @@
 server/node_modules/
 server/db/
 server/dist/
+server/uploads/**/*
+!server/uploads/**/
+!server/uploads/**/.gitkeep
+server/packages/*/src/*.js
+server/packages/*/src/*.js.map
+server/packages/*/src/*.d.ts
+server/packages/*/src/*.d.ts.map
+server/frontend/node_modules/
+server/frontend/dist/
 server/.env
 
 # Monitor
+monitor/frontend/node_modules/
+monitor/frontend/dist/
 monitor/.venv/
 monitor/__pycache__/
 monitor/dist/

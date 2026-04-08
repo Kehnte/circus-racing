@@ -5,8 +5,9 @@ import crypto from "crypto";
 import { eq } from "drizzle-orm";
 import { db } from "../db/db.js";
 import { pilot } from "../db/schema.js";
-import { signToken } from "../middleware/auth.js";
-import { requireAuth } from "../middleware/auth.js";
+import { signToken, requireAuth } from "../middleware/auth.js";
+import { validate } from "../middleware/validate.js";
+import { registerSchema, loginSchema, changePasswordSchema } from "../validation/schemas.js";
 
 const router = Router();
 const SALT_ROUNDS = 12;
@@ -15,13 +16,8 @@ const SALT_ROUNDS = 12;
  * POST /auth/register
  * Body: { displayName, password, country?, avatarUrl?, teamId?, vehicleId?, controlsId? }
  */
-router.post("/register", async (req, res) => {
+router.post("/register", validate(registerSchema), async (req, res) => {
   const { displayName, password, country, avatarUrl, teamId, vehicleId, controlsId } = req.body;
-
-  if (!displayName || !password) {
-    res.status(400).json({ error: "displayName and password are required" });
-    return;
-  }
 
   const existingName = await db.select({ id: pilot.id })
     .from(pilot)
@@ -64,13 +60,8 @@ router.post("/register", async (req, res) => {
  * POST /auth/login
  * Body: { displayName, password }
  */
-router.post("/login", async (req, res) => {
+router.post("/login", validate(loginSchema), async (req, res) => {
   const { displayName, password } = req.body;
-
-  if (!displayName || !password) {
-    res.status(400).json({ error: "displayName and password are required" });
-    return;
-  }
 
   const found = await db.select().from(pilot).where(eq(pilot.displayName, displayName)).get();
   if (!found) {
@@ -101,6 +92,31 @@ router.post("/regenerate-token", ...([requireAuth] as any), async (req, res) => 
   const newToken = generateOcrToken();
   await db.update(pilot).set({ token: newToken }).where(eq(pilot.id, req.user!.id));
   res.json({ ocrToken: newToken });
+});
+
+/**
+ * POST /auth/change-password
+ * Body: { currentPassword, newPassword }
+ */
+router.post("/change-password", validate(changePasswordSchema), ...([requireAuth] as any), async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+
+  const found = await db.select().from(pilot).where(eq(pilot.id, req.user!.id)).get();
+  if (!found) {
+    res.status(404).json({ error: "Pilot not found" });
+    return;
+  }
+
+  const match = await bcrypt.compare(currentPassword, found.passwordHash);
+  if (!match) {
+    res.status(401).json({ error: "Current password is incorrect" });
+    return;
+  }
+
+  const newHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+  await db.update(pilot).set({ passwordHash: newHash }).where(eq(pilot.id, req.user!.id));
+
+  res.json({ ok: true });
 });
 
 // Helpers

@@ -67,7 +67,7 @@ function computeRaceElapsed(raceState, now) {
 }
 
 function computeChronoDisplay(pilot, raceState, leaderElapsedMs, now) {
-    const isDnf = pilot.status === "DNF" || pilot.status === "WARNING_DNF";
+    const isDnf = pilot.status === "DNF";
     if (!raceState.startedAt || isDnf) return "";
     const elapsedMs = computePilotElapsed(pilot, raceState, now);
     switch (raceState.chronoDisplayMode) {
@@ -100,7 +100,7 @@ function adaptRaceState(raceState) {
     };
     const raceStatus = statusMap[raceState.status] || "standby";
 
-    const activePilots = raceState.pilots.filter(p => p.status === "RUNNING" || p.status === "WARNING_DNF");
+    const activePilots = raceState.pilots.filter(p => p.status === "RUNNING");
     const leaderPilot = activePilots[0] ?? raceState.pilots[0];
     const leaderElapsedMs = leaderPilot ? computePilotElapsed(leaderPilot, raceState, now) : 0;
 
@@ -115,7 +115,7 @@ function adaptRaceState(raceState) {
         laps: pilot.lap,
         lapTimes: pilot.lapTimes,
         finished: pilot.status === "FINISHED",
-        dnf: pilot.status === "DNF" || pilot.status === "WARNING_DNF",
+        dnf: pilot.status === "DNF",
         frozenTime: pilot.frozenTime,
         chronoDisplay: computeChronoDisplay(pilot, raceState, leaderElapsedMs, now),
     }));
@@ -175,14 +175,14 @@ function refreshChronos() {
         setLapContainerToCountdown(Math.max(0, raceState.sessionDurationMs - elapsed), elapsed >= raceState.sessionDurationMs);
     }
 
-    const activePilots = raceState.pilots.filter(p => p.status === "RUNNING" || p.status === "WARNING_DNF");
+    const activePilots = raceState.pilots.filter(p => p.status === "RUNNING");
     const leaderPilot = activePilots[0] ?? raceState.pilots[0];
     const leaderElapsedMs = leaderPilot ? computePilotElapsed(leaderPilot, raceState, now) : 0;
 
     pilotElements.forEach((els, pilotId) => {
         const pilot = raceState.pilots.find(p => p.id === pilotId);
         if (!pilot || !els.rowEl) return;
-        const isDnf = pilot.status === "DNF" || pilot.status === "WARNING_DNF";
+        const isDnf = pilot.status === "DNF";
         if (!raceState.timingEnabled || isDnf) return;
         const pilotIdx = raceState.pilots.indexOf(pilot);
         if (pilotIdx === 0 && !pilot.frozenTime) return; // leader shows static label
@@ -464,7 +464,7 @@ function updateRaceStatusBlock(raceStatus, countdown, settings) {
     const wrapper = "race-status-wrapper";
 
     if (raceStatus === "standby" && countdown && countdown.active && countdown.remainingMs > 0) {
-        startCountdownDisplay(countdown.remainingMs);
+        if (!countdownInterval) startCountdownDisplay(countdown.remainingMs);
         wipeOutPaused();
         setRaceStatusBlock("rsb-countdown");
         setRaceStatusHeight("countdown");
@@ -663,7 +663,7 @@ function updatePage(pageSlice, teams, start, chronoDisplayMode, timingEnabled, t
 
 // Builds the chrono cell content and extra CSS class for a given pilot and display mode
 function buildChronoCell(pilot, globalIndex, chronoDisplayMode, timingEnabled) {
-    let chronoContent = "—";
+    let chronoContent = "--:--.---";
     let chronoExtraClass = "";
     if (timingEnabled) {
         if (pilot.dnf) {
@@ -839,7 +839,7 @@ function updateLeaderboard(data) {
         if (pilot.finished) setFinishedIcon(pilot.id);
     });
 
-    const newFastest = data.globalFastestLapPilotId ?? null;
+    const newFastest = timingEnabled ? (data.globalFastestLapPilotId ?? null) : null;
     if (newFastest !== fastestLapPilotId) {
         setFastestLapIcon(newFastest);
     }
@@ -861,10 +861,8 @@ socket.on("race-event", (event) => {
     if (event.type === "countdown") {
         currentCountdown = { active: true, remainingMs: event.seconds * 1000 };
         startCountdownDisplay(event.seconds * 1000);
-        if (lastRaceState) {
-            const adapted = adaptRaceState(lastRaceState);
-            updateRaceStatusBlock("standby", currentCountdown, adapted.settings);
-        }
+        const settings = lastRaceState ? adaptRaceState(lastRaceState).settings : {};
+        updateRaceStatusBlock("standby", currentCountdown, settings);
     } else if (event.type === "countdown-stop") {
         currentCountdown = null;
         stopCountdownDisplay();
@@ -900,18 +898,21 @@ socket.on("race-started", () => {
     fastestLapPilotId = null;
     finishedPilotIds.clear();
     if (pageTimer) { clearInterval(pageTimer); pageTimer = null; }
-    pilotElements.clear();
-    const container = document.getElementById("lb-pilots-container");
-    if (container) container.innerHTML = "";
+    pilotElements.forEach((els) => {
+        if (els.leftEl) { els.leftEl.className = "empty-cell"; els.leftEl.innerHTML = ""; }
+        if (els.rightEl) { els.rightEl.className = "empty-cell"; els.rightEl.innerHTML = ""; }
+    });
     updatePageIndicator(0, 1);
 });
 
 socket.on("race-reset", () => {
+    stopCountdownDisplay();
+    currentCountdown = null;
     fastestLapPilotId = null;
     finishedPilotIds.clear();
     pilotElements.forEach((els) => {
-        if (els.leftEl) els.leftEl.innerHTML = "";
-        if (els.rightEl) els.rightEl.innerHTML = "";
+        if (els.leftEl) { els.leftEl.className = "empty-cell"; els.leftEl.innerHTML = ""; }
+        if (els.rightEl) { els.rightEl.className = "empty-cell"; els.rightEl.innerHTML = ""; }
     });
 });
 

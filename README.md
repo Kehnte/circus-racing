@@ -8,12 +8,11 @@ Real-time race management platform and streaming overlays for **Star Citizen** e
 
 ```
 circus-racing/
-├── server/                  ← Node.js server (REST API + Socket.IO + Dashboard + Pilot app)
+├── server/                  ← Node.js server (REST API + Socket.IO + Dashboard)
 │   ├── src/                 ← TypeScript source (API, race engine, DB, socket)
-│   ├── dashboard/           ← Admin interface (vanilla HTML/JS)
-│   ├── pilot-app/           ← Pilot interface (registration, profile, OCR config)
+│   ├── frontend/            ← React + Vite + MUI dashboard (admin + pilot interface)
 │   ├── overlays/            ← OBS browser sources (leaderboard, race-alert)
-│   └── shared/              ← Shared nav & styles for dashboard/pilot-app
+│   └── shared/              ← Shared assets
 ├── monitor/                 ← Windows OCR client (.exe) — reads Star Citizen coordinates
 ├── scripts/                 ← Seed, reset DB, race simulations
 ├── docs/                    ← Specifications
@@ -35,7 +34,7 @@ cp .env.example .env
 docker compose up -d
 ```
 
-Server available at `http://localhost:3000`.
+Server available at `http://localhost:1959`.
 
 ---
 
@@ -65,7 +64,7 @@ npm run db:studio    # Open Drizzle Studio (DB browser)
 | Real-time | Socket.IO |
 | Database | SQLite via Drizzle ORM |
 | Auth | JWT (jsonwebtoken) + bcrypt |
-| Frontend | Vanilla HTML/CSS/JS, Material Web Components |
+| Frontend | React, Vite, MUI (Material UI) |
 | Overlays | Lightweight HTML/CSS/JS (OBS browser source) |
 | OCR client | Python (PyInstaller → Windows .exe) |
 | CI/CD | GitHub Actions |
@@ -97,7 +96,7 @@ node reset.js
 |------|--------|
 | `ADMIN` | Everything + user role management (promote/demote) |
 | `MODERATOR` | Everything except role management |
-| `PILOT` | Pilot app only (profile, registrations, OCR config) |
+| `PILOT` | Dashboard — profile, registrations, OCR config download |
 
 Login uses `displayName` + `password` (no email). If a pilot loses their password, an admin or moderator resets it from the dashboard.
 
@@ -107,12 +106,11 @@ Login uses `displayName` + `password` (no email). If a pilot loses their passwor
 
 | App | URL |
 |-----|-----|
-| Admin dashboard | `http://localhost:3000/dashboard/` |
-| Pilot app | `http://localhost:3000/pilot-app/` |
-| Leaderboard overlay | `http://localhost:3000/overlays/leaderboard/` |
-| Race alert overlay | `http://localhost:3000/overlays/race-alert/` |
-| REST API | `http://localhost:3000/api/` |
-| Health check | `http://localhost:3000/health` |
+| Dashboard (admin + pilots) | `http://localhost:1959/dashboard/` |
+| Leaderboard overlay | `http://localhost:1959/overlays/leaderboard/` |
+| Race alert overlay | `http://localhost:1959/overlays/race-alert/` |
+| REST API | `http://localhost:1959/api/` |
+| Health check | `http://localhost:1959/health` |
 
 ---
 
@@ -121,11 +119,11 @@ Login uses `displayName` + `password` (no email). If a pilot loses their passwor
 1. **Create entities** in the dashboard: teams, vehicles, controls, racetracks
 2. **Create a race**: name, tracking mode (MANUAL or AUTO), racetrack, session, weather, start type, session mode (laps or timed)
 3. **Open registrations** — the race moves to `SCHEDULED`
-4. **Pilots register** via the pilot app (`/pilot-app/`)
+4. **Pilots register** via the dashboard (`/dashboard/register`)
 5. **Validate registrations** in the dashboard, set grid order
 6. **Add overlays in OBS**:
-   - Leaderboard: `http://localhost:3000/overlays/leaderboard/`
-   - Race alert: `http://localhost:3000/overlays/race-alert/`
+   - Leaderboard: `http://localhost:1959/overlays/leaderboard/`
+   - Race alert: `http://localhost:1959/overlays/race-alert/`
 7. **Load the race** (`Load`) — pilots appear in the overlays
 8. **Start countdown** then **Start race**
 9. In MANUAL mode: increment laps, adjust positions, mark DNFs

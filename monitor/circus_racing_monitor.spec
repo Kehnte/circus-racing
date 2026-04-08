@@ -11,7 +11,7 @@ block_cipher = None
 datas = [
     ("config.cfg", "."),
     ("config.example.cfg", "."),
-    ("ui", "ui"),
+    ("frontend/dist", "frontend/dist"),
 ]
 
 # Include the full tesseract runtime (binaries + tessdata) if it exists in the repo.

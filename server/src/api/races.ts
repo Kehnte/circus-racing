@@ -9,7 +9,10 @@ import { requireModo } from "../middleware/roles.js";
 import {
   loadRace, getContext, clearContext, setPilotState, persistState, setGridOrder,
 } from "../engine/race-context.js";
+import { clearCountdownTimer } from "../engine/race-lifecycle.js";
 import { emitAll, emitDashboard, broadcastRaceState } from "../socket/emitter.js";
+import { validate } from "../middleware/validate.js";
+import { createRaceSchema, updateRaceSchema, addEntryAdminSchema } from "../validation/schemas.js";
 
 const router = Router();
 
@@ -35,21 +38,12 @@ router.get("/:id", async (req, res) => {
 });
 
 /** POST /races — modo+ */
-router.post("/", ...requireModo, async (req, res) => {
+router.post("/", ...requireModo, validate(createRaceSchema), async (req, res) => {
   const {
     name, racetrackId, lapCount, session, weather, startType,
     trackingMode, sessionMode, sessionDurationMs,
     teamDisplayMode, chronoDisplayMode, timingEnabled, eventDuration,
   } = req.body;
-
-  if (!name) {
-    res.status(400).json({ error: "name is required" });
-    return;
-  }
-  if ((trackingMode ?? "manual") === "auto" && !racetrackId) {
-    res.status(400).json({ error: "racetrackId is required for auto tracking mode" });
-    return;
-  }
 
   const [created] = await db.insert(race).values({
     name,
@@ -72,7 +66,7 @@ router.post("/", ...requireModo, async (req, res) => {
 });
 
 /** PATCH /races/:id — modo+. Blocks trackingMode if STARTED. */
-router.patch("/:id", ...requireModo, async (req, res) => {
+router.patch("/:id", ...requireModo, validate(updateRaceSchema), async (req, res) => {
   const raceId = String(req.params.id);
   const found = await db.select().from(race).where(eq(race.id, raceId)).get();
   if (!found) { res.status(404).json({ error: "Race not found" }); return; }
@@ -108,6 +102,8 @@ router.patch("/:id", ...requireModo, async (req, res) => {
     if (patch.lapCount)                     ctx.lapCount          = patch.lapCount as number;
     if (patch.sessionMode)                  ctx.sessionMode       = patch.sessionMode as typeof ctx.sessionMode;
     if (patch.sessionDurationMs !== undefined) ctx.sessionDurationMs = patch.sessionDurationMs as number | null;
+    if (patch.trackingMode)                 ctx.trackingMode      = patch.trackingMode as typeof ctx.trackingMode;
+    if (patch.racetrackId !== undefined)    ctx.racetrackId       = patch.racetrackId as string | null;
     broadcastRaceState(ctx);
   }
 
@@ -197,11 +193,9 @@ router.post("/:id/entries", requireAuth, async (req, res) => {
 });
 
 /** POST /races/:id/entries/admin — modo+ (direct add as VALIDATED) */
-router.post("/:id/entries/admin", ...requireModo, async (req, res) => {
+router.post("/:id/entries/admin", ...requireModo, validate(addEntryAdminSchema), async (req, res) => {
   const raceId = String(req.params.id);
   const { pilotId } = req.body;
-
-  if (!pilotId) { res.status(400).json({ error: "pilotId is required" }); return; }
 
   const targetRace = await db.select().from(race).where(eq(race.id, raceId)).get();
   if (!targetRace) { res.status(404).json({ error: "Race not found" }); return; }
@@ -373,6 +367,15 @@ router.post("/:id/close-registrations", ...requireModo, async (req, res) => {
 // Race lifecycle
 
 /**
+ * POST /races/unload — modo+
+ * Drops the in-memory RaceContext, stopping all race-state broadcasts.
+ */
+router.post("/unload", ...requireModo, async (_req, res) => {
+  await clearContext();
+  res.json({ ok: true });
+});
+
+/**
  * POST /races/:id/load — modo+
  * Loads the server RaceContext from VALIDATED entries.
  * Does not start the race. Required before grid-order and start.
@@ -403,12 +406,18 @@ router.post("/:id/start", ...requireModo, async (req, res) => {
   const found = await db.select().from(race).where(eq(race.id, raceId)).get();
   if (!found) { res.status(404).json({ error: "Race not found" }); return; }
 
+  if (found.trackingMode === "auto" && !found.racetrackId) {
+    res.status(400).json({ error: "A circuit is required to start in auto mode." });
+    return;
+  }
+
   if (found.status === "SCHEDULED" || found.status === "PENDING") {
     // Fresh start — load context if not already loaded
     let ctx = getContext();
     if (!ctx || ctx.raceId !== raceId) {
       ctx = await loadRace(raceId);
     }
+    clearCountdownTimer(raceId);
     ctx.startedAt = new Date().toISOString();
     ctx.raceStatus = "STARTED";
     await db.update(race).set({ status: "STARTED" }).where(eq(race.id, raceId));
@@ -496,7 +505,7 @@ router.post("/:id/finish", ...requireModo, async (req, res) => {
   if (ctx && ctx.raceId === raceId) {
     const nowIso = new Date().toISOString();
     for (const [pilotId, state] of Object.entries(ctx.pilotStates)) {
-      if (state.status === "RUNNING" || state.status === "WARNING_DNF") {
+      if (state.status === "RUNNING") {
         setPilotState(pilotId, { status: "FINISHED", frozenTime: nowIso });
       }
     }

@@ -1,16 +1,17 @@
 // race-events.ts — Live admin commands: manual controls, grid order,
-// countdown, AUTO DNF, AUTO position override.
+// countdown, DNF toggle, AUTO position override.
 
 import { Router } from "express";
 import { eq } from "drizzle-orm";
 import { db } from "../db/db.js";
-import { raceEntry } from "../db/schema.js";
+import { raceEntry, race } from "../db/schema.js";
 import { requireModo } from "../middleware/roles.js";
 import {
-  getContext, setPilotState, persistState,
+  getContext, persistState,
   incrementLap, setManualPosition, reorderPilot, toggleDnf, setGridOrder,
 } from "../engine/race-context.js";
-import { emitAll, broadcastRaceState } from "../socket/emitter.js";
+import { emitAll, broadcastRaceState, emitDashboard } from "../socket/emitter.js";
+import { setCountdownTimer, clearCountdownTimer, startRaceById } from "../engine/race-lifecycle.js";
 
 const router = Router();
 
@@ -76,7 +77,10 @@ router.post("/races/:id/manual-lap", ...requireModo, async (req, res) => {
         displayDuration: ctx.eventDuration,
       });
     } else if (event.type === "race-finished") {
+      ctx.raceStatus = "FINISHED";
       emitAll("race-event", { type: "race-finished" });
+      await db.update(race).set({ status: "FINISHED" }).where(eq(race.id, ctx.raceId));
+      emitDashboard("race-list-changed");
     }
   }
 
@@ -105,16 +109,16 @@ router.post("/races/:id/manual-position", ...requireModo, async (req, res) => {
 
   setManualPosition(pilotId, position);
 
-  // Persist gridPosition to DB
-  await db
-    .update(raceEntry)
-    .set({ gridPosition: ctx.pilotStates[pilotId].gridPosition })
-    .where(eq(raceEntry.pilotId, pilotId));
-
   broadcastRaceState(ctx);
   persistState();
-
   res.json({ ok: true, gridPosition: ctx.pilotStates[pilotId].gridPosition });
+
+  // Persist all grid positions (reindexGrid shifts everyone) — fire-and-forget
+  void Promise.all(
+    Object.entries(ctx.pilotStates).map(([pid, state]) =>
+      db.update(raceEntry).set({ gridPosition: state.gridPosition }).where(eq(raceEntry.pilotId, pid))
+    )
+  );
 });
 
 // POST /race-events/races/:id/manual-reorder — modo+
@@ -136,17 +140,16 @@ router.post("/races/:id/manual-reorder", ...requireModo, async (req, res) => {
 
   reorderPilot(pilotId, direction);
 
-  // Persist all grid positions to DB
-  await Promise.all(
+  broadcastRaceState(ctx);
+  res.json({ ok: true });
+
+  // Persist all grid positions to DB (fire-and-forget)
+  void Promise.all(
     Object.entries(ctx.pilotStates).map(([pid, state]) =>
       db.update(raceEntry).set({ gridPosition: state.gridPosition }).where(eq(raceEntry.pilotId, pid))
     )
   );
-
-  broadcastRaceState(ctx);
   persistState();
-
-  res.json({ ok: true });
 });
 
 // POST /race-events/races/:id/manual-dnf — modo+
@@ -180,6 +183,16 @@ router.post("/races/:id/manual-dnf", ...requireModo, async (req, res) => {
       teamColor: (profile?.teamSnapshot as Record<string, unknown>)?.color ?? null,
       displayDuration: ctx.eventDuration,
     });
+
+    const allDone = Object.values(ctx.pilotStates).every(
+      s => s.status === "FINISHED" || s.status === "DNF"
+    );
+    if (allDone) {
+      ctx.raceStatus = "FINISHED";
+      emitAll("race-event", { type: "race-finished" });
+      await db.update(race).set({ status: "FINISHED" }).where(eq(race.id, ctx.raceId));
+      emitDashboard("race-list-changed");
+    }
   }
 
   broadcastRaceState(ctx);
@@ -220,12 +233,16 @@ router.post("/races/:id/grid-order", ...requireModo, async (req, res) => {
 // Body: { seconds: number }
 
 router.post("/races/:id/countdown", ...requireModo, async (req, res) => {
+  const raceId = String(req.params.id);
   const { seconds } = req.body;
   if (typeof seconds !== "number" || seconds < 1) {
     res.status(400).json({ error: "seconds must be a positive number" });
     return;
   }
 
+  setCountdownTimer(raceId, seconds, () => {
+    void startRaceById(raceId).catch(() => { /* race already started or invalid state */ });
+  });
   emitAll("race-event", { type: "countdown", seconds });
   res.json({ ok: true });
 });
@@ -233,60 +250,8 @@ router.post("/races/:id/countdown", ...requireModo, async (req, res) => {
 // POST /race-events/races/:id/countdown-stop — modo+
 
 router.post("/races/:id/countdown-stop", ...requireModo, async (req, res) => {
+  clearCountdownTimer(String(req.params.id));
   emitAll("race-event", { type: "countdown-stop" });
-  res.json({ ok: true });
-});
-
-// POST /race-events/races/:id/confirm-dnf/:pilotId — modo+ (AUTO)
-// Confirms a WARNING_DNF as official DNF.
-
-router.post("/races/:id/confirm-dnf/:pilotId", ...requireModo, async (req, res) => {
-  const raceId  = String(req.params.id);
-  const pilotId = String(req.params.pilotId);
-  const ctx = requireContext(raceId, res);
-  if (!ctx) return;
-
-  const state = ctx.pilotStates[pilotId];
-  if (!state) { res.status(404).json({ error: "Pilot not in race" }); return; }
-
-  setPilotState(pilotId, {
-    status: "DNF",
-    frozenTime: new Date().toISOString(),
-    dnfWarning: false,
-  });
-
-  const profile = ctx.pilotProfiles[pilotId];
-  emitAll("race-event", {
-    type: "dnf",
-    pilotId,
-    pilotName: profile?.displayName ?? pilotId,
-    pilotCountry: profile?.country ?? "un",
-    teamName:  (profile?.teamSnapshot as Record<string, unknown>)?.name ?? null,
-    teamColor: (profile?.teamSnapshot as Record<string, unknown>)?.color ?? null,
-    displayDuration: ctx.eventDuration,
-  });
-
-  broadcastRaceState(ctx);
-  persistState();
-
-  res.json({ ok: true });
-});
-
-// POST /race-events/races/:id/ignore-dnf/:pilotId — modo+ (AUTO)
-// False positive: clears the WARNING_DNF.
-
-router.post("/races/:id/ignore-dnf/:pilotId", ...requireModo, async (req, res) => {
-  const raceId  = String(req.params.id);
-  const pilotId = String(req.params.pilotId);
-  const ctx = requireContext(raceId, res);
-  if (!ctx) return;
-
-  const state = ctx.pilotStates[pilotId];
-  if (!state) { res.status(404).json({ error: "Pilot not in race" }); return; }
-
-  setPilotState(pilotId, { status: "RUNNING", dnfWarning: false });
-  persistState();
-
   res.json({ ok: true });
 });
 

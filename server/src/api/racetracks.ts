@@ -4,6 +4,8 @@ import { eq } from "drizzle-orm";
 import { db } from "../db/db.js";
 import { racetrack } from "../db/schema.js";
 import { requireModo } from "../middleware/roles.js";
+import { validate } from "../middleware/validate.js";
+import { createRacetrackSchema, updateRacetrackSchema } from "../validation/schemas.js";
 
 const router = Router();
 
@@ -21,33 +23,32 @@ router.get("/:id", async (req, res) => {
 });
 
 /** POST /racetracks — admin/modo */
-router.post("/", ...requireModo, async (req, res) => {
-  const { name, checkpoints, bufferRadius } = req.body;
-  if (!name) {
-    res.status(400).json({ error: "name is required" });
-    return;
-  }
+router.post("/", ...requireModo, validate(createRacetrackSchema), async (req, res) => {
+  const { name, checkpoints } = req.body;
   const cps = Array.isArray(checkpoints) ? checkpoints : [];
   const normalized = cps.map((cp: any, i: number) => ({
     order: i,
     position: cp.position ?? cp,
+    direction: cp.direction ?? [0, 0, 1],
+    radius: cp.radius ?? 100,
   }));
   const [created] = await db.insert(racetrack)
-    .values({ name, checkpoints: normalized, bufferRadius: bufferRadius ?? null })
+    .values({ name, checkpoints: normalized })
     .returning();
   res.status(201).json(created);
 });
 
 /** PATCH /racetracks/:id — admin/modo */
-router.patch("/:id", ...requireModo, async (req, res) => {
-  const { name, checkpoints, bufferRadius } = req.body;
+router.patch("/:id", ...requireModo, validate(updateRacetrackSchema), async (req, res) => {
+  const { name, checkpoints } = req.body;
   const patch: Record<string, unknown> = {};
   if (name) patch.name = name;
-  if (bufferRadius !== undefined) patch.bufferRadius = bufferRadius;
   if (Array.isArray(checkpoints)) {
     patch.checkpoints = checkpoints.map((cp: any, i: number) => ({
       order: i,
       position: cp.position ?? cp,
+      direction: cp.direction ?? [0, 0, 1],
+      radius: cp.radius ?? 100,
     }));
   }
   const [updated] = await db.update(racetrack)

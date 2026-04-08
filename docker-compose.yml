@@ -2,7 +2,7 @@ services:
   circus-racing:
     image: ghcr.io/kehnte/circus-racing-server:latest
     ports:
-      - "3000:3000"
+      - "1959:1959"
     env_file: .env
     volumes:
       - circus-db:/app/db

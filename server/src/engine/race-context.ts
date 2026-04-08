@@ -9,9 +9,18 @@ import {
   type TeamDisplayMode, type ChronoDisplayMode, type RaceStatus,
 } from "../db/schema.js";
 
-export const CHECKPOINT_RADIUS = parseInt(process.env.CHECKPOINT_RADIUS ?? "50");
-
 // Types
+
+export interface OcrHealth {
+  rejectedCount: number;
+  lastRejectedAt: string | null;
+  lastRejectedSpeed: number | null;
+}
+
+export interface OcrTracking {
+  lastReceivedPosition: [number, number, number] | null;
+  lastReceivedAt: string | null;
+}
 
 export interface PilotProfile {
   displayName: string;
@@ -23,13 +32,18 @@ export interface PilotProfile {
 
 export interface RaceContext {
   raceId: string;
+  racetrackId: string | null;
   raceStatus: RaceStatus;
   trackingMode: TrackingMode;
   lapCount: number;
   sessionMode: SessionMode;
   sessionDurationMs: number | null;
-  checkpoints: Array<{ order: number; position: [number, number, number] }>;
-  bufferRadius: number;
+  checkpoints: Array<{
+    order: number;
+    position: [number, number, number];
+    direction: [number, number, number];
+    radius: number;
+  }>;
   pilotStates: Record<string, PilotState>;
   pilotProfiles: Record<string, PilotProfile>;
   entryIds: Record<string, string>;
@@ -39,6 +53,9 @@ export interface RaceContext {
   // fastest lap tracking
   globalFastestLapMs: number | null;
   globalFastestLapPilotId: string | null;
+  // per-pilot OCR health and position tracking
+  ocrHealth: Record<string, OcrHealth>;
+  ocrTracking: Record<string, OcrTracking>;
   // display settings (from race row)
   teamDisplayMode: TeamDisplayMode;
   chronoDisplayMode: ChronoDisplayMode;
@@ -62,10 +79,6 @@ export function hasContext(): boolean { return _ctx !== null; }
 export async function loadRace(raceId: string): Promise<RaceContext> {
   const raceRow = await db.select().from(race).where(eq(race.id, raceId)).get();
   if (!raceRow) throw new Error(`Race ${raceId} not found`);
-
-  if (raceRow.trackingMode === "auto" && !raceRow.racetrackId) {
-    throw new Error(`Race ${raceId} is in AUTO mode but has no racetrack assigned`);
-  }
 
   const track = raceRow.racetrackId
     ? await db.select().from(racetrack).where(eq(racetrack.id, raceRow.racetrackId)).get()
@@ -106,7 +119,6 @@ export async function loadRace(raceId: string): Promise<RaceContext> {
     lapTimes: [],
     status: "RUNNING",
     frozenTime: null,
-    dnfWarning: false,
     lastCheckpointTime: null,
     nextCheckpointOrder: 0,
   });
@@ -114,12 +126,16 @@ export async function loadRace(raceId: string): Promise<RaceContext> {
   const pilotStates: Record<string, PilotState> = {};
   const pilotProfiles: Record<string, PilotProfile> = {};
   const entryIds: Record<string, string> = {};
+  const ocrHealth: Record<string, OcrHealth> = {};
+  const ocrTracking: Record<string, OcrTracking> = {};
 
   for (let i = 0; i < validatedEntries.length; i++) {
     const entry = validatedEntries[i];
     const gp = entry.gridPosition ?? (i + 1);
     pilotStates[entry.pilotId] = defaultState(gp);
     entryIds[entry.pilotId] = entry.entryId;
+    ocrHealth[entry.pilotId] = { rejectedCount: 0, lastRejectedAt: null, lastRejectedSpeed: null };
+    ocrTracking[entry.pilotId] = { lastReceivedPosition: null, lastReceivedAt: null };
     pilotProfiles[entry.pilotId] = {
       displayName: entry.displayName,
       country: entry.country ?? "un",
@@ -129,19 +145,15 @@ export async function loadRace(raceId: string): Promise<RaceContext> {
     };
   }
 
-  const bufferRadius =
-    track?.bufferRadius ??
-    parseInt(process.env.DNF_BUFFER_RADIUS ?? "200");
-
   _ctx = {
     raceId,
+    racetrackId: raceRow.racetrackId ?? null,
     raceStatus: raceRow.status,
     trackingMode: raceRow.trackingMode,
     lapCount: raceRow.lapCount,
     sessionMode: raceRow.sessionMode,
     sessionDurationMs: raceRow.sessionDurationMs ?? null,
     checkpoints: track?.checkpoints ?? [],
-    bufferRadius,
     pilotStates,
     pilotProfiles,
     entryIds,
@@ -150,6 +162,8 @@ export async function loadRace(raceId: string): Promise<RaceContext> {
     totalPausedMs: 0,
     globalFastestLapMs: null,
     globalFastestLapPilotId: null,
+    ocrHealth,
+    ocrTracking,
     teamDisplayMode: raceRow.teamDisplayMode,
     chronoDisplayMode: raceRow.chronoDisplayMode,
     timingEnabled: raceRow.timingEnabled,
@@ -180,7 +194,7 @@ export async function loadRace(raceId: string): Promise<RaceContext> {
       },
     });
 
-  return _ctx;
+  return _ctx!;
 }
 
 // setPilotState — in-memory patch only
@@ -231,6 +245,17 @@ function reindexGrid(pilotIds: string[]): void {
   }
 }
 
+// Moves a pilot out of the active range (DNF/FINISHED) and compresses active positions.
+export function removeFromActiveGrid(pilotId: string): void {
+  if (!_ctx) return;
+  const active = getPilotsSortedByGrid().filter(
+    id => id !== pilotId && _ctx!.pilotStates[id]?.status !== "DNF" && _ctx!.pilotStates[id]?.status !== "FINISHED"
+  );
+  reindexGrid(active);
+  const state = _ctx.pilotStates[pilotId];
+  if (state) state.gridPosition = active.length + 1;
+}
+
 // setGridOrder — define the complete grid order at once
 
 export function setGridOrder(pilotIds: string[]): void {
@@ -266,15 +291,22 @@ export function reorderPilot(pilotId: string, direction: "up" | "down"): void {
   const idx = pilots.indexOf(pilotId);
   if (idx === -1) return;
 
+  const pilotLap = _ctx.pilotStates[pilotId]?.lap ?? 0;
+
   if (direction === "up" && idx > 0) {
+    const neighborLap = _ctx.pilotStates[pilots[idx - 1]]?.lap ?? 0;
+    if (neighborLap > pilotLap) return;
     [pilots[idx - 1], pilots[idx]] = [pilots[idx], pilots[idx - 1]];
   } else if (direction === "down" && idx < pilots.length - 1) {
+    const neighborLap = _ctx.pilotStates[pilots[idx + 1]]?.lap ?? 0;
+    if (neighborLap < pilotLap) return;
     [pilots[idx], pilots[idx + 1]] = [pilots[idx + 1], pilots[idx]];
   }
   reindexGrid(pilots);
 }
 
-// toggleDnf — toggle pilot between RUNNING and DNF (manual mode)
+// toggleDnf — toggle pilot between RUNNING and DNF (manual mode).
+// Reindexes gridPosition so active pilots stay in a contiguous 1..N range.
 
 export function toggleDnf(pilotId: string): void {
   if (!_ctx) return;
@@ -282,13 +314,16 @@ export function toggleDnf(pilotId: string): void {
   if (!state) return;
 
   if (state.status === "DNF") {
-    setPilotState(pilotId, { status: "RUNNING", frozenTime: null, dnfWarning: false });
+    // Reinstate: put pilot last among active pilots
+    setPilotState(pilotId, { status: "RUNNING", frozenTime: null });
+    const active = getPilotsSortedByGrid().filter(
+      id => id !== pilotId && _ctx!.pilotStates[id]?.status !== "DNF" && _ctx!.pilotStates[id]?.status !== "FINISHED"
+    );
+    reindexGrid(active);
+    _ctx.pilotStates[pilotId]!.gridPosition = active.length + 1;
   } else if (state.status !== "FINISHED") {
-    setPilotState(pilotId, {
-      status: "DNF",
-      frozenTime: new Date().toISOString(),
-      dnfWarning: false,
-    });
+    setPilotState(pilotId, { status: "DNF", frozenTime: new Date().toISOString() });
+    removeFromActiveGrid(pilotId);
   }
 }
 
@@ -355,6 +390,7 @@ export function incrementLap(
         lastCheckpointTime: nowIso,
         raceProgress: newLap,
       });
+      removeFromActiveGrid(pilotId);
       events.push({ type: "finished", pilotId });
 
       // Check if all pilots done
@@ -369,6 +405,27 @@ export function incrementLap(
         lastCheckpointTime: nowIso,
         raceProgress: newLap,
       });
+    }
+
+    // In manual mode, place this pilot last among those with the same lap count
+    // so they don't jump ahead of pilots who reached that lap earlier.
+    if (_ctx.trackingMode === "manual") {
+      const sorted = getPilotsSortedByGrid();
+      const currentIdx = sorted.indexOf(pilotId);
+      if (currentIdx !== -1) {
+        // Find the last index among pilots (excluding self) that have newLap laps
+        let insertAfter = currentIdx;
+        for (let i = 0; i < sorted.length; i++) {
+          if (i === currentIdx) continue;
+          const s = _ctx.pilotStates[sorted[i]];
+          if (s && s.lap === newLap && i > insertAfter) insertAfter = i;
+        }
+        if (insertAfter !== currentIdx) {
+          sorted.splice(currentIdx, 1);
+          sorted.splice(insertAfter, 0, pilotId);
+          reindexGrid(sorted);
+        }
+      }
     }
 
   } else {
@@ -398,6 +455,25 @@ export function incrementLap(
     }
     _ctx.globalFastestLapMs = newFastestMs;
     _ctx.globalFastestLapPilotId = newFastestPilotId;
+
+    // In manual mode, place this pilot last among those with the same (lower) lap count
+    if (_ctx.trackingMode === "manual") {
+      const sorted = getPilotsSortedByGrid();
+      const currentIdx = sorted.indexOf(pilotId);
+      if (currentIdx !== -1) {
+        let insertAfter = currentIdx;
+        for (let i = 0; i < sorted.length; i++) {
+          if (i === currentIdx) continue;
+          const s = _ctx.pilotStates[sorted[i]];
+          if (s && s.lap === newLap && i > insertAfter) insertAfter = i;
+        }
+        if (insertAfter !== currentIdx) {
+          sorted.splice(currentIdx, 1);
+          sorted.splice(insertAfter, 0, pilotId);
+          reindexGrid(sorted);
+        }
+      }
+    }
   }
 
   return { events };

@@ -1,5 +1,4 @@
-// emitter.ts — Socket.IO broadcast: race-state (unified format)
-// and race-data (legacy format for backward-compatible overlays).
+// emitter.ts — Socket.IO broadcast: race-state (unified) and race-data (legacy overlay format).
 
 import type { Server } from "socket.io";
 import type { RaceContext } from "../engine/race-context.js";
@@ -79,6 +78,7 @@ function getChronoDisplay(
 }
 
 // Sort pilots: FINISHED first (by frozenTime asc), then active, then DNF last.
+// DNF sub-sort: last to retire = better ranked (latest frozenTime first); equal frozenTime: most race progress first.
 
 function sortPilots(ctx: RaceContext): [string, import("../db/schema.js").PilotState][] {
   const entries = Object.entries(ctx.pilotStates) as [string, import("../db/schema.js").PilotState][];
@@ -86,13 +86,19 @@ function sortPilots(ctx: RaceContext): [string, import("../db/schema.js").PilotS
   return entries.sort(([, a], [, b]) => {
     const rank = (s: import("../db/schema.js").PilotState) =>
       s.status === "FINISHED" ? 0 :
-      (s.status === "RUNNING" || s.status === "WARNING_DNF") ? 1 : 2;
+      s.status === "RUNNING" ? 1 : 2;
 
     const ra = rank(a), rb = rank(b);
     if (ra !== rb) return ra - rb;
 
     if (a.status === "FINISHED" && b.status === "FINISHED") {
       return (a.frozenTime ?? "").localeCompare(b.frozenTime ?? "");
+    }
+
+    if (ra === 2) {
+      const ftCmp = (b.frozenTime ?? "").localeCompare(a.frozenTime ?? "");
+      if (ftCmp !== 0) return ftCmp;
+      return b.raceProgress - a.raceProgress;
     }
 
     if (ctx.trackingMode === "manual") {
@@ -127,7 +133,7 @@ export function buildRaceStateBroadcast(ctx: RaceContext): object {
         ? { name: team.name as string, color: team.color as string, acronym: team.acronym as string }
         : null,
       vehicleSnapshot: vehicle
-        ? { type: vehicle.type as string, manufacturer: (vehicle.manufacturer as string) ?? "", model: vehicle.model as string }
+        ? { type: vehicle.type as string, manufacturer: (vehicle.manufacturer as string | null) ?? "", model: vehicle.model as string }
         : null,
       position: index + 1,
       lap: state.lap,
@@ -140,6 +146,7 @@ export function buildRaceStateBroadcast(ctx: RaceContext): object {
   return {
     raceId: ctx.raceId,
     raceName: ctx.raceName,
+    racetrackId: ctx.racetrackId,
     status: ctx.raceStatus,
     trackingMode: ctx.trackingMode,
     session: ctx.session,
@@ -153,6 +160,7 @@ export function buildRaceStateBroadcast(ctx: RaceContext): object {
     totalPausedMs: ctx.totalPausedMs,
     globalFastestLapMs: ctx.globalFastestLapMs,
     globalFastestLapPilotId: ctx.globalFastestLapPilotId,
+    ocrHealth: ctx.ocrHealth,
     teamDisplayMode: ctx.teamDisplayMode,
     chronoDisplayMode: ctx.chronoDisplayMode,
     timingEnabled: ctx.timingEnabled,
@@ -190,7 +198,7 @@ export function buildRaceUpdatePayload(ctx: RaceContext): object {
       laps: state.lap,
       lapTimes: state.lapTimes,
       finished: state.status === "FINISHED",
-      dnf: state.status === "DNF" || state.status === "WARNING_DNF",
+      dnf: state.status === "DNF",
       frozenTime: state.frozenTime,
       chronoDisplay: getChronoDisplay(ctx, pilotId, leaderElapsedMs, now),
     };

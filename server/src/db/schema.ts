@@ -2,6 +2,15 @@
 // Entities: pilot, team, vehicle, controls, racetrack, race, race_entry, race_state.
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
+import type {
+  PilotRole, RaceStatus, TrackingMode, SessionMode,
+  TeamDisplayMode, ChronoDisplayMode, RaceEntryStatus, PilotRuntimeStatus,
+} from "@circus-racing/types";
+
+export type {
+  PilotRole, RaceStatus, TrackingMode, SessionMode,
+  TeamDisplayMode, ChronoDisplayMode, RaceEntryStatus, PilotRuntimeStatus,
+};
 
 // Reference entities (managed by admin/modo)
 
@@ -13,10 +22,11 @@ export const team = sqliteTable("team", {
 });
 
 export const vehicle = sqliteTable("vehicle", {
-  id:    text().primaryKey().$defaultFn(() => crypto.randomUUID()),
-  type:  text().notNull(), // "ship" | "bike" | "rover" | ...
-  model: text().notNull(),
-  img:   text(),           // optional URL
+  id:           text().primaryKey().$defaultFn(() => crypto.randomUUID()),
+  type:         text().notNull(), // "ship" | "bike" | "rover" | ...
+  manufacturer: text(),           // e.g. "Anvil", "Drake", "RSI"
+  model:        text().notNull(),
+  img:          text(),           // optional URL
 });
 
 export const controls = sqliteTable("controls", {
@@ -28,13 +38,10 @@ export const controls = sqliteTable("controls", {
 export const racetrack = sqliteTable("racetrack", {
   id:           text().primaryKey().$defaultFn(() => crypto.randomUUID()),
   name:         text().notNull().unique(),
-  checkpoints:  text({ mode: "json" }).$type<Array<{ order: number; position: [number, number, number] }>>().notNull(),
-  bufferRadius: integer(), // override for DNF_BUFFER_RADIUS env
+  checkpoints:  text({ mode: "json" }).$type<Array<{ order: number; position: [number, number, number]; direction: [number, number, number]; radius: number }>>().notNull(),
 });
 
 // Pilot (permanent account)
-
-export type PilotRole = "ADMIN" | "MODERATOR" | "PILOT";
 
 export const pilot = sqliteTable("pilot", {
   id:           text().primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -52,12 +59,6 @@ export const pilot = sqliteTable("pilot", {
 });
 
 // Race
-
-export type RaceStatus = "PENDING" | "SCHEDULED" | "STARTED" | "PAUSED" | "FINISHED";
-export type TrackingMode = "manual" | "auto";
-export type SessionMode = "laps" | "timed";
-export type TeamDisplayMode = "color-bar" | "acronym" | "hidden";
-export type ChronoDisplayMode = "leader" | "gap" | "best-lap" | "last-lap";
 
 export const race = sqliteTable("race", {
   id:                text().primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -80,8 +81,6 @@ export const race = sqliteTable("race", {
 
 // Race entry (pilot registration for a race)
 
-export type RaceEntryStatus = "PENDING" | "VALIDATED";
-
 export const raceEntry = sqliteTable("race_entry", {
   id:               text().primaryKey().$defaultFn(() => crypto.randomUUID()),
   raceId:           text().notNull().references(() => race.id, { onDelete: "cascade" }),
@@ -96,8 +95,6 @@ export const raceEntry = sqliteTable("race_entry", {
 
 // Race state (runtime — persisted for crash recovery)
 
-export type PilotRuntimeStatus = "RUNNING" | "FINISHED" | "DNF" | "WARNING_DNF";
-
 export interface PilotState {
   position: [number, number, number];
   lap: number;
@@ -107,7 +104,6 @@ export interface PilotState {
   lapTimes: number[];       // ms per completed lap
   status: PilotRuntimeStatus;
   frozenTime: string | null;  // ISO timestamp when finished/DNF
-  dnfWarning: boolean;        // transient, not shown on overlays
   lastCheckpointTime: string | null;
   nextCheckpointOrder: number;
 }

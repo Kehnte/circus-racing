@@ -6,6 +6,8 @@ import { controls } from "../db/schema.js";
 import { requireModo } from "../middleware/roles.js";
 import { emitDashboard } from "../socket/emitter.js";
 import { refreshControlsSnapshots } from "../engine/snapshot-refresh.js";
+import { validate } from "../middleware/validate.js";
+import { createControlsSchema, updateControlsSchema } from "../validation/schemas.js";
 
 const router = Router();
 
@@ -15,20 +17,23 @@ router.get("/", async (_req, res) => {
   res.json(all);
 });
 
+/** GET /controls/:id — public */
+router.get("/:id", async (req, res) => {
+  const found = await db.select().from(controls).where(eq(controls.id, String(req.params.id))).get();
+  if (!found) { res.status(404).json({ error: "Controls not found" }); return; }
+  res.json(found);
+});
+
 /** POST /controls — admin/modo */
-router.post("/", ...requireModo, async (req, res) => {
+router.post("/", ...requireModo, validate(createControlsSchema), async (req, res) => {
   const { type, img } = req.body;
-  if (!type) {
-    res.status(400).json({ error: "type is required" });
-    return;
-  }
   const [created] = await db.insert(controls).values({ type, img: img ?? null }).returning();
   emitDashboard("data-changed", { resource: "controls" });
   res.status(201).json(created);
 });
 
 /** PATCH /controls/:id — admin/modo */
-router.patch("/:id", ...requireModo, async (req, res) => {
+router.patch("/:id", ...requireModo, validate(updateControlsSchema), async (req, res) => {
   const { type, img } = req.body;
   const [updated] = await db.update(controls)
     .set({ ...(type && { type }), ...(img !== undefined && { img }) })
