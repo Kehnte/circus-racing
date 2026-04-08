@@ -19,7 +19,7 @@ export default function NotificationsProvider({ children }: { children: ReactNod
   const [queue, setQueue] = useState<NotificationEntry[]>([]);
 
   const show = useCallback((message: ReactNode, options: ShowNotificationOptions = {}): string => {
-    const key = options.key ?? crypto.randomUUID();
+    const key = options.key ?? (crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`);
     setQueue((prev) => {
       if (prev.some((n) => n.key === key)) return prev;
       return [...prev, { key, message, options }];

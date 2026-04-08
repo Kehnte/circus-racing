@@ -61,7 +61,7 @@ function safePublic(p: typeof pilot.$inferSelect) {
 // Generates a placeholder email/password; the pilot can be merged with a real
 // self-registered account later via the admin "rebind" flow.
 router.post("/", ...requireAdmin, validate(createPilotSchema), async (req, res) => {
-  const { displayName, country, avatarUrl, teamId, vehicleId, controlsId } = req.body;
+  const { displayName, country, avatarUrl, teamId, vehicleId, controlsId, role } = req.body;
 
   const slug         = displayName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   const suffix       = randomBytes(4).toString("hex");
@@ -75,7 +75,7 @@ router.post("/", ...requireAdmin, validate(createPilotSchema), async (req, res) 
     email,
     passwordHash,
     token,
-    role: "PILOT",
+    role: role ?? "PILOT",
     ...(country    ? { country }    : {}),
     ...(avatarUrl  ? { avatarUrl }  : {}),
     ...(teamId     ? { teamId }     : {}),

@@ -55,6 +55,7 @@ export const createPilotSchema = z.object({
   teamId:      z.string().uuid().optional().nullable(),
   vehicleId:   z.string().uuid().optional().nullable(),
   controlsId:  z.string().uuid().optional().nullable(),
+  role:        z.enum(["ADMIN", "MODERATOR", "PILOT"]).optional(),
 });
 
 export const updatePilotSchema = z.object({
