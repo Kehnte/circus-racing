@@ -350,7 +350,7 @@ export default function ProfilePage() {
               >
                 <Avatar
                   src={avatarPreview ?? me.avatarUrl ?? undefined}
-                  sx={{ width: 80, height: 80, bgcolor: '#0a0a0a', fontSize: 32 }}
+                  sx={{ width: 80, height: 80, fontSize: 32 }}
                 >
                   {me.displayName[0].toUpperCase()}
                 </Avatar>
