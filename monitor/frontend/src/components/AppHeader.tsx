@@ -6,6 +6,7 @@ import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
+import EmojiEventsOutlined from '@mui/icons-material/EmojiEventsOutlined';
 import type { MonitorState } from '../types';
 
 export type AppTab = 'monitor' | 'editor';
@@ -24,21 +25,22 @@ export default function AppHeader({ state, pollError, tab, onTabChange }: Props)
   const sendDim = sendStatus === null || sendStatus === undefined;
 
   return (
-    <AppBar position="static" color="default" elevation={0}>
-      <Toolbar variant="dense" sx={{ gap: 1 }}>
-        <Typography variant="subtitle1" sx={{ flexGrow: 1, fontWeight: 700, fontStyle: 'italic' }}>
-          Circus Racing Monitor
+    <AppBar position="static" color="default" elevation={1}>
+      <Toolbar sx={{ gap: 1 }}>
+        <EmojiEventsOutlined sx={{ mr: 1, color: 'primary.main' }} />
+        <Typography variant="h6" fontWeight={800} fontStyle="italic" sx={{ flexGrow: 1 }}>
+          Circus Racing
         </Typography>
         <Box sx={{ display: 'flex', gap: 1 }}>
           <Chip
             label={serverOk ? 'Connected' : 'Unreachable'}
             color={serverOk ? 'success' : 'error'}
-            size="medium"
+            size="small"
           />
           <Chip
             label={sendDim ? 'Pending' : sendOk ? 'Sent' : 'Failed'}
             color={sendDim ? 'default' : sendOk ? 'success' : 'error'}
-            size="medium"
+            size="small"
           />
         </Box>
       </Toolbar>

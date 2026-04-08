@@ -7,12 +7,23 @@ import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogTitle from '@mui/material/DialogTitle';
 import FormGroup from '@mui/material/FormGroup';
 import Grid from '@mui/material/Grid';
+import IconButton from '@mui/material/IconButton';
+import InputAdornment from '@mui/material/InputAdornment';
 import MenuItem from '@mui/material/MenuItem';
+import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import ContentCopyOutlined from '@mui/icons-material/ContentCopyOutlined';
+import LockResetOutlined from '@mui/icons-material/LockResetOutlined';
 import { apiFetch, fetcher } from '../../api.ts';
 import CountrySelect from '../../components/CountrySelect.tsx';
 import PageContainer from '../../components/PageContainer.tsx';
@@ -30,6 +41,9 @@ export default function PilotEditPage() {
   const [form, setForm] = useState<PilotForm>({ displayName: '', country: 'un', role: 'PILOT', teamId: '', vehicleId: '', controlsId: '' });
   const [errors, setErrors] = useState<Partial<Record<keyof PilotForm, string>>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [generatedPassphrase, setGeneratedPassphrase] = useState<string | null>(null);
 
   const { data: pilot, error } = useSWR<Pilot>(pilotId ? `/api/pilots/${pilotId}` : null, fetcher);
   const { data: teams } = useSWR<Team[]>('/api/teams', fetcher);
@@ -81,13 +95,46 @@ export default function PilotEditPage() {
     }
   }
 
+  async function handleResetPassword() {
+    setResetLoading(true);
+    try {
+      const data = await apiFetch(`/api/pilots/${pilotId}/reset-password`, { method: 'POST' }) as { passphrase: string };
+      setGeneratedPassphrase(data.passphrase);
+    } catch (err) {
+      notifications.show(`Reset failed: ${(err as Error).message}`, { severity: 'error', autoHideDuration: 5000 });
+      setResetDialogOpen(false);
+    } finally {
+      setResetLoading(false);
+    }
+  }
+
+  async function copyPassphrase() {
+    if (!generatedPassphrase) return;
+    try {
+      await navigator.clipboard.writeText(generatedPassphrase);
+    } catch {
+      const el = document.createElement('textarea');
+      el.value = generatedPassphrase;
+      el.style.position = 'fixed';
+      el.style.opacity = '0';
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+    }
+    notifications.show('Passphrase copied.', { severity: 'success', autoHideDuration: 2000 });
+  }
+
+  function handleCloseResetDialog() {
+    setResetDialogOpen(false);
+    setGeneratedPassphrase(null);
+  }
+
   if (error) return <Alert severity="error">Failed to load pilot.</Alert>;
   if (!pilot) return <Box sx={{ display: 'flex', justifyContent: 'center', pt: 8 }}><CircularProgress /></Box>;
 
   return (
-    <PageContainer
-      title="Edit pilot"
-    >
+    <PageContainer title="Edit pilot">
       <Box component="form" onSubmit={(e: React.FormEvent) => void handleSubmit(e)} noValidate sx={{ width: '100%' }}>
         <FormGroup>
           <Grid container spacing={2} sx={{ mb: 2, width: '100%' }}>
@@ -138,9 +185,47 @@ export default function PilotEditPage() {
         </FormGroup>
         <Stack direction="row" spacing={2} justifyContent="space-between">
           <Button variant="contained" startIcon={<ArrowBackIcon />} onClick={() => navigate('/pilots')}>back</Button>
-          <Button type="submit" variant="contained" size="large" disabled={submitting}>save</Button>
+          <Stack direction="row" spacing={2}>
+            <Button variant="outlined" color="warning" startIcon={<LockResetOutlined />} onClick={() => setResetDialogOpen(true)}>
+              reset password
+            </Button>
+            <Button type="submit" variant="contained" size="large" disabled={submitting}>save</Button>
+          </Stack>
         </Stack>
       </Box>
+
+      <Dialog open={resetDialogOpen} onClose={handleCloseResetDialog} maxWidth="xs" fullWidth>
+        <DialogTitle>Reset password</DialogTitle>
+        <DialogContent>
+          {generatedPassphrase ? (
+            <Stack spacing={2}>
+              <DialogContentText>
+                New temporary password for <strong>{pilot.displayName}</strong>. Share it with the pilot — it won't be shown again.
+              </DialogContentText>
+              <Paper variant="outlined" sx={{ p: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography sx={{ flex: 1, fontFamily: 'monospace', fontSize: 14, wordBreak: 'break-all' }}>
+                  {generatedPassphrase}
+                </Typography>
+                <IconButton size="small" onClick={() => void copyPassphrase()}>
+                  <ContentCopyOutlined fontSize="small" />
+                </IconButton>
+              </Paper>
+            </Stack>
+          ) : (
+            <DialogContentText>
+              Generate a temporary password for <strong>{pilot.displayName}</strong>? Their current password will be replaced immediately.
+            </DialogContentText>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseResetDialog}>{generatedPassphrase ? 'close' : 'cancel'}</Button>
+          {!generatedPassphrase && (
+            <Button variant="contained" color="warning" onClick={() => void handleResetPassword()} disabled={resetLoading}>
+              {resetLoading ? 'generating…' : 'generate'}
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
     </PageContainer>
   );
 }

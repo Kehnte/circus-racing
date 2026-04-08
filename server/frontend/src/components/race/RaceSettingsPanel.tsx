@@ -21,6 +21,7 @@ import Select from '@mui/material/Select';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import CheckOutlined from '@mui/icons-material/CheckOutlined';
+import CloseOutlined from '@mui/icons-material/CloseOutlined';
 import DeleteOutlined from '@mui/icons-material/DeleteOutlined';
 import DownloadOutlined from '@mui/icons-material/DownloadOutlined';
 import EditOutlined from '@mui/icons-material/EditOutlined';
@@ -291,7 +292,7 @@ export default function RaceSettingsPanel({ raceState }: Props) {
                   <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
                     {renaming ? (
                       <TextField
-                        label="Circuit name"
+                        label="Circuit"
                         value={circuitName}
                         size="small"
                         autoFocus
@@ -355,6 +356,16 @@ export default function RaceSettingsPanel({ raceState }: Props) {
                         onClick={() => void handleRenameConfirm()}
                       >
                         save
+                      </Button>
+                    )}
+                    {racetrackId && renaming && (
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<CloseOutlined />}
+                        onClick={() => setRenaming(false)}
+                      >
+                        cancel
                       </Button>
                     )}
                     {racetrackId && !renaming && (

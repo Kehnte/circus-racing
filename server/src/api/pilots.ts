@@ -14,6 +14,13 @@ import { emitDashboard } from "../socket/emitter.js";
 import { refreshPilotEntrySnapshots } from "../engine/snapshot-refresh.js";
 import { validate } from "../middleware/validate.js";
 import { createPilotSchema, updatePilotSchema } from "../validation/schemas.js";
+import { WORDS } from "../utils/passphraseWords.js";
+
+function generatePassphrase(): string {
+  const pick = () => WORDS[randomBytes(4).readUInt32BE() % WORDS.length];
+  const num = randomBytes(1)[0] % 90 + 10; // 10-99
+  return `${pick()}-${pick()}-${pick()}-${num}`;
+}
 
 const AVATAR_MAX_BYTES = 2 * 1024 * 1024; // 2 MB
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -235,6 +242,15 @@ router.patch("/:id", ...requireModo, validate(updatePilotSchema), async (req, re
   if (configChanged) await refreshPilotEntrySnapshots(String(req.params.id));
   emitDashboard("data-changed", { resource: "pilots" });
   res.json(safePublic(updated));
+});
+
+/** POST /pilots/:id/reset-password — admin only, generates and returns a temporary passphrase */
+router.post("/:id/reset-password", ...requireAdmin, async (req, res) => {
+  const passphrase = generatePassphrase();
+  const passwordHash = await hash(passphrase, 12);
+  const updated = await db.update(pilot).set({ passwordHash }).where(eq(pilot.id, String(req.params.id))).returning({ id: pilot.id }).get();
+  if (!updated) { res.status(404).json({ error: "Pilot not found" }); return; }
+  res.json({ passphrase });
 });
 
 /** DELETE /pilots/:id — admin only */

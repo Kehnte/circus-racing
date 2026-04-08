@@ -15,9 +15,6 @@ import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
 import Alert from '@mui/material/Alert';
 import Collapse from '@mui/material/Collapse';
-import Slider from '@mui/material/Slider';
-import Switch from '@mui/material/Switch';
-import FormControlLabel from '@mui/material/FormControlLabel';
 import type { AlertColor } from '@mui/material/Alert';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import SaveIcon from '@mui/icons-material/Save';
@@ -184,66 +181,6 @@ export default function ConfigCard({ recordMode }: Props) {
             />
           );
         })}
-
-        <Typography variant="overline" color="text.secondary">Filters</Typography>
-
-        {([
-          { key: 'filter_jump_enabled' as const, label: 'Jump filter', threshKey: 'filter_jump_threshold' as const, threshLabel: 'Threshold (m)', min: 50, max: 2000, step: 50 },
-          { key: 'filter_iqr_enabled' as const,  label: 'IQR filter',  threshKey: 'filter_iqr_multiplier' as const,  threshLabel: 'Multiplier',    min: 0.5, max: 5, step: 0.1 },
-          { key: 'filter_angular_enabled' as const, label: 'Angular filter', threshKey: 'filter_angular_max_angle' as const, threshLabel: 'Max angle (°)', min: 30, max: 175, step: 5 },
-        ] as { key: keyof MonitorConfig; label: string; threshKey: keyof MonitorConfig; threshLabel: string; min: number; max: number; step: number }[]).map(({ key, label, threshKey, threshLabel, min, max, step }) => (
-          <Box key={String(key)} sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-            <FormControlLabel
-              control={
-                <Switch
-                  size="small"
-                  checked={!!cfg[key]}
-                  onChange={e => set(key, e.target.checked)}
-                />
-              }
-              label={<Typography variant="body2">{label}</Typography>}
-            />
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, pl: 1 }}>
-              <Typography variant="caption" sx={{ minWidth: 100 }}>{threshLabel}: {Number(cfg[threshKey]).toFixed(step < 1 ? 1 : 0)}</Typography>
-              <Slider
-                size="small"
-                min={min}
-                max={max}
-                step={step}
-                value={Number(cfg[threshKey])}
-                disabled={!cfg[key]}
-                onChange={(_e, v) => set(threshKey, v as number)}
-                sx={{ flex: 1 }}
-              />
-            </Box>
-          </Box>
-        ))}
-
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-          <FormControlLabel
-            control={
-              <Switch
-                size="small"
-                checked={!!cfg.filter_rolling_enabled}
-                onChange={e => set('filter_rolling_enabled', e.target.checked)}
-              />
-            }
-            label={<Typography variant="body2">Rolling median</Typography>}
-          />
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, pl: 1 }}>
-            <Typography variant="caption" sx={{ minWidth: 100 }}>Window: {cfg.filter_rolling_window} pts</Typography>
-            <Slider
-              size="small"
-              min={3}
-              max={21}
-              step={2}
-              value={cfg.filter_rolling_window}
-              disabled={!cfg.filter_rolling_enabled}
-              onChange={(_e, v) => set('filter_rolling_window', v as number)}
-              sx={{ flex: 1 }}
-            />
-          </Box>
-        </Box>
 
         <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
           <IconButton

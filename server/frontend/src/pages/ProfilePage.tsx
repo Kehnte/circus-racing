@@ -311,10 +311,26 @@ export default function ProfilePage() {
     }
   }
 
+  async function copyToClipboard(text: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch { /* fall through to execCommand */ }
+    const el = document.createElement('textarea');
+    el.value = text;
+    el.style.position = 'fixed';
+    el.style.opacity = '0';
+    document.body.appendChild(el);
+    el.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(el);
+    if (!ok) throw new Error('copy failed');
+  }
+
   async function handleCopyToken() {
     if (!me?.token) return;
     try {
-      await navigator.clipboard.writeText(me.token);
+      await copyToClipboard(me.token);
       notifications.show('Token copied to clipboard.', { severity: 'success', autoHideDuration: 2000 });
     } catch {
       notifications.show('Could not copy — select and copy manually.', { severity: 'error' });
@@ -323,7 +339,7 @@ export default function ProfilePage() {
 
   async function handleCopyServerUrl() {
     try {
-      await navigator.clipboard.writeText(window.location.origin);
+      await copyToClipboard(window.location.origin);
       notifications.show('Server URL copied to clipboard.', { severity: 'success', autoHideDuration: 2000 });
     } catch {
       notifications.show('Could not copy — select and copy manually.', { severity: 'error' });
