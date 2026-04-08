@@ -143,7 +143,7 @@ export default function OverlaySettingsPanel({ raceState }: Props) {
           />
 
           <Button
-            variant={countdownRunning ? 'outlined' : 'contained'}
+            variant="outlined"
             size="small"
             color={countdownRunning ? 'error' : 'primary'}
             startIcon={countdownRunning ? <StopOutlined /> : <PlayArrowOutlined />}

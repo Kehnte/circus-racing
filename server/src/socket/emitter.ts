@@ -160,6 +160,7 @@ export function buildRaceStateBroadcast(ctx: RaceContext): object {
     totalPausedMs: ctx.totalPausedMs,
     globalFastestLapMs: ctx.globalFastestLapMs,
     globalFastestLapPilotId: ctx.globalFastestLapPilotId,
+    ocrHealth: ctx.ocrHealth,
     teamDisplayMode: ctx.teamDisplayMode,
     chronoDisplayMode: ctx.chronoDisplayMode,
     timingEnabled: ctx.timingEnabled,

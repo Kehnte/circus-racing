@@ -46,7 +46,8 @@ def _check_environment() -> int:
 def _build_frontend() -> int:
     frontend_dir = Path(__file__).parent / "frontend"
     print("Building frontend…")
-    result = subprocess.run(["npm", "run", "build"], cwd=frontend_dir)
+    npm_cmd = "npm.cmd" if sys.platform == "win32" else "npm"
+    result = subprocess.run([npm_cmd, "run", "build"], cwd=frontend_dir)
     if result.returncode != 0:
         print("ERROR: Frontend build failed.")
         return result.returncode

@@ -94,7 +94,7 @@ export default function LeaderboardDisplayPanel({ raceState }: Props) {
           inputProps={{ min: 1, max: 999 }}
         />
         <Button
-          variant={countdownRunning ? 'outlined' : 'contained'}
+          variant="outlined"
           size="small"
           color={countdownRunning ? 'error' : 'primary'}
           startIcon={countdownRunning ? <StopOutlined /> : <PlayArrowOutlined />}

@@ -39,7 +39,7 @@ COPY shared/ shared/
 COPY drizzle.config.ts ./
 COPY src/db/ src/db/
 
-EXPOSE 3000
+EXPOSE 1959
 
 # Push DB schema at container startup so the mounted volume gets the schema applied
 CMD ["sh", "-c", "npx drizzle-kit push && node dist/server.js"]

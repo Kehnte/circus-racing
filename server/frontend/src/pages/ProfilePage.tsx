@@ -393,7 +393,7 @@ export default function ProfilePage() {
                 </IconButton>
               </Paper>
               <Button
-                variant="outlined" size="small" startIcon={<RefreshOutlined />}
+                variant="contained" size="small" startIcon={<RefreshOutlined />}
                 onClick={() => void handleRegenerateToken()} sx={{ mt: 1.5 }}
               >
                 Regenerate
@@ -413,7 +413,7 @@ export default function ProfilePage() {
                     <ContentCopyOutlined fontSize="small" />
                   </IconButton>
                 </Paper>
-                <Button variant="outlined" size="small" startIcon={<DownloadOutlined />} onClick={() => window.open('https://github.com/Kehnte/circus-racing/releases/latest', '_blank')} fullWidth>
+                <Button variant="contained" size="small" startIcon={<DownloadOutlined />} onClick={() => window.open('https://github.com/Kehnte/circus-racing/releases/latest', '_blank')} fullWidth>
                   Download Monitor (.exe)
                 </Button>
               </Stack>

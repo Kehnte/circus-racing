@@ -95,7 +95,7 @@ export default function RaceSelector() {
         {isModo && (
           <>
             <Button
-              variant="outlined"
+              variant="contained"
               size="small"
               startIcon={<AddOutlined />}
               onClick={() => setCreateOpen(true)}

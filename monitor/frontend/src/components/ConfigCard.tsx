@@ -11,12 +11,13 @@ import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import Select from '@mui/material/Select';
-import FormControlLabel from '@mui/material/FormControlLabel';
-import Switch from '@mui/material/Switch';
 import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
 import Alert from '@mui/material/Alert';
 import Collapse from '@mui/material/Collapse';
+import Slider from '@mui/material/Slider';
+import Switch from '@mui/material/Switch';
+import FormControlLabel from '@mui/material/FormControlLabel';
 import type { AlertColor } from '@mui/material/Alert';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import SaveIcon from '@mui/icons-material/Save';
@@ -49,8 +50,23 @@ export default function ConfigCard({ recordMode }: Props) {
     url: '',
     monitor_index: 1,
     delta_time_s: 1,
+    record_delta_time_s: 0.5,
     checkpoint_save: false,
     checkpoint_save_distance: 150,
+    auto_checkpoint_spacing: 150,
+    hotkey_test_capture: 'alt+t',
+    hotkey_record_start: 'alt+num 1',
+    hotkey_record_checkpoint: 'alt+num 2',
+    hotkey_record_finish: 'alt+num 3',
+    hotkey_record_cancel: 'alt+num 4',
+    filter_jump_enabled: true,
+    filter_jump_threshold: 500,
+    filter_iqr_enabled: true,
+    filter_iqr_multiplier: 1.5,
+    filter_angular_enabled: true,
+    filter_angular_max_angle: 120,
+    filter_rolling_enabled: true,
+    filter_rolling_window: 5,
   });
 
   const tokenError = cfg.token.length > 0 && !TOKEN_REGEX.test(cfg.token);
@@ -134,36 +150,100 @@ export default function ConfigCard({ recordMode }: Props) {
         )}
 
         {recordMode && (
-          <>
+          <TextField
+            label="Auto checkpoint spacing (m)"
+            size="small"
+            type="number"
+            slotProps={{ htmlInput: { min: 50, step: 10 } }}
+            value={cfg.auto_checkpoint_spacing}
+            onChange={e => set('auto_checkpoint_spacing', parseFloat(e.target.value) || 150)}
+          />
+        )}
+
+        <Typography variant="overline" color="text.secondary">Hotkeys</Typography>
+
+        {([
+          { key: 'hotkey_test_capture',      label: 'Test capture' },
+          { key: 'hotkey_record_start',      label: 'Record start' },
+          { key: 'hotkey_record_checkpoint', label: 'Record checkpoint' },
+          { key: 'hotkey_record_finish',     label: 'Record finish' },
+          { key: 'hotkey_record_cancel',     label: 'Record cancel' },
+        ] as { key: keyof MonitorConfig; label: string }[]).map(({ key, label }) => {
+          const val = String(cfg[key]);
+          const valid = /^[a-z0-9]/.test(val) && val.includes('+') && val.split('+').every(p => p.trim().length > 0);
+          return (
+            <TextField
+              key={key}
+              label={label}
+              size="small"
+              value={val}
+              onChange={e => set(key, e.target.value)}
+              placeholder="e.g. alt+num 1"
+              error={val.length > 0 && !valid}
+              helperText={val.length > 0 && !valid ? 'Format: modifier+key — e.g. alt+t, alt+num 1, ctrl+f5' : ' '}
+            />
+          );
+        })}
+
+        <Typography variant="overline" color="text.secondary">Filters</Typography>
+
+        {([
+          { key: 'filter_jump_enabled' as const, label: 'Jump filter', threshKey: 'filter_jump_threshold' as const, threshLabel: 'Threshold (m)', min: 50, max: 2000, step: 50 },
+          { key: 'filter_iqr_enabled' as const,  label: 'IQR filter',  threshKey: 'filter_iqr_multiplier' as const,  threshLabel: 'Multiplier',    min: 0.5, max: 5, step: 0.1 },
+          { key: 'filter_angular_enabled' as const, label: 'Angular filter', threshKey: 'filter_angular_max_angle' as const, threshLabel: 'Max angle (°)', min: 30, max: 175, step: 5 },
+        ] as { key: keyof MonitorConfig; label: string; threshKey: keyof MonitorConfig; threshLabel: string; min: number; max: number; step: number }[]).map(({ key, label, threshKey, threshLabel, min, max, step }) => (
+          <Box key={String(key)} sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
             <FormControlLabel
               control={
                 <Switch
-                  checked={cfg.checkpoint_save}
-                  onChange={e => set('checkpoint_save', e.target.checked)}
                   size="small"
+                  checked={!!cfg[key]}
+                  onChange={e => set(key, e.target.checked)}
                 />
               }
-              label={
-                <Box>
-                  <Typography variant="body2">Save checkpoints</Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Write each position to checkpoints.txt
-                  </Typography>
-                </Box>
-              }
-              labelPlacement="start"
-              sx={{ justifyContent: 'space-between', ml: 0 }}
+              label={<Typography variant="body2">{label}</Typography>}
             />
-            <TextField
-              label="Min distance between saves (m)"
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, pl: 1 }}>
+              <Typography variant="caption" sx={{ minWidth: 100 }}>{threshLabel}: {Number(cfg[threshKey]).toFixed(step < 1 ? 1 : 0)}</Typography>
+              <Slider
+                size="small"
+                min={min}
+                max={max}
+                step={step}
+                value={Number(cfg[threshKey])}
+                disabled={!cfg[key]}
+                onChange={(_e, v) => set(threshKey, v as number)}
+                sx={{ flex: 1 }}
+              />
+            </Box>
+          </Box>
+        ))}
+
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+          <FormControlLabel
+            control={
+              <Switch
+                size="small"
+                checked={!!cfg.filter_rolling_enabled}
+                onChange={e => set('filter_rolling_enabled', e.target.checked)}
+              />
+            }
+            label={<Typography variant="body2">Rolling median</Typography>}
+          />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, pl: 1 }}>
+            <Typography variant="caption" sx={{ minWidth: 100 }}>Window: {cfg.filter_rolling_window} pts</Typography>
+            <Slider
               size="small"
-              type="number"
-              inputProps={{ min: 10, step: 10 }}
-              value={cfg.checkpoint_save_distance}
-              onChange={e => set('checkpoint_save_distance', parseInt(e.target.value) || 150)}
+              min={3}
+              max={21}
+              step={2}
+              value={cfg.filter_rolling_window}
+              disabled={!cfg.filter_rolling_enabled}
+              onChange={(_e, v) => set('filter_rolling_window', v as number)}
+              sx={{ flex: 1 }}
             />
-          </>
-        )}
+          </Box>
+        </Box>
 
         <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
           <IconButton

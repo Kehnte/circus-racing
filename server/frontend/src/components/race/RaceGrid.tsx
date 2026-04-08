@@ -155,20 +155,6 @@ export default function RaceGrid({ raceState }: Props) {
     });
   }
 
-  // Returns the allowed [min, max] position range for a pilot based on lap counts.
-  // Cannot move above a pilot with more laps, nor below a pilot with fewer laps.
-  function positionRange(pilot: PilotRaceState): { min: number; max: number } {
-    const activePilots = pilots.filter(p => p.status !== 'DNF' && p.status !== 'FINISHED');
-    let min = 1;
-    let max = activePilots.length || pilots.length;
-    for (const p of pilots) {
-      if (p.id === pilot.id) continue;
-      if (p.lap > pilot.lap && p.position >= min) min = p.position + 1;
-      if (p.lap < pilot.lap && p.position <= max) max = p.position - 1;
-    }
-    return { min: Math.max(1, min), max: Math.min(pilots.length, max) };
-  }
-
   async function toggleDnf(pilotId: string) {
     await apiFetch(`/api/race-events/races/${raceId}/manual-dnf`, {
       method: 'POST',
@@ -280,7 +266,6 @@ export default function RaceGrid({ raceState }: Props) {
             renderCell: (params: GridRenderCellParams<GridRow>) => {
               const isPending = params.row._kind === 'pending';
               const isDnf = !isPending && (params.row as PilotRaceState).status === 'DNF';
-              const { min, max } = isPending ? { min: 1, max: 1 } : positionRange(params.row as PilotRaceState);
               const validatedRow = isPending ? null : (params.row as PilotRaceState);
               const ctrlDisabled = !canEditGrid || isPending || isDnf;
               return (
@@ -295,13 +280,11 @@ export default function RaceGrid({ raceState }: Props) {
                     <NumberSpinner
                       size="small"
                       value={validatedRow.position}
-                      min={min}
-                      max={max}
                       disabled={ctrlDisabled}
                       onCommit={(v) => { if (v !== validatedRow.position) void setPosition(validatedRow.id, v); }}
                     />
                   ) : (
-                    <NumberSpinner size="small" disabled min={1} max={1} />
+                    <NumberSpinner size="small" disabled />
                   )}
                 </Box>
               );

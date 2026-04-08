@@ -5,11 +5,13 @@ import { useEffect } from 'react';
 import { io } from 'socket.io-client';
 import { mutate } from 'swr';
 import type { OcrStatusMap, RaceStatePayload } from '../types.ts';
+import type { OcrHealthMap } from '../types.ts';
 import { useRaceStore } from '../store/raceStore.ts';
 
 export function useRaceSocket() {
   const setRaceState = useRaceStore((s) => s.setRaceState);
   const setOcrStatusMap = useRaceStore((s) => s.setOcrStatusMap);
+  const setOcrHealthMap = useRaceStore((s) => s.setOcrHealthMap);
 
   useEffect(() => {
     const socket = io(window.location.origin, {
@@ -17,12 +19,19 @@ export function useRaceSocket() {
       path: '/socket.io',
     });
 
-    socket.on('race-state', (data: RaceStatePayload) => {
-      if (useRaceStore.getState().activeRaceId !== null) setRaceState(data);
+    socket.on('race-state', (data: RaceStatePayload & { ocrHealth?: OcrHealthMap }) => {
+      if (useRaceStore.getState().activeRaceId !== null) {
+        setRaceState(data);
+        if (data.ocrHealth) setOcrHealthMap(data.ocrHealth);
+      }
     });
 
     socket.on('ocr-status', (data: OcrStatusMap) => {
       setOcrStatusMap(data);
+    });
+
+    socket.on('ocr-health', (data: OcrHealthMap) => {
+      setOcrHealthMap(data);
     });
 
     socket.on('race-list-changed', () => {
@@ -32,5 +41,5 @@ export function useRaceSocket() {
     return () => {
       socket.disconnect();
     };
-  }, [setRaceState, setOcrStatusMap]);
+  }, [setRaceState, setOcrStatusMap, setOcrHealthMap]);
 }

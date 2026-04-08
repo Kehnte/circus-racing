@@ -1,7 +1,7 @@
 // race-engine.ts — AUTO mode race engine (checkpoint detection, lap counting).
-import { distance3D, type Vec3 } from "./math.js";
+import { segmentCrossesGate, type Vec3 } from "./math.js";
 import {
-  getContext, setPilotState, CHECKPOINT_RADIUS,
+  getContext, setPilotState, removeFromActiveGrid,
   type RaceContext,
 } from "./race-context.js";
 import type { PilotState } from "../db/schema.js";
@@ -53,15 +53,17 @@ export function processPosition(
   const cps = ctx.checkpoints;
   const cpLen = cps.length;
 
+  const prevPos = ctx.ocrTracking[pilotId]?.lastReceivedPosition ?? null;
+
   // Update position
   state.position = position;
 
   // Checkpoint detection
-  if (cpLen > 0) {
+  if (cpLen > 0 && prevPos !== null) {
     const nextIdx = state.nextCheckpointOrder % cpLen;
     const nextCP = cps[nextIdx];
 
-    if (distance3D(position, nextCP.position as Vec3) < CHECKPOINT_RADIUS) {
+    if (segmentCrossesGate(prevPos, position, nextCP.position as Vec3, nextCP.direction as Vec3, nextCP.radius)) {
       const nowIso = now.toISOString();
 
       if (nextIdx === 0 && state.lap > 0) {
@@ -95,6 +97,7 @@ export function processPosition(
           if (allDone(ctx)) events.push({ type: "race-finished" });
 
           setPilotState(pilotId, state);
+          removeFromActiveGrid(pilotId);
           updateRaceProgress(ctx, pilotId, nextIdx, cpLen);
           return { pilotState: state, events };
         }

@@ -38,7 +38,7 @@ export const controls = sqliteTable("controls", {
 export const racetrack = sqliteTable("racetrack", {
   id:           text().primaryKey().$defaultFn(() => crypto.randomUUID()),
   name:         text().notNull().unique(),
-  checkpoints:  text({ mode: "json" }).$type<Array<{ order: number; position: [number, number, number] }>>().notNull(),
+  checkpoints:  text({ mode: "json" }).$type<Array<{ order: number; position: [number, number, number]; direction: [number, number, number]; radius: number }>>().notNull(),
 });
 
 // Pilot (permanent account)

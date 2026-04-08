@@ -122,7 +122,7 @@ export default function PilotsListPage() {
       renderCell: (params: GridRenderCellParams<Pilot, string | null>) => {
         const team = params.value ? teamById[params.value] : null;
         if (!team) return <Box sx={{ display: 'flex', alignItems: 'center', height: '100%', color: 'text.disabled' }}>—</Box>;
-        return <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}><Typography variant="body2" sx={{ color: team.color, fontWeight: 700 }}>{team.acronym}</Typography></Box>;
+        return <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}><Typography variant="body2" sx={{ color: team.color }}>{team.acronym}</Typography></Box>;
       },
     },
     {

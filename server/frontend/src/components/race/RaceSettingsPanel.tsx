@@ -14,14 +14,16 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import Divider from '@mui/material/Divider';
 import Grid from '@mui/material/Grid';
-import IconButton from '@mui/material/IconButton';
 import InputLabel from '@mui/material/InputLabel';
 import FormControl from '@mui/material/FormControl';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+import CheckOutlined from '@mui/icons-material/CheckOutlined';
 import DeleteOutlined from '@mui/icons-material/DeleteOutlined';
+import DownloadOutlined from '@mui/icons-material/DownloadOutlined';
+import EditOutlined from '@mui/icons-material/EditOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import UploadFileOutlined from '@mui/icons-material/UploadFileOutlined';
 import { apiFetch, fetcher } from '../../api.ts';
@@ -88,22 +90,76 @@ export default function RaceSettingsPanel({ raceState }: Props) {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+  // Import dialog state
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importName, setImportName] = useState('');
+
+  // Inline rename state
+  const [renaming, setRenaming] = useState(false);
+  const [circuitName, setCircuitName] = useState('');
+
+  useEffect(() => {
+    const track = racetracks?.find((r) => r.id === racetrackId);
+    setCircuitName(track?.name ?? '');
+    setRenaming(false);
+  }, [racetrackId, racetracks]);
+
+  function handleFileChosen(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = '';
+    const stem = file.name.replace(/\.json$/i, '');
+    setImportFile(file);
+    setImportName(stem);
+  }
+
+  async function handleImportConfirm() {
+    if (!importFile) return;
     try {
-      const text = await file.text();
-      const json = JSON.parse(text) as { name: string; checkpoints: unknown[] };
+      const text = await importFile.text();
+      const json = JSON.parse(text) as { checkpoints: unknown[] };
       const created = await apiFetch<Racetrack>('/api/racetracks', {
         method: 'POST',
-        body: JSON.stringify(json),
+        body: JSON.stringify({ name: importName.trim() || importFile.name.replace(/\.json$/i, ''), checkpoints: json.checkpoints }),
       });
       await mutate('/api/racetracks');
       immediatePatch('racetrackId', created.id);
     } catch {
       // silently ignore; error visible from failed request
+    } finally {
+      setImportDialogOpen(false);
+      setImportFile(null);
+      setImportName('');
     }
+  }
+
+  function handleImportCancel() {
+    setImportDialogOpen(false);
+    setImportFile(null);
+    setImportName('');
+  }
+
+  async function handleRenameConfirm() {
+    if (!racetrackId || !circuitName.trim()) return;
+    await apiFetch(`/api/racetracks/${racetrackId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ name: circuitName.trim() }),
+    });
+    void mutate('/api/racetracks');
+    setRenaming(false);
+  }
+
+  async function handleExport() {
+    if (!racetrackId) return;
+    const track = await apiFetch<Racetrack>(`/api/racetracks/${racetrackId}`);
+    const blob = new Blob([JSON.stringify(track, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${track.name}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   async function handleDelete() {
@@ -223,53 +279,95 @@ export default function RaceSettingsPanel({ raceState }: Props) {
               </Grid>
             )}
 
-            {/* Circuit (auto mode only) */}
+            {/* Circuit management (auto mode only) */}
             {isAuto && (
               <>
                 <Grid size={12}>
                   <Divider />
                 </Grid>
+
+                {/* Selector (or inline rename) + action buttons */}
                 <Grid size={12}>
                   <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                    <FormControl size="small" sx={{ flex: 1 }}>
-                      <InputLabel>Circuit</InputLabel>
-                      <Select
-                        value={racetrackId ?? ''}
-                        label="Circuit"
-                        disabled={isStarted}
-                        onChange={(e) => immediatePatch('racetrackId', e.target.value || null)}
-                      >
-                        <MenuItem value="">none</MenuItem>
-                        {(racetracks ?? []).map((r) => (
-                          <MenuItem key={r.id} value={r.id}>{r.name}</MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept=".json"
-                      style={{ display: 'none' }}
-                      onChange={(e) => void handleImport(e)}
-                    />
+                    {renaming ? (
+                      <TextField
+                        label="Circuit name"
+                        value={circuitName}
+                        size="small"
+                        autoFocus
+                        sx={{ flex: 1 }}
+                        onChange={(e) => setCircuitName(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') void handleRenameConfirm(); if (e.key === 'Escape') setRenaming(false); }}
+                      />
+                    ) : (
+                      <FormControl size="small" sx={{ flex: 1 }}>
+                        <InputLabel>Circuit</InputLabel>
+                        <Select
+                          value={racetrackId ?? ''}
+                          label="Circuit"
+                          disabled={isStarted}
+                          onChange={(e) => immediatePatch('racetrackId', e.target.value || null)}
+                        >
+                          <MenuItem value="">none</MenuItem>
+                          {(racetracks ?? []).map((r) => (
+                            <MenuItem key={r.id} value={r.id}>{r.name}</MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    )}
                     <Button
                       size="small"
                       variant="outlined"
                       startIcon={<UploadFileOutlined />}
                       disabled={isStarted}
-                      onClick={() => fileInputRef.current?.click()}
+                      onClick={() => setImportDialogOpen(true)}
                     >
                       import
                     </Button>
-                    {racetrackId && (
-                      <IconButton
+                    {racetrackId && !renaming && (
+                      <Button
                         size="small"
+                        variant="outlined"
+                        startIcon={<DownloadOutlined />}
+                        disabled={isStarted}
+                        onClick={() => void handleExport()}
+                      >
+                        export
+                      </Button>
+                    )}
+                    {racetrackId && !renaming && (
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<EditOutlined />}
+                        disabled={isStarted}
+                        onClick={() => setRenaming(true)}
+                      >
+                        rename
+                      </Button>
+                    )}
+                    {racetrackId && renaming && (
+                      <Button
+                        size="small"
+                        variant="contained"
+                        startIcon={<CheckOutlined />}
+                        disabled={!circuitName.trim()}
+                        onClick={() => void handleRenameConfirm()}
+                      >
+                        save
+                      </Button>
+                    )}
+                    {racetrackId && !renaming && (
+                      <Button
+                        size="small"
+                        variant="outlined"
                         color="error"
+                        startIcon={<DeleteOutlined />}
                         disabled={isStarted}
                         onClick={() => setDeleteConfirmOpen(true)}
                       >
-                        <DeleteOutlined fontSize="small" />
-                      </IconButton>
+                        delete
+                      </Button>
                     )}
                   </Box>
                 </Grid>
@@ -282,7 +380,7 @@ export default function RaceSettingsPanel({ raceState }: Props) {
           {/* Actions */}
           <Button
             size="small"
-            variant="outlined"
+            variant="contained"
             color={status === 'SCHEDULED' ? 'error' : 'primary'}
             disabled={status !== 'PENDING' && status !== 'SCHEDULED'}
             onClick={() => void apiFetch(
@@ -294,6 +392,48 @@ export default function RaceSettingsPanel({ raceState }: Props) {
           </Button>
         </AccordionDetails>
       </Accordion>
+
+      {/* Import circuit dialog */}
+      <Dialog open={importDialogOpen} onClose={handleImportCancel} maxWidth="xs" fullWidth>
+        <DialogTitle>Import circuit</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json"
+            style={{ display: 'none' }}
+            onChange={handleFileChosen}
+          />
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<UploadFileOutlined />}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            {importFile ? importFile.name : 'choose file'}
+          </Button>
+          {importFile && (
+            <TextField
+              label="Circuit name"
+              value={importName}
+              size="small"
+              fullWidth
+              autoFocus
+              onChange={(e) => setImportName(e.target.value)}
+            />
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleImportCancel}>cancel</Button>
+          <Button
+            variant="contained"
+            disabled={!importFile || !importName.trim()}
+            onClick={() => void handleImportConfirm()}
+          >
+            import
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Delete circuit confirmation */}
       <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)} maxWidth="xs">

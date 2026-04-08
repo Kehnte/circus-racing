@@ -29,6 +29,8 @@ router.post("/", ...requireModo, validate(createRacetrackSchema), async (req, re
   const normalized = cps.map((cp: any, i: number) => ({
     order: i,
     position: cp.position ?? cp,
+    direction: cp.direction ?? [0, 0, 1],
+    radius: cp.radius ?? 100,
   }));
   const [created] = await db.insert(racetrack)
     .values({ name, checkpoints: normalized })
@@ -45,6 +47,8 @@ router.patch("/:id", ...requireModo, validate(updateRacetrackSchema), async (req
     patch.checkpoints = checkpoints.map((cp: any, i: number) => ({
       order: i,
       position: cp.position ?? cp,
+      direction: cp.direction ?? [0, 0, 1],
+      radius: cp.radius ?? 100,
     }));
   }
   const [updated] = await db.update(racetrack)

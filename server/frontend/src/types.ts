@@ -11,3 +11,11 @@ export type {
 
 // PilotStatus is an alias kept for internal dashboard usage.
 export type { PilotRuntimeStatus as PilotStatus } from "@circus-racing/types";
+
+// OCR health data — admin-only, not part of the shared types package.
+export interface OcrHealthEntry {
+  rejectedCount: number;
+  lastRejectedAt: string | null;
+  lastRejectedSpeed: number | null;
+}
+export type OcrHealthMap = Record<string, OcrHealthEntry>;

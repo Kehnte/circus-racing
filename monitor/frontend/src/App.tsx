@@ -1,39 +1,19 @@
-// App.tsx — Root component composing the monitor UI cards.
-
-import Container from '@mui/material/Container';
-import Box from '@mui/material/Box';
+// App.tsx — Root component with Monitor/Editor tab navigation.
+import { useState } from 'react';
 import { useMonitorState } from './hooks/useMonitorState';
-import AppHeader from './components/AppHeader';
-import ModeCard from './components/ModeCard';
-import PositionCard from './components/PositionCard';
-import RecordCard from './components/RecordCard';
-import ConfigCard from './components/ConfigCard';
-import CaptureTestCard from './components/CaptureTestCard';
-
-async function setMode(mode: 'RACE' | 'RECORD') {
-  await fetch('/api/mode', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ mode }),
-  });
-}
+import AppHeader, { type AppTab } from './components/AppHeader';
+import MonitorView from './components/MonitorView';
+import EditorView from './components/editor/EditorView';
 
 export default function App() {
   const { state, error } = useMonitorState();
-  const isRecord = state?.mode === 'RECORD';
+  const [tab, setTab] = useState<AppTab>('monitor');
 
   return (
     <>
-      <AppHeader state={state} pollError={error} />
-      <Container maxWidth="sm">
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, py: 2 }}>
-          <ModeCard mode={state?.mode} onSetMode={setMode} />
-          <PositionCard state={state} />
-          {isRecord && state && <RecordCard state={state} />}
-          <CaptureTestCard captureTest={state?.last_capture_test ?? null} />
-          <ConfigCard recordMode={isRecord} />
-        </Box>
-      </Container>
+      <AppHeader state={state} pollError={error} tab={tab} onTabChange={setTab} />
+      {tab === 'monitor' && <MonitorView state={state} />}
+      {tab === 'editor' && <EditorView />}
     </>
   );
 }

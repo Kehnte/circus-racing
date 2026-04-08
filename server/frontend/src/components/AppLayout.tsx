@@ -24,6 +24,7 @@ import MenuOpenOutlined from '@mui/icons-material/MenuOpenOutlined';
 import MenuOutlined from '@mui/icons-material/MenuOutlined';
 import PersonOutlined from '@mui/icons-material/PersonOutlined';
 import RocketLaunchOutlined from '@mui/icons-material/RocketLaunchOutlined';
+import SensorsOutlined from '@mui/icons-material/SensorsOutlined';
 import SpaceDashboardOutlined from '@mui/icons-material/SpaceDashboardOutlined';
 import TuneOutlined from '@mui/icons-material/TuneOutlined';
 import useSWR from 'swr';
@@ -43,6 +44,7 @@ const NAV_SECTIONS_MODO: NavSection[] = [
     label: 'Race',
     items: [
       { label: 'Dashboard', path: '/', icon: <SpaceDashboardOutlined /> },
+      { label: 'Telemetry', path: '/telemetry', icon: <SensorsOutlined /> },
       { label: 'Leaderboard', path: '', href: '/overlays/leaderboard/', icon: <LeaderboardOutlined /> },
       { label: 'Race Alert', path: '', href: '/overlays/race-alert/', icon: <CampaignOutlined /> },
     ],

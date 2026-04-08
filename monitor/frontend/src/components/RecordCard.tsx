@@ -35,7 +35,12 @@ export default function RecordCard({ state }: Props) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const started = state.recording;
+  const hasExport = state.has_export;
   const count = state.trace_count;
+
+  const handleExport = () => {
+    window.open('/api/record/last', '_blank');
+  };
 
   const showAlert = (message: string, severity: AlertColor) => {
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -104,15 +109,25 @@ export default function RecordCard({ state }: Props) {
           </span>
         </Tooltip>
         <Tooltip title="Ctrl+Num4" placement="bottom">
-          <Button variant="outlined" color="error" onClick={() => handleMark('cancel')}>
-            Cancel
-          </Button>
+          <span>
+            <Button variant="outlined" color="error" disabled={!started} onClick={() => handleMark('cancel')}>
+              Cancel
+            </Button>
+          </span>
         </Tooltip>
       </Box>
 
-      <Typography variant="caption" color="text.secondary">
-        {count} point{count !== 1 ? 's' : ''} recorded
-      </Typography>
+      {started && (
+        <Typography variant="caption" color="text.secondary">
+          {count} point{count !== 1 ? 's' : ''} recorded
+        </Typography>
+      )}
+
+      {hasExport && !started && (
+        <Button variant="outlined" onClick={handleExport}>
+          Export JSON
+        </Button>
+      )}
 
       <Collapse in={!!alert}>
         {alert && (

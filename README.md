@@ -34,7 +34,7 @@ cp .env.example .env
 docker compose up -d
 ```
 
-Server available at `http://localhost:3000`.
+Server available at `http://localhost:1959`.
 
 ---
 
@@ -106,11 +106,11 @@ Login uses `displayName` + `password` (no email). If a pilot loses their passwor
 
 | App | URL |
 |-----|-----|
-| Dashboard (admin + pilots) | `http://localhost:3000/dashboard/` |
-| Leaderboard overlay | `http://localhost:3000/overlays/leaderboard/` |
-| Race alert overlay | `http://localhost:3000/overlays/race-alert/` |
-| REST API | `http://localhost:3000/api/` |
-| Health check | `http://localhost:3000/health` |
+| Dashboard (admin + pilots) | `http://localhost:1959/dashboard/` |
+| Leaderboard overlay | `http://localhost:1959/overlays/leaderboard/` |
+| Race alert overlay | `http://localhost:1959/overlays/race-alert/` |
+| REST API | `http://localhost:1959/api/` |
+| Health check | `http://localhost:1959/health` |
 
 ---
 
@@ -122,8 +122,8 @@ Login uses `displayName` + `password` (no email). If a pilot loses their passwor
 4. **Pilots register** via the dashboard (`/dashboard/register`)
 5. **Validate registrations** in the dashboard, set grid order
 6. **Add overlays in OBS**:
-   - Leaderboard: `http://localhost:3000/overlays/leaderboard/`
-   - Race alert: `http://localhost:3000/overlays/race-alert/`
+   - Leaderboard: `http://localhost:1959/overlays/leaderboard/`
+   - Race alert: `http://localhost:1959/overlays/race-alert/`
 7. **Load the race** (`Load`) — pilots appear in the overlays
 8. **Start countdown** then **Start race**
 9. In MANUAL mode: increment laps, adjust positions, mark DNFs

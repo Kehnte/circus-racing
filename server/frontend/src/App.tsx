@@ -21,6 +21,7 @@ import VehicleEditPage from './pages/vehicles/VehicleEditPage.tsx';
 import ControlsListPage from './pages/controls/ControlsListPage.tsx';
 import ControlCreatePage from './pages/controls/ControlCreatePage.tsx';
 import ControlEditPage from './pages/controls/ControlEditPage.tsx';
+import TelemetryPage from './pages/TelemetryPage.tsx';
 
 const router = createBrowserRouter(
   [
@@ -73,6 +74,7 @@ const router = createBrowserRouter(
                     { path: ':controlId/edit', element: <ControlEditPage /> },
                   ],
                 },
+                { path: 'telemetry', element: <TelemetryPage /> },
               ],
             },
             { path: 'profile', element: <ProfilePage /> },
