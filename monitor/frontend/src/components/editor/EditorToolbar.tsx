@@ -1,23 +1,23 @@
-// EditorToolbar.tsx — File open, load last recording, circuit meta, export controls.
+// EditorToolbar.tsx — File open, load last recording, circuit meta, close loop, export controls.
 import { useRef } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
+import Tooltip from '@mui/material/Tooltip';
+import IconButton from '@mui/material/IconButton';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import DownloadIcon from '@mui/icons-material/Download';
 import UploadIcon from '@mui/icons-material/Upload';
 import UndoIcon from '@mui/icons-material/Undo';
 import RedoIcon from '@mui/icons-material/Redo';
-import Tooltip from '@mui/material/Tooltip';
-import IconButton from '@mui/material/IconButton';
-import type { EditorCircuit } from '../../types';
-import { parseCircuit, serializeCircuit } from '../../hooks/useEditorState';
+import type { EditorCircuit, TracePoint } from '../../types';
+import { parseCircuit, serializeCircuit, DEFAULT_CLOSE_LOOP_THRESHOLD, dist3 } from '../../hooks/useEditorState';
 
 interface Props {
   circuit: EditorCircuit | null;
-  filteredPoints: import('../../types').TracePoint[] | null;
+  filteredPoints: TracePoint[] | null;
   canUndo: boolean;
   canRedo: boolean;
   onUndo: () => void;
@@ -25,9 +25,10 @@ interface Props {
   onLoad: (circuit: EditorCircuit) => void;
   onNameChange: (name: string) => void;
   onTypeChange: (type: 'LOOP' | 'POINT_TO_POINT') => void;
+  onCloseLoop: () => void;
 }
 
-export default function EditorToolbar({ circuit, filteredPoints, canUndo, canRedo, onUndo, onRedo, onLoad, onNameChange, onTypeChange }: Props) {
+export default function EditorToolbar({ circuit, filteredPoints, canUndo, canRedo, onUndo, onRedo, onLoad, onNameChange, onTypeChange, onCloseLoop }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -77,6 +78,14 @@ export default function EditorToolbar({ circuit, filteredPoints, canUndo, canRed
       URL.revokeObjectURL(url);
     }
   }
+
+  // Show close loop button when last point is within threshold of first (loop circuits only)
+  const canCloseLoop = (() => {
+    if (!circuit || circuit.type !== 'LOOP') return false;
+    const real = circuit.points.filter(p => !p.gap);
+    if (real.length < 2) return false;
+    return dist3(real[0].position, real[real.length - 1].position) <= DEFAULT_CLOSE_LOOP_THRESHOLD;
+  })();
 
   return (
     <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', p: 1, borderBottom: '1px solid', borderColor: 'divider', flexWrap: 'wrap' }}>
@@ -135,6 +144,13 @@ export default function EditorToolbar({ circuit, filteredPoints, canUndo, canRed
         <MenuItem value="LOOP">Loop</MenuItem>
         <MenuItem value="POINT_TO_POINT">Point to point</MenuItem>
       </Select>
+      {canCloseLoop && (
+        <Tooltip title="Snap last point to start and trim trailing points">
+          <Button size="small" variant="outlined" color="warning" onClick={onCloseLoop}>
+            close loop
+          </Button>
+        </Tooltip>
+      )}
       <Box sx={{ flex: 1 }} />
       <Button
         size="small"

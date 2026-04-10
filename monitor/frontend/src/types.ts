@@ -12,6 +12,7 @@ export interface MonitorState {
   marks: { order: number; trace_idx: number; type_hint: string }[];
   finished: boolean;
   has_export: boolean;
+  last_export_name: string | null;
   last_capture_test: CaptureTestResult | null;
 }
 
@@ -80,6 +81,14 @@ export interface EditorCheckpoint {
   direction: [number, number, number];
   radius: number;
   type: 'start' | 'start-finish' | 'checkpoint' | 'finish';
+  source?: 'manual' | 'auto';  // manual = placed during record or by user; auto = generated
+}
+
+// Raw mark from a record session (new format)
+export interface RawMark {
+  order: number;
+  trace_idx: number;
+  type_hint: 'start' | 'checkpoint' | 'finish';
 }
 
 export interface EditorCircuit {

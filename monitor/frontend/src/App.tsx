@@ -8,12 +8,18 @@ import EditorView from './components/editor/EditorView';
 export default function App() {
   const { state, error } = useMonitorState();
   const [tab, setTab] = useState<AppTab>('monitor');
+  const [editorAutoLoad, setEditorAutoLoad] = useState(false);
+
+  function handleOpenEditor() {
+    setEditorAutoLoad(true);
+    setTab('editor');
+  }
 
   return (
     <>
       <AppHeader state={state} pollError={error} tab={tab} onTabChange={setTab} />
-      {tab === 'monitor' && <MonitorView state={state} />}
-      {tab === 'editor' && <EditorView />}
+      {tab === 'monitor' && <MonitorView state={state} onOpenEditor={handleOpenEditor} />}
+      {tab === 'editor' && <EditorView autoLoadLast={editorAutoLoad} onAutoLoadDone={() => setEditorAutoLoad(false)} />}
     </>
   );
 }

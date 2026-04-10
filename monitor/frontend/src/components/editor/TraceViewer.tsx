@@ -1,4 +1,6 @@
 // TraceViewer.tsx — Interactive 3D circuit viewer using React Three Fiber.
+// Coordinates are recentered to origin before rendering to avoid Float32 precision loss
+// with large world coordinates (e.g. Y=33 000 000).
 import { useRef, useState, useCallback, useMemo, useEffect } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Line, Html } from '@react-three/drei';
@@ -6,13 +8,12 @@ import * as THREE from 'three';
 import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
-import ViewInArIcon from '@mui/icons-material/ViewInAr';
-import GridOnIcon from '@mui/icons-material/GridOn';
+import Typography from '@mui/material/Typography';
 import DeleteIcon from '@mui/icons-material/Delete';
+import FitScreenIcon from '@mui/icons-material/FitScreen';
 import type { EditorCircuit, TracePoint, EditorCheckpoint } from '../../types';
 import type { OrbitControls as OrbitControlsType } from 'three-stdlib';
 
-// --- Checkpoint colors matching the app theme ---
 const CP_COLOR: Record<EditorCheckpoint['type'], string> = {
   'start': '#22c55e',
   'start-finish': '#22c55e',
@@ -20,141 +21,138 @@ const CP_COLOR: Record<EditorCheckpoint['type'], string> = {
   'finish': '#ef4444',
 };
 
-// --- Single checkpoint sphere with drag support ---
-interface CheckpointMeshProps {
+// ---------------------------------------------------------------------------
+// Helpers — subtract offset from world coords to get local (centered) coords
+// ---------------------------------------------------------------------------
+
+type V3 = [number, number, number];
+
+function localPos(pos: V3, offset: THREE.Vector3): V3 {
+  return [pos[0] - offset.x, pos[1] - offset.y, pos[2] - offset.z];
+}
+
+// ---------------------------------------------------------------------------
+// Camera preset snap — works in local (centered) space
+// ---------------------------------------------------------------------------
+
+type ViewPreset = 'top' | 'front' | 'side' | 'iso';
+
+function snapToPreset(
+  preset: ViewPreset,
+  extent: number,
+  camera: THREE.Camera,
+  controls: OrbitControlsType,
+) {
+  const fovRad = ((camera as THREE.PerspectiveCamera).fov ?? 60) * (Math.PI / 180);
+  const d = (extent * 0.8) / Math.tan(fovRad / 2);
+  const cfg: Record<ViewPreset, { pos: V3; up: V3 }> = {
+    top:   { pos: [0, d, 0],             up: [0, 0, -1] },
+    front: { pos: [0, 0, d],             up: [0, 1, 0]  },
+    side:  { pos: [d, 0, 0],             up: [0, 1, 0]  },
+    iso:   { pos: [d * .6, d * .6, d * .6], up: [0, 1, 0] },
+  };
+  const { pos, up } = cfg[preset];
+  camera.position.set(...pos);
+  camera.up.set(...up);
+  camera.lookAt(0, 0, 0);
+  (controls as unknown as { target: THREE.Vector3; update: () => void }).target.set(0, 0, 0);
+  (controls as unknown as { update: () => void }).update();
+}
+
+// ---------------------------------------------------------------------------
+// CheckpointMarker — HTML overlay, same style as hover indicator
+// ---------------------------------------------------------------------------
+
+interface CheckpointMarkerProps {
   checkpoint: EditorCheckpoint;
-  extent: number;
-  onMove: (id: number, position: [number, number, number]) => void;
+  offset: THREE.Vector3;
   isSelected: boolean;
   onClick: (id: number) => void;
 }
 
-function CheckpointMesh({ checkpoint, extent, onMove, isSelected, onClick }: CheckpointMeshProps) {
-  const sphereR = extent * 0.008;
-  const [hovered, setHovered] = useState(false);
-  const [dragging, setDragging] = useState(false);
-  const { gl, raycaster } = useThree();
-  const planeRef = useRef(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0));
-  const intersectPoint = useRef(new THREE.Vector3());
-
-  const [px, py, pz] = checkpoint.position;
-
-  const onPointerDown = useCallback((e: import('@react-three/fiber').ThreeEvent<PointerEvent>) => {
-    e.stopPropagation();
-    setDragging(true);
-    gl.domElement.setPointerCapture(e.pointerId);
-    planeRef.current.setFromNormalAndCoplanarPoint(
-      new THREE.Vector3(0, 1, 0),
-      new THREE.Vector3(px, py, pz),
-    );
-  }, [gl, px, py, pz]);
-
-  const onPointerMove = useCallback((e: import('@react-three/fiber').ThreeEvent<PointerEvent>) => {
-    if (!dragging) return;
-    e.stopPropagation();
-    raycaster.ray.intersectPlane(planeRef.current, intersectPoint.current);
-    onMove(checkpoint.id, [
-      intersectPoint.current.x,
-      py,
-      intersectPoint.current.z,
-    ]);
-  }, [dragging, raycaster, onMove, checkpoint.id, py]);
-
-  const onPointerUp = useCallback((e: import('@react-three/fiber').ThreeEvent<PointerEvent>) => {
-    setDragging(false);
-    gl.domElement.releasePointerCapture(e.pointerId);
-  }, [gl]);
-
-  // Draw direction arrow as a simple line, scaled to extent
-  const [dx, , dz] = checkpoint.direction;
-  const arrowLen = extent * 0.08;
-  const arrowEnd: [number, number, number] = [px + dx * arrowLen, py, pz + dz * arrowLen];
-
+function CheckpointMarker({ checkpoint, offset, isSelected, onClick }: CheckpointMarkerProps) {
+  const [lx, ly, lz] = localPos(checkpoint.position, offset);
   const color = CP_COLOR[checkpoint.type] ?? '#e5e5e5';
-  const scale = hovered || isSelected ? 1.4 : 1.0;
 
   return (
-    <group>
-      <mesh
-        position={[px, py, pz]}
-        scale={scale}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerOver={() => setHovered(true)}
-        onPointerOut={() => setHovered(false)}
+    <Html position={[lx, ly, lz]} center style={{ pointerEvents: 'auto' }}>
+      <div
         onClick={e => { e.stopPropagation(); onClick(checkpoint.id); }}
-      >
-        <sphereGeometry args={[sphereR, 12, 12]} />
-        <meshStandardMaterial color={isSelected ? '#facc15' : color} />
-      </mesh>
-      <Line
-        points={[[px, py, pz], arrowEnd]}
-        color={color}
-        lineWidth={1.5}
+        style={{
+          width: 14, height: 14,
+          border: `2px solid ${color}`,
+          borderRadius: '50%',
+          background: isSelected ? '#facc15' : color,
+          opacity: 0.9,
+          cursor: 'pointer',
+          boxShadow: isSelected ? '0 0 6px #facc15' : `0 0 4px ${color}`,
+        }}
       />
-    </group>
+    </Html>
   );
 }
 
-// --- Hover point indicator that follows mouse ---
+// ---------------------------------------------------------------------------
+// HoverIndicator
+// ---------------------------------------------------------------------------
+
 interface HoverIndicatorProps {
   points: TracePoint[];
-  center: THREE.Vector3;
+  offset: THREE.Vector3;
   extent: number;
+  hoveredId: number | null; // controlled from outside
   onHover: (id: number | null) => void;
   onClick: (id: number, shift: boolean) => void;
   onDoubleClick: (id: number) => void;
 }
 
-function HoverIndicator({ points, center, extent, onHover, onClick, onDoubleClick }: HoverIndicatorProps) {
+function HoverIndicator({ points, offset, extent, hoveredId, onHover, onClick, onDoubleClick }: HoverIndicatorProps) {
   const { raycaster } = useThree();
-  const [hoveredPos, setHoveredPos] = useState<[number, number, number] | null>(null);
-  const [hoveredId, setHoveredId] = useState<number | null>(null);
 
   const realPoints = useMemo(() => points.filter(p => !p.gap), [points]);
-  const positions = useMemo(
-    () => realPoints.map(p => new THREE.Vector3(p.position[0], p.position[1], p.position[2])),
-    [realPoints],
+
+  const localPositions = useMemo(
+    () => realPoints.map(p => new THREE.Vector3(
+      p.position[0] - offset.x,
+      p.position[1] - offset.y,
+      p.position[2] - offset.z,
+    )),
+    [realPoints, offset],
   );
 
-  // Threshold scales with circuit extent so it works at any world scale
+  // Derive hoveredLocal from controlled hoveredId
+  const hoveredLocal = useMemo(() => {
+    if (hoveredId === null) return null;
+    const p = realPoints.find(pt => pt.id === hoveredId);
+    return p ? localPos(p.position, offset) : null;
+  }, [hoveredId, realPoints, offset]);
+
   const threshSq = (extent * 0.05) ** 2;
 
   const handlePointerMove = useCallback((_e: import('@react-three/fiber').ThreeEvent<PointerEvent>) => {
-    if (positions.length === 0) return;
+    if (localPositions.length === 0) return;
     const ray = raycaster.ray;
     let bestDist = Infinity;
     let bestIdx = -1;
-    for (let i = 0; i < positions.length; i++) {
-      const d = ray.distanceSqToPoint(positions[i]);
+    for (let i = 0; i < localPositions.length; i++) {
+      const d = ray.distanceSqToPoint(localPositions[i]);
       if (d < bestDist) { bestDist = d; bestIdx = i; }
     }
     if (bestIdx >= 0 && bestDist < threshSq) {
-      const p = realPoints[bestIdx];
-      setHoveredPos(p.position);
-      setHoveredId(p.id);
-      onHover(p.id);
+      onHover(realPoints[bestIdx].id);
     } else {
-      setHoveredPos(null);
-      setHoveredId(null);
       onHover(null);
     }
-  }, [positions, realPoints, onHover, raycaster, threshSq]);
+  }, [localPositions, realPoints, onHover, raycaster, threshSq]);
 
   const handleClick = useCallback((_e: import('@react-three/fiber').ThreeEvent<MouseEvent>) => {
-    if (hoveredId !== null) {
-      onClick(hoveredId, _e.shiftKey);
-    }
+    if (hoveredId !== null) onClick(hoveredId, _e.shiftKey);
   }, [hoveredId, onClick]);
 
   const handleDoubleClick = useCallback((_e: import('@react-three/fiber').ThreeEvent<MouseEvent>) => {
-    if (hoveredId !== null) {
-      onDoubleClick(hoveredId);
-    }
+    if (hoveredId !== null) onDoubleClick(hoveredId);
   }, [hoveredId, onDoubleClick]);
 
-  // Invisible large plane at circuit Y level to capture pointer events
   return (
     <>
       <mesh
@@ -162,14 +160,14 @@ function HoverIndicator({ points, center, extent, onHover, onClick, onDoubleClic
         onPointerMove={handlePointerMove}
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}
-        position={[center.x, center.y, center.z]}
+        position={[0, 0, 0]}
         rotation={[-Math.PI / 2, 0, 0]}
       >
         <planeGeometry args={[extent * 20, extent * 20]} />
         <meshBasicMaterial />
       </mesh>
-      {hoveredPos && (
-        <Html position={hoveredPos} center style={{ pointerEvents: 'none' }}>
+      {hoveredLocal && (
+        <Html position={hoveredLocal} center style={{ pointerEvents: 'none' }}>
           <div style={{
             width: 14, height: 14,
             border: '2px solid #facc15',
@@ -182,33 +180,28 @@ function HoverIndicator({ points, center, extent, onHover, onClick, onDoubleClic
   );
 }
 
-// --- Camera helpers ---
+// ---------------------------------------------------------------------------
+// CameraSetup — fit on load or fitKey change
+// ---------------------------------------------------------------------------
 
-/** Fits the camera to the circuit whenever center/extent changes (new circuit loaded). */
 interface CameraSetupProps {
-  center: THREE.Vector3;
   extent: number;
   controlsRef: React.RefObject<OrbitControlsType | null>;
-  fitKey: number; // increment to force re-fit
+  fitKey: number;
 }
 
-function CameraSetup({ center, extent, controlsRef, fitKey }: CameraSetupProps) {
+function CameraSetup({ extent, controlsRef, fitKey }: CameraSetupProps) {
   const { camera } = useThree();
 
   useEffect(() => {
     if (extent === 0) return;
     const fovRad = ((camera as THREE.PerspectiveCamera).fov ?? 60) * (Math.PI / 180);
-    // Distance needed so the circuit fills ~80% of the vertical FOV
-    const dist = (extent * 1.3) / Math.tan(fovRad / 2);
-    // Offset camera at 45° above the circuit plane
-    camera.position.set(
-      center.x,
-      center.y + dist * 0.6,
-      center.z + dist * 0.8,
-    );
-    camera.lookAt(center);
+    const dist = (extent * 0.8) / Math.tan(fovRad / 2);
+    camera.position.set(0, dist * 0.6, dist * 0.8);
+    camera.up.set(0, 1, 0);
+    camera.lookAt(0, 0, 0);
     if (controlsRef.current) {
-      (controlsRef.current as unknown as { target: THREE.Vector3 }).target.copy(center);
+      (controlsRef.current as unknown as { target: THREE.Vector3 }).target.set(0, 0, 0);
       (controlsRef.current as unknown as { update: () => void }).update();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -217,69 +210,68 @@ function CameraSetup({ center, extent, controlsRef, fitKey }: CameraSetupProps) 
   return null;
 }
 
-interface TopDownControllerProps {
-  topDown: boolean;
-  center: THREE.Vector3;
+// ---------------------------------------------------------------------------
+// PresetController — snap camera when a preset is requested
+// ---------------------------------------------------------------------------
+
+interface PresetControllerProps {
+  preset: ViewPreset | null;
   extent: number;
   controlsRef: React.RefObject<OrbitControlsType | null>;
+  onDone: () => void;
 }
 
-function TopDownController({ topDown, center, extent, controlsRef }: TopDownControllerProps) {
+function PresetController({ preset, extent, controlsRef, onDone }: PresetControllerProps) {
   const { camera } = useThree();
 
   useEffect(() => {
-    if (!topDown) return;
-    const fovRad = ((camera as THREE.PerspectiveCamera).fov ?? 60) * (Math.PI / 180);
-    const dist = (extent * 1.3) / Math.tan(fovRad / 2);
-    camera.position.set(center.x, center.y + dist, center.z);
-    camera.up.set(0, 0, -1);
-    camera.lookAt(center);
-    if (controlsRef.current) {
-      (controlsRef.current as unknown as { target: THREE.Vector3 }).target.copy(center);
-      (controlsRef.current as unknown as { update: () => void }).update();
-    }
-  }, [topDown, center, extent, camera, controlsRef]);
+    if (!preset || !controlsRef.current) return;
+    snapToPreset(preset, extent, camera, controlsRef.current);
+    onDone();
+  }, [preset, extent, camera, controlsRef, onDone]);
 
   return null;
 }
 
-// --- Trace lines with gap support ---
+// ---------------------------------------------------------------------------
+// TraceLines — renders in local (centered) space
+// ---------------------------------------------------------------------------
+
 interface TraceLinesProps {
   points: TracePoint[];
+  offset: THREE.Vector3;
   color: string;
   opacity: number;
 }
 
-function TraceLines({ points, color, opacity }: TraceLinesProps) {
-  // Split points into segments separated by gaps
+function TraceLines({ points, offset, color, opacity }: TraceLinesProps) {
   const segments = useMemo(() => {
-    const segs: [number, number, number][][] = [];
-    let current: [number, number, number][] = [];
+    const segs: V3[][] = [];
+    let current: V3[] = [];
     for (const p of points) {
       if (p.gap) {
         if (current.length >= 2) segs.push(current);
         current = [];
       } else {
-        current.push(p.position);
+        current.push(localPos(p.position, offset));
       }
     }
     if (current.length >= 2) segs.push(current);
     return segs;
-  }, [points]);
+  }, [points, offset]);
 
   const gapPairs = useMemo(() => {
-    const pairs: [[number, number, number], [number, number, number]][] = [];
-    let lastReal: [number, number, number] | null = null;
+    const pairs: [V3, V3][] = [];
+    let lastReal: V3 | null = null;
     for (const p of points) {
-      if (!p.gap) { lastReal = p.position; }
+      if (!p.gap) { lastReal = localPos(p.position, offset); }
       else if (lastReal) {
-        // Find next real point
         const nextReal = points.find(q => q.t > p.t && !q.gap);
-        if (nextReal) pairs.push([lastReal, nextReal.position]);
+        if (nextReal) pairs.push([lastReal, localPos(nextReal.position, offset)]);
       }
     }
     return pairs;
-  }, [points]);
+  }, [points, offset]);
 
   return (
     <>
@@ -293,7 +285,65 @@ function TraceLines({ points, color, opacity }: TraceLinesProps) {
   );
 }
 
-// --- Main component ---
+// ---------------------------------------------------------------------------
+// PointsPanel — scrollable list of trace points with coords
+// ---------------------------------------------------------------------------
+
+interface PointsPanelProps {
+  points: TracePoint[];
+  hoveredId: number | null;
+  onHover: (id: number | null) => void;
+  onClick: (id: number, shift: boolean) => void;
+}
+
+function PointsPanel({ points, hoveredId, onHover, onClick }: PointsPanelProps) {
+  const hoveredRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    hoveredRef.current?.scrollIntoView({ block: 'nearest' });
+  }, [hoveredId]);
+
+  return (
+    <Box sx={{
+      width: 180, flexShrink: 0, height: '100%', overflowY: 'auto',
+      borderLeft: '1px solid', borderColor: 'divider',
+      fontSize: 11, fontFamily: 'monospace',
+    }}>
+      {points.map((p, idx) => {
+        const isHovered = p.id === hoveredId;
+        return (
+          <Box
+            key={p.id}
+            ref={isHovered ? (hoveredRef as React.RefObject<HTMLDivElement>) : null}
+            onMouseEnter={() => !p.gap && onHover(p.id)}
+            onMouseLeave={() => onHover(null)}
+            onClick={e => !p.gap && onClick(p.id, e.shiftKey)}
+            sx={{
+              px: 0.75, py: '1px',
+              background: isHovered ? 'rgba(250,204,21,0.15)' : 'transparent',
+              color: p.gap ? 'text.disabled' : 'text.secondary',
+              lineHeight: '18px',
+              whiteSpace: 'nowrap',
+              cursor: p.gap ? 'default' : 'pointer',
+              '&:hover': { background: p.gap ? 'transparent' : 'rgba(250,204,21,0.1)' },
+            }}
+          >
+            {p.gap ? (
+              <Typography variant="inherit" sx={{ color: 'text.disabled' }}>— gap —</Typography>
+            ) : (
+              <span>#{idx} {Math.round(p.position[0])} {Math.round(p.position[2])}</span>
+            )}
+          </Box>
+        );
+      })}
+    </Box>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main component
+// ---------------------------------------------------------------------------
+
 export interface TraceViewerProps {
   circuit: EditorCircuit | null;
   filteredPoints: TracePoint[] | null;
@@ -301,10 +351,13 @@ export interface TraceViewerProps {
   onPointClick: (id: number, shift: boolean) => void;
   onAddCheckpoint: (at_point_id: number) => void;
   onDeleteSelected: () => void;
-  onCheckpointMove: (id: number, position: [number, number, number]) => void;
+  onCheckpointMove: (id: number, position: V3) => void;
   onCheckpointClick: (id: number) => void;
   selectedCheckpointId: number | null;
+  fitRequest?: number;
 }
+
+const PRESET_LABELS: ViewPreset[] = ['top', 'front', 'side', 'iso'];
 
 export default function TraceViewer({
   circuit,
@@ -313,46 +366,70 @@ export default function TraceViewer({
   onPointClick,
   onAddCheckpoint,
   onDeleteSelected,
-  onCheckpointMove,
+  onCheckpointMove: _onCheckpointMove,
   onCheckpointClick,
   selectedCheckpointId,
+  fitRequest = 0,
 }: TraceViewerProps) {
-  const [topDown, setTopDown] = useState(false);
+  const [fitKey, setFitKey] = useState(0);
+  const [pendingPreset, setPendingPreset] = useState<ViewPreset | null>(null);
+  const [hoveredId, setHoveredId] = useState<number | null>(null);
   const controlsRef = useRef<OrbitControlsType | null>(null);
-  // Increments each time a new circuit is loaded, triggering a camera re-fit
-  const fitKey = useRef(0);
-  const prevCircuitName = useRef<string | null>(null);
-  if (circuit?.name !== prevCircuitName.current) {
-    prevCircuitName.current = circuit?.name ?? null;
-    fitKey.current += 1;
-  }
 
+  // Re-fit on new circuit load
+  const prevName = useRef<string | null>(null);
+  useEffect(() => {
+    if (circuit?.name !== prevName.current) {
+      prevName.current = circuit?.name ?? null;
+      setFitKey(k => k + 1);
+    }
+  }, [circuit?.name]);
+
+  // Re-fit when externally requested (e.g. after apply filter)
+  useEffect(() => {
+    if (fitRequest > 0) setFitKey(k => k + 1);
+  }, [fitRequest]);
+
+  // Center/extent computed on filtered points + checkpoints — avoids aberrant points dominating
   const { center, extent } = useMemo(() => {
-    if (!circuit) return { center: new THREE.Vector3(), extent: 1000 };
-    const real = circuit.points.filter(p => !p.gap);
-    if (real.length === 0) return { center: new THREE.Vector3(), extent: 1000 };
-    const sum = real.reduce((acc, p) => [acc[0] + p.position[0], acc[1] + p.position[1], acc[2] + p.position[2]], [0, 0, 0]);
-    const c = new THREE.Vector3(sum[0] / real.length, sum[1] / real.length, sum[2] / real.length);
-    // Extent = max distance from center in XZ, used to set camera distance
-    const maxDist = real.reduce((m, p) => {
+    const tracePts = (filteredPoints ?? circuit?.points ?? []).filter(p => !p.gap);
+    const cpPts = (circuit?.checkpoints ?? []).map(cp => ({ position: cp.position }));
+    const source = [...tracePts, ...cpPts];
+    if (source.length === 0) return { center: new THREE.Vector3(), extent: 1000 };
+    const sum = source.reduce((acc, p) => [
+      acc[0] + p.position[0],
+      acc[1] + p.position[1],
+      acc[2] + p.position[2],
+    ], [0, 0, 0]);
+    const c = new THREE.Vector3(sum[0] / source.length, sum[1] / source.length, sum[2] / source.length);
+    const dists = source.map(p => {
       const dx = p.position[0] - c.x, dz = p.position[2] - c.z;
-      return Math.max(m, Math.sqrt(dx * dx + dz * dz));
-    }, 0);
-    return { center: c, extent: Math.max(maxDist, 100) };
-  }, [circuit]);
+      return Math.sqrt(dx * dx + dz * dz);
+    }).sort((a, b) => a - b);
+    // Use 95th percentile to ignore aberrant outliers
+    const p95 = dists[Math.floor(dists.length * 0.95)] ?? dists[dists.length - 1];
+    return { center: c, extent: Math.max(p95, 100) };
+  }, [circuit, filteredPoints]);
 
   const showRaw = !!filteredPoints;
   const displayPoints = filteredPoints ?? circuit?.points ?? [];
 
   return (
-    <Box sx={{ position: 'relative', flex: 1, minHeight: 0 }}>
-      {/* Overlay controls */}
-      <Box sx={{ position: 'absolute', top: 8, right: 8, zIndex: 10, display: 'flex', gap: 0.5 }}>
-        <Tooltip title={topDown ? 'Perspective view' : 'Top-down view'}>
-          <IconButton size="small" onClick={() => setTopDown(v => !v)} color={topDown ? 'primary' : 'default'}>
-            {topDown ? <ViewInArIcon fontSize="small" /> : <GridOnIcon fontSize="small" />}
+    <Box sx={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex' }}>
+      {/* Toolbar */}
+      <Box sx={{ position: 'absolute', top: 8, right: 188, zIndex: 10, display: 'flex', gap: 0.5 }}>
+        <Tooltip title="Fit view">
+          <IconButton size="small" onClick={() => setFitKey(k => k + 1)}>
+            <FitScreenIcon fontSize="small" />
           </IconButton>
         </Tooltip>
+        {PRESET_LABELS.map(p => (
+          <Tooltip key={p} title={`${p.charAt(0).toUpperCase() + p.slice(1)} view`}>
+            <IconButton size="small" onClick={() => setPendingPreset(p)} sx={{ fontSize: 10, fontWeight: 600, width: 28, height: 28 }}>
+              {p.slice(0, 3).toUpperCase()}
+            </IconButton>
+          </Tooltip>
+        ))}
         {selectedIds.size > 0 && (
           <Tooltip title={`Delete ${selectedIds.size} selected point(s)`}>
             <IconButton size="small" color="error" onClick={onDeleteSelected}>
@@ -363,74 +440,83 @@ export default function TraceViewer({
       </Box>
 
       {circuit ? (
-        <Canvas
-          style={{ width: '100%', height: '100%' }}
-          camera={{ fov: 60, near: 1, far: 10_000_000 }}
-          onCreated={({ scene }) => { scene.background = new THREE.Color('#0a0a0a'); }}
-        >
-          <ambientLight intensity={0.6} />
-          <directionalLight position={[center.x, center.y + extent * 2, center.z]} intensity={0.8} />
+        <>
+          <Canvas
+            style={{ flex: 1, height: '100%' }}
+            camera={{ fov: 60, near: 0.1, far: extent * 200 + 1000 }}
+            onCreated={({ scene }) => { scene.background = new THREE.Color('#0a0a0a'); }}
+          >
+            <ambientLight intensity={0.6} />
+            <directionalLight position={[0, extent * 2, 0]} intensity={0.8} />
 
-          <OrbitControls
-            ref={controlsRef}
-            enablePan
-            enableZoom
-            enableRotate={!topDown}
-            makeDefault
-          />
-
-          <CameraSetup center={center} extent={extent} controlsRef={controlsRef} fitKey={fitKey.current} />
-          <TopDownController topDown={topDown} center={center} extent={extent} controlsRef={controlsRef} />
-
-          {/* Raw trace (dimmed) when filter preview is active */}
-          {showRaw && circuit.points && (
-            <TraceLines points={circuit.points} color="#555" opacity={0.35} />
-          )}
-
-          {/* Main / filtered trace */}
-          <TraceLines points={displayPoints} color="#e5e5e5" opacity={1} />
-
-          {/* Checkpoints */}
-          {circuit.checkpoints.map(cp => (
-            <CheckpointMesh
-              key={cp.id}
-              checkpoint={cp}
-              extent={extent}
-              onMove={onCheckpointMove}
-              isSelected={cp.id === selectedCheckpointId}
-              onClick={onCheckpointClick}
+            <OrbitControls
+              ref={controlsRef}
+              enablePan
+              enableZoom
+              enableRotate
+              makeDefault
             />
-          ))}
 
-          {/* Selected point highlights */}
-          {[...selectedIds].map(id => {
-            const pt = circuit.points.find(p => p.id === id);
-            if (!pt || pt.gap) return null;
-            return (
-              <Html key={id} position={pt.position} center style={{ pointerEvents: 'none' }}>
-                <div style={{
-                  width: 10, height: 10,
-                  background: '#facc15',
-                  borderRadius: '50%',
-                  opacity: 0.9,
-                }} />
-              </Html>
-            );
-          })}
+            <CameraSetup extent={extent} controlsRef={controlsRef} fitKey={fitKey} />
+            <PresetController
+              preset={pendingPreset}
+              extent={extent}
+              controlsRef={controlsRef}
+              onDone={() => setPendingPreset(null)}
+            />
 
-          {/* Hover + click catcher — double-click adds a checkpoint */}
-          <HoverIndicator
-            points={circuit.points}
-            center={center}
-            extent={extent}
-            onHover={() => {}}
+            {showRaw && circuit.points && (
+              <TraceLines points={circuit.points} offset={center} color="#555" opacity={0.35} />
+            )}
+
+            <TraceLines points={displayPoints} offset={center} color="#e5e5e5" opacity={1} />
+
+            {circuit.checkpoints.map(cp => (
+              <CheckpointMarker
+                key={cp.id}
+                checkpoint={cp}
+                offset={center}
+                isSelected={cp.id === selectedCheckpointId}
+                onClick={onCheckpointClick}
+              />
+            ))}
+
+            {[...selectedIds].map(id => {
+              const pt = circuit.points.find(p => p.id === id);
+              if (!pt || pt.gap) return null;
+              return (
+                <Html key={id} position={localPos(pt.position, center)} center style={{ pointerEvents: 'none' }}>
+                  <div style={{
+                    width: 10, height: 10,
+                    background: '#facc15',
+                    borderRadius: '50%',
+                    opacity: 0.9,
+                  }} />
+                </Html>
+              );
+            })}
+
+            <HoverIndicator
+              points={displayPoints}
+              offset={center}
+              extent={extent}
+              hoveredId={hoveredId}
+              onHover={setHoveredId}
+              onClick={onPointClick}
+              onDoubleClick={onAddCheckpoint}
+            />
+          </Canvas>
+
+          <PointsPanel
+            points={displayPoints}
+            hoveredId={hoveredId}
+            onHover={setHoveredId}
             onClick={onPointClick}
-            onDoubleClick={onAddCheckpoint}
           />
-        </Canvas>
+        </>
       ) : (
         <Box sx={{
-          width: '100%', height: '100%', display: 'flex',
+          flex: 1, display: 'flex',
           alignItems: 'center', justifyContent: 'center',
           color: 'text.disabled', fontSize: 14,
         }}>

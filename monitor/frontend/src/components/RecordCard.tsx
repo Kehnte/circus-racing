@@ -17,30 +17,20 @@ import type { AlertColor } from '@mui/material/Alert';
 import type { SelectChangeEvent } from '@mui/material/Select';
 import type { MonitorState } from '../types';
 
-const MARK_LABELS: Record<string, string> = {
-  start: 'Recording started',
-  checkpoint: 'Checkpoint added',
-  finish: 'Recording finished',
-  cancel: 'Recording cancelled',
-};
-
 interface Props {
   state: MonitorState;
+  onOpenEditor: () => void;
 }
 
-export default function RecordCard({ state }: Props) {
+export default function RecordCard({ state, onOpenEditor }: Props) {
   const [name, setName] = useState('Circuit');
   const [circuitType, setCircuitType] = useState('LOOP');
   const [alert, setAlert] = useState<{ message: string; severity: AlertColor } | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const started = state.recording;
+  const recording = state.recording;
   const hasExport = state.has_export;
   const count = state.trace_count;
-
-  const handleExport = () => {
-    window.open('/api/record/last', '_blank');
-  };
 
   const showAlert = (message: string, severity: AlertColor) => {
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -55,15 +45,19 @@ export default function RecordCard({ state }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, name, circuit_type: circuitType }),
       });
-      if (res.ok) {
-        showAlert(MARK_LABELS[action], action === 'cancel' ? 'warning' : 'success');
-      } else {
-        showAlert('Action failed', 'error');
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        showAlert(err.error ?? 'Action failed', 'error');
       }
     } catch {
       showAlert('Action failed', 'error');
     }
   };
+
+  const handleExport = () => {
+    window.open('/api/record/last', '_blank');
+  };
+
 
   return (
     <Paper elevation={0} sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -75,58 +69,94 @@ export default function RecordCard({ state }: Props) {
           size="small"
           value={name}
           onChange={e => setName(e.target.value)}
+          disabled={recording}
           fullWidth
         />
         <FormControl size="small" sx={{ minWidth: 160 }}>
           <InputLabel>Type</InputLabel>
-          <Select value={circuitType} label="Type" onChange={(e: SelectChangeEvent) => setCircuitType(e.target.value)}>
+          <Select
+            value={circuitType}
+            label="Type"
+            disabled={recording}
+            onChange={(e: SelectChangeEvent) => setCircuitType(e.target.value)}
+          >
             <MenuItem value="LOOP">Loop</MenuItem>
             <MenuItem value="POINT_TO_POINT">Point to point</MenuItem>
           </Select>
         </FormControl>
       </Box>
 
-      <Box sx={{ display: 'flex', gap: 1 }}>
+      {recording && (
+        <Typography variant="caption" color="text.secondary">
+          {count} point{count !== 1 ? 's' : ''} captured
+        </Typography>
+      )}
+
+      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
         <Tooltip title="Ctrl+Num1" placement="bottom">
           <span>
-            <Button variant="contained" disabled={started} onClick={() => handleMark('start')}>
+            <Button
+              variant="contained"
+              disabled={recording}
+              onClick={() => handleMark('start')}
+            >
               Start
             </Button>
           </span>
         </Tooltip>
         <Tooltip title="Ctrl+Num2" placement="bottom">
           <span>
-            <Button variant="outlined" disabled={!started} onClick={() => handleMark('checkpoint')}>
+            <Button
+              variant="outlined"
+              disabled={!recording}
+              onClick={() => handleMark('checkpoint')}
+            >
               Checkpoint
             </Button>
           </span>
         </Tooltip>
         <Tooltip title="Ctrl+Num3" placement="bottom">
           <span>
-            <Button variant="contained" color="success" disabled={!started} onClick={() => handleMark('finish')}>
-              Finish
+            <Button
+              variant="contained"
+              color="success"
+              disabled={!recording}
+              onClick={() => handleMark('stop')}
+            >
+              Stop
             </Button>
           </span>
         </Tooltip>
         <Tooltip title="Ctrl+Num4" placement="bottom">
           <span>
-            <Button variant="outlined" color="error" disabled={!started} onClick={() => handleMark('cancel')}>
+            <Button
+              variant="outlined"
+              color="error"
+              disabled={!recording}
+              onClick={() => handleMark('cancel')}
+            >
               Cancel
             </Button>
           </span>
         </Tooltip>
       </Box>
 
-      {started && (
-        <Typography variant="caption" color="text.secondary">
-          {count} point{count !== 1 ? 's' : ''} recorded
-        </Typography>
-      )}
-
-      {hasExport && !started && (
-        <Button variant="outlined" onClick={handleExport}>
-          Export JSON
-        </Button>
+      {hasExport && !recording && (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          {state.last_export_name && (
+            <Typography variant="caption" color="success.main">
+              Saved: {state.last_export_name}.json
+            </Typography>
+          )}
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button variant="outlined" onClick={handleExport}>
+              Export JSON
+            </Button>
+            <Button variant="contained" onClick={onOpenEditor}>
+              Open in editor
+            </Button>
+          </Box>
+        </Box>
       )}
 
       <Collapse in={!!alert}>

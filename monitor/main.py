@@ -149,6 +149,8 @@ class MonitorState:
     finished: bool = False
     circuit_name: str = "Circuit"
     circuit_type: str = "LOOP"
+    record_t0: float = field(default_factory=time.time)
+    pending_start_mark: bool = False  # place start mark at first successful OCR capture
 
     # Last Ctrl+Shift+T capture test result
     last_capture_test: Optional[dict] = None
@@ -812,7 +814,7 @@ def _truncate_loop_trace_v2(raw_trace, marks, circuit_type):
 
 
 def _export_record():
-    """Export JSON + SVG from current record state. Called after FINISH or CANCEL."""
+    """Export raw JSON + SVG from current record state. No filtering or checkpoint generation — that's the editor's job."""
     with state.lock:
         raw_trace = list(state.raw_trace)
         marks = list(state.marks)
@@ -820,23 +822,16 @@ def _export_record():
         circuit_type = state.circuit_type
 
     if not marks:
-        log.info("Record cancelled, no marks — nothing exported.")
+        log.info("Record: no marks — nothing exported.")
         return
 
-    raw_trace = _truncate_loop_trace_v2(raw_trace, marks, circuit_type)
-    last_idx = len(raw_trace) - 1
-    marks = [
-        {**m, "trace_idx": min(m["trace_idx"], last_idx)}
-        for m in marks
-    ]
-    checkpoints = _build_checkpoints(raw_trace, marks, circuit_type)
     output = {
         "name":                circuit_name,
         "type":                circuit_type,
         "recordedBy":          "",
         "recordedAt":          datetime.datetime.now(datetime.UTC).isoformat(),
         "defaultBufferRadius": 500,
-        "checkpoints":         checkpoints,
+        "marks":               marks,
         "rawTrace":            raw_trace,
     }
 
@@ -845,18 +840,11 @@ def _export_record():
     svg_path = DATA_DIR / f"{base_name}.svg"
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(output, f, indent=2)
-    log.info("Trace exported: %s", json_path)
+    log.info("Trace exported: %s (%d points, %d marks)", json_path, len(raw_trace), len(marks))
 
     with state.lock:
         state.last_export_path = json_path
 
-    filtered = _filter_trace(raw_trace)
-    if len(filtered) < 10:
-        log.warning(
-            "Recording quality is poor: only %d/%d valid points after filtering. "
-            "Consider re-recording.",
-            len(filtered), len(raw_trace),
-        )
     _export_svg(raw_trace, marks, str(svg_path), circuit_type=circuit_type)
 
 
@@ -866,32 +854,31 @@ def _export_record():
 
 def run_record_loop():
     delta_time_s = config.getfloat("debug", "record_delta_time_s", fallback=0.5)
-    t0 = time.time()
 
     with state.lock:
-        state.recording = False
+        state.recording = False  # capture starts only after user presses Start
         state.raw_trace = []
         state.marks = []
         state.finished = False
+        state.record_t0 = time.time()
+        state.pending_start_mark = False
 
     hk_start      = config.get("hotkeys", "record_start",       fallback="ctrl+num 1")
     hk_checkpoint = config.get("hotkeys", "record_checkpoint",  fallback="ctrl+num 2")
-    hk_finish     = config.get("hotkeys", "record_finish",      fallback="ctrl+num 3")
+    hk_stop       = config.get("hotkeys", "record_finish",      fallback="ctrl+num 3")
     hk_cancel     = config.get("hotkeys", "record_cancel",      fallback="ctrl+num 4")
 
     def on_start():
         with state.lock:
-            if not state.raw_trace:
-                return
-            state.marks.append({
-                "order": len(state.marks),
-                "trace_idx": len(state.raw_trace) - 1,
-                "type_hint": "start",
-            })
+            if state.recording:
+                return  # already started
             state.recording = True
-            state.finished = False
+            state.raw_trace = []
+            state.marks = []
+            state.record_t0 = time.time()
             state.last_export_path = None
-        log.info("[%s] START marked", hk_start)
+            state.pending_start_mark = True
+        log.info("[%s] START — capture begins", hk_start)
 
     def on_checkpoint():
         with state.lock:
@@ -904,7 +891,7 @@ def run_record_loop():
             })
         log.info("[%s] CHECKPOINT marked", hk_checkpoint)
 
-    def on_finish():
+    def on_stop():
         with state.lock:
             if not state.recording or not state.raw_trace:
                 return
@@ -914,17 +901,19 @@ def run_record_loop():
                 "type_hint": "finish",
             })
             state.finished = True
-        log.info("[%s] FINISH marked", hk_finish)
+            state.recording = False
+        log.info("[%s] STOP marked", hk_stop)
 
     def on_cancel():
         with state.lock:
             state.finished = True
+            state.recording = False
             state.marks = []
         log.info("[%s] Record cancelled", hk_cancel)
 
     keyboard.add_hotkey(hk_start,      on_start)
     keyboard.add_hotkey(hk_checkpoint, on_checkpoint)
-    keyboard.add_hotkey(hk_finish,     on_finish)
+    keyboard.add_hotkey(hk_stop,       on_stop)
     keyboard.add_hotkey(hk_cancel,     on_cancel)
 
     log.info("RECORD loop started")
@@ -937,22 +926,27 @@ def run_record_loop():
 
         pos = _capture_pos()
         with state.lock:
-            recording_now = state.recording
-        if pos:
-            now = datetime.datetime.now(datetime.UTC).isoformat()
-            with state.lock:
+            if pos:
+                now = datetime.datetime.now(datetime.UTC).isoformat()
                 state.position = pos
                 state.last_ocr_at = now
-                state.raw_trace.append({"t": round(time.time() - t0, 2), "position": pos})
-        elif recording_now:
-            # OCR failed during active recording — insert a gap marker
-            with state.lock:
-                state.raw_trace.append({"t": round(time.time() - t0, 2), "position": None, "gap": True})
+                if state.recording:
+                    state.raw_trace.append({"t": round(time.time() - state.record_t0, 2), "position": pos})
+                    if state.pending_start_mark:
+                        state.marks.append({
+                            "order": 0,
+                            "trace_idx": len(state.raw_trace) - 1,
+                            "type_hint": "start",
+                        })
+                        state.pending_start_mark = False
+            elif state.recording:
+                # OCR failed during active recording — insert a gap marker
+                state.raw_trace.append({"t": round(time.time() - state.record_t0, 2), "position": None, "gap": True})
 
         time.sleep(delta_time_s)
 
     keyboard.remove_all_hotkeys()
-    _export_record()
+    _export_record()   # called exactly once per session
     log.info("RECORD loop stopped")
 
 
@@ -971,8 +965,11 @@ def monitor_thread():
         elif mode == "RECORD":
             if not finished:
                 run_record_loop()
+                # After the loop ends (stop or cancel), reset finished so the user can start again
+                with state.lock:
+                    if state.mode == "RECORD":
+                        state.finished = False
             else:
-                # Waiting for user to start a new record or switch mode
                 time.sleep(0.2)
         else:
             time.sleep(0.5)
@@ -1013,6 +1010,7 @@ def api_state():
             "marks": state.marks,
             "finished": state.finished,
             "has_export": state.last_export_path is not None and state.last_export_path.exists(),
+            "last_export_name": state.last_export_path.stem if state.last_export_path and state.last_export_path.exists() else None,
             "last_capture_test": state.last_capture_test,
         })
 
@@ -1054,16 +1052,16 @@ def api_record_mark():
 
     if action == "start":
         with state.lock:
-            if not state.raw_trace:
-                return jsonify({"error": "no position yet"}), 400
-            state.marks.append({
-                "order": len(state.marks),
-                "trace_idx": len(state.raw_trace) - 1,
-                "type_hint": "start",
-            })
+            if state.recording:
+                return jsonify({"error": "already recording"}), 400
+            if state.mode != "RECORD":
+                return jsonify({"error": "not in RECORD mode"}), 400
             state.recording = True
-            state.finished = False
+            state.raw_trace = []
+            state.marks = []
+            state.record_t0 = time.time()
             state.last_export_path = None
+            state.pending_start_mark = True
 
     elif action == "checkpoint":
         with state.lock:
@@ -1075,7 +1073,7 @@ def api_record_mark():
                 "type_hint": "checkpoint",
             })
 
-    elif action == "finish":
+    elif action == "stop":
         with state.lock:
             if not state.recording or not state.raw_trace:
                 return jsonify({"error": "not recording"}), 400
@@ -1086,12 +1084,14 @@ def api_record_mark():
             })
             state.finished = True
             state.recording = False
+        # _export_record() will be called by run_record_loop() when it detects finished=True
 
     elif action == "cancel":
         with state.lock:
             state.finished = True
             state.recording = False
             state.marks = []
+        # No export on cancel
 
     return jsonify({"ok": True})
 

@@ -18,16 +18,17 @@ async function setMode(mode: 'RACE' | 'RECORD') {
 
 interface Props {
   state: MonitorState | null;
+  onOpenEditor: () => void;
 }
 
-export default function MonitorView({ state }: Props) {
+export default function MonitorView({ state, onOpenEditor }: Props) {
   const isRecord = state?.mode === 'RECORD';
   return (
     <Container maxWidth="sm">
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, py: 2 }}>
         <ModeCard mode={state?.mode} onSetMode={setMode} />
         <PositionCard state={state} />
-        {isRecord && state && <RecordCard state={state} />}
+        {isRecord && state && <RecordCard state={state} onOpenEditor={onOpenEditor} />}
         <CaptureTestCard captureTest={state?.last_capture_test ?? null} />
         <ConfigCard recordMode={isRecord} />
       </Box>
