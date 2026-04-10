@@ -3,7 +3,7 @@ name: Build & Release Monitor
 on:
   push:
     branches: [main]
-    paths: ["monitor/**"]
+    paths: ["monitor/**", ".github/workflows/monitor-release.yml"]
     tags: ["monitor-v*"]
 
 jobs:
