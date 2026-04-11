@@ -332,7 +332,8 @@ router.delete("/:raceId/entries/:entryId", requireAuth, async (req, res) => {
 
   // Notify dashboard when a pilot cancels their own registration (not a modo removal).
   if (isOwner) {
-    emitDashboard("entry-cancelled", { displayName: user.displayName });
+    const pilotRow = await db.select({ displayName: pilot.displayName }).from(pilot).where(eq(pilot.id, user.id)).get();
+    if (pilotRow) emitDashboard("entry-cancelled", { displayName: pilotRow.displayName });
   }
   emitDashboard("race-list-changed");
   res.sendStatus(204);
