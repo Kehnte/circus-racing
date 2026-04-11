@@ -1,24 +1,38 @@
 #!/usr/bin/env npx tsx
-// simulate-auto.ts — Simulate an AUTO race by sending fake OCR positions.
-// Each pilot is interpolated between racetrack checkpoints.
+// simulate-auto.ts — Simulate a full AUTO race by pushing fake OCR positions.
+// Requires a running server with at least one AUTO race, a racetrack with checkpoints, and pilots in the DB.
 //
 // Usage:
-//   npx tsx scripts/simulate-auto.ts              # fast mode
-//   npx tsx scripts/simulate-auto.ts --interactive # pause between actions
-//   npx tsx scripts/simulate-auto.ts --base-url http://localhost:3000
+//   npx tsx scripts/simulate-auto.ts
+//   npx tsx scripts/simulate-auto.ts --interactive
+//   npx tsx scripts/simulate-auto.ts --base-url http://localhost:1959
+//   npx tsx scripts/simulate-auto.ts --countdown 10
+//   npx tsx scripts/simulate-auto.ts --admin Kehnte --password mypassword
 
-import type { Race, Pilot, Racetrack, Checkpoint } from '@circus-racing/types';
+import type { Race, Racetrack, Checkpoint } from '@circus-racing/types';
 
 const BASE_URL = (() => {
   const i = process.argv.indexOf('--base-url');
-  return i !== -1 ? process.argv[i + 1] : 'http://localhost:3000';
+  return i !== -1 ? process.argv[i + 1] : 'http://localhost:1959';
 })();
 const INTERACTIVE = process.argv.includes('--interactive');
+const COUNTDOWN = (() => {
+  const i = process.argv.indexOf('--countdown');
+  return i !== -1 ? parseInt(process.argv[i + 1], 10) : 5;
+})();
+const ADMIN_NAME = (() => {
+  const i = process.argv.indexOf('--admin');
+  return i !== -1 ? process.argv[i + 1] : 'Kehnte';
+})();
+const ADMIN_PASS = (() => {
+  const i = process.argv.indexOf('--password');
+  return i !== -1 ? process.argv[i + 1] : 'kehnteazerty';
+})();
+
 const OCR_INTERVAL_MS = 2000;
 
 interface AuthResponse { token: string; }
-interface RaceEntry { id: string; status: string; pilotId: string; pilot?: { displayName: string }; }
-interface PilotMe { token: string; }
+interface RaceEntry { id: string; status: string; pilotId: string; pilot?: { displayName: string }; gridPosition?: number; }
 
 async function api<T = unknown>(method: string, path: string, body?: unknown, token?: string): Promise<T> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -36,13 +50,12 @@ async function api<T = unknown>(method: string, path: string, body?: unknown, to
   return (ct.includes('application/json') ? res.json() : null) as Promise<T>;
 }
 
-async function pushOcrPosition(token: string, x: number, y: number, z: number): Promise<boolean> {
-  const res = await fetch(`${BASE_URL}/api/ocr/position`, {
+async function pushOcrPosition(ocrToken: string, x: number, y: number, z: number): Promise<void> {
+  await fetch(`${BASE_URL}/api/ocr/position`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', 'x-token': token },
+    headers: { 'Content-Type': 'application/json', 'x-token': ocrToken },
     body: JSON.stringify({ x, y, z }),
   });
-  return res.ok;
 }
 
 function sleep(ms: number): Promise<void> { return new Promise(r => setTimeout(r, ms)); }
@@ -68,7 +81,7 @@ function lerp3(a: [number, number, number], b: [number, number, number], t: numb
 interface PilotSimState {
   id: string;
   name: string;
-  token: string;
+  ocrToken: string;
   speed: number;
   lapsDone: number;
   cpIdx: number;
@@ -77,82 +90,92 @@ interface PilotSimState {
 
 async function simulate(): Promise<void> {
   log('🏁 AUTO race simulation');
-  console.log(`   Server : ${BASE_URL}`);
-  console.log(`   Mode   : ${INTERACTIVE ? 'interactive' : 'fast'}\n`);
+  console.log(`   Server    : ${BASE_URL}`);
+  console.log(`   Mode      : ${INTERACTIVE ? 'interactive' : 'fast'}`);
+  console.log(`   Countdown : ${COUNTDOWN}s\n`);
 
   // 1. Login admin
   log('1. Admin authentication');
-  const loginRes = await step('Login', () =>
-    api<AuthResponse>('POST', '/api/auth/login', { displayName: 'Kehnte', password: 'kehnteazerty' })
+  const loginRes = await step(`Login as ${ADMIN_NAME}`, () =>
+    api<AuthResponse>('POST', '/api/auth/login', { displayName: ADMIN_NAME, password: ADMIN_PASS })
   );
   const jwt = loginRes.token;
 
-  // 2. Find AUTO race
+  // 2. Find an AUTO race (PENDING or SCHEDULED)
   log('2. Selecting AUTO race');
-  const races = await api<Race[]>('GET', '/api/races', undefined, jwt);
-  const race = races.find(r => r.trackingMode === 'auto');
-  if (!race) throw new Error('No AUTO race found. Run seed.ts first.');
-  console.log(`   Race   : "${race.name}" [${race.id}]`);
+  const races = await step('GET /api/races', () => api<Race[]>('GET', '/api/races', undefined, jwt));
+  const race = races.find(r => r.trackingMode === 'auto' && (r.status === 'PENDING' || r.status === 'SCHEDULED'));
+  if (!race) throw new Error('No available AUTO race found (PENDING or SCHEDULED).');
+  console.log(`   Race     : "${race.name}" [${race.id}]`);
+  console.log(`   Laps     : ${race.lapCount}`);
+  console.log(`   Session  : ${race.session}`);
 
   // 3. Fetch racetrack checkpoints
-  const trackData = await api<Racetrack>('GET', `/api/racetracks/${race.racetrackId}`, undefined, jwt);
+  log('3. Fetching racetrack checkpoints');
+  const trackData = await step(`GET /api/racetracks/${race.racetrackId}`, () =>
+    api<Racetrack>('GET', `/api/racetracks/${race.racetrackId}`, undefined, jwt)
+  );
   const checkpoints: Checkpoint[] = trackData.checkpoints;
-  console.log(`   Track  : "${trackData.name}" (${checkpoints.length} checkpoints)`);
+  if (checkpoints.length < 2) throw new Error('Racetrack needs at least 2 checkpoints.');
+  console.log(`   Track    : "${trackData.name}" (${checkpoints.length} checkpoints)`);
 
-  // 4. Open, register, validate
-  log('3. Registrations');
+  // 4. Open registrations if needed
+  log('4. Opening registrations');
   if (race.status === 'PENDING') {
     await step('open-registrations', () =>
       api('POST', `/api/races/${race.id}/open-registrations`, undefined, jwt)
     );
+  } else {
+    console.log('  → Already open ✓');
   }
 
-  const allPilots = await api<Pilot[]>('GET', '/api/pilots', undefined, jwt);
-  const pilots = allPilots.filter(p => p.role !== 'ADMIN').slice(0, 5);
+  // 5. Add pilots as validated entries (admin direct add — no pilot logins needed)
+  log('5. Adding pilots as validated entries');
+  const allPilots = await api<PilotWithToken[]>('GET', '/api/pilots', undefined, jwt);
+  if (allPilots.length === 0) throw new Error('No pilots in DB. Run seed.ts first.');
 
-  for (const p of pilots) {
-    const pilotLogin = await api<AuthResponse>('POST', '/api/auth/login', {
-      displayName: p.displayName, password: 'pilot123',
-    });
-    await step(`Register ${p.displayName}`, () =>
-      api('POST', `/api/races/${race.id}/entries`, undefined, pilotLogin.token)
+  const pilotSubset = allPilots.slice(0, 5);
+  for (const p of pilotSubset) {
+    await step(`Add ${p.displayName}`, () =>
+      api('POST', `/api/races/${race.id}/entries/admin`, { pilotId: p.id }, jwt)
     );
   }
 
-  const entries = await api<RaceEntry[]>('GET', `/api/races/${race.id}/entries`, undefined, jwt);
-  for (const e of entries.filter(e => e.status === 'PENDING')) {
-    await step(`Validate ${e.pilot?.displayName}`, () =>
-      api('PATCH', `/api/races/${race.id}/entries/${e.id}/validate`, undefined, jwt)
-    );
-  }
-
-  // 5. Get OCR tokens for each pilot
-  log('4. Fetching OCR tokens');
-  const pilotTokenMap: Record<string, string> = {};
-  for (const p of pilots) {
-    const pilotLogin = await api<AuthResponse>('POST', '/api/auth/login', {
-      displayName: p.displayName, password: 'pilot123',
-    });
-    const me = await api<PilotMe>('GET', '/api/pilots/me', undefined, pilotLogin.token);
-    pilotTokenMap[p.id] = me.token;
-    console.log(`  ✓ ${p.displayName} token: ${me.token.slice(0, 8)}...`);
-  }
-
-  // 6. Load + start
-  log('5. Loading + starting');
+  // 6. Load + set grid order
+  log('6. Loading context + grid order');
   await step('Load race', () => api('POST', `/api/races/${race.id}/load`, undefined, jwt));
+
+  const validatedEntries = (await api<RaceEntry[]>('GET', `/api/races/${race.id}/entries`, undefined, jwt))
+    .filter(e => e.status === 'VALIDATED')
+    .sort((a, b) => (a.gridPosition ?? 99) - (b.gridPosition ?? 99));
+
+  await step('Set grid order', () =>
+    api('POST', `/api/race-events/races/${race.id}/grid-order`, {
+      pilotIds: validatedEntries.map(e => e.pilotId),
+    }, jwt)
+  );
+
+  // 7. Countdown + Start
+  log(`7. Countdown (${COUNTDOWN}s) + Start`);
+  await step(`Countdown ${COUNTDOWN}s`, () =>
+    api('POST', `/api/race-events/races/${race.id}/countdown`, { seconds: COUNTDOWN }, jwt)
+  );
+  if (INTERACTIVE) await sleep(Math.min(COUNTDOWN * 1000, 3000));
+  await step('Countdown stop', () =>
+    api('POST', `/api/race-events/races/${race.id}/countdown-stop`, undefined, jwt)
+  );
   await step('Start race', () => api('POST', `/api/races/${race.id}/start`, undefined, jwt));
 
-  // 7. Simulate OCR positions
-  log('6. Simulating OCR positions\n');
+  // 8. Simulate OCR positions — interpolate pilots between checkpoints
+  log('8. OCR position simulation\n');
 
-  const LAP_COUNT = race.lapCount ?? 3;
+  const LAP_COUNT = race.lapCount;
   const cpLen = checkpoints.length;
 
-  const pilotStates: PilotSimState[] = pilots.map((p, i) => ({
+  const pilotStates: PilotSimState[] = pilotSubset.map((p, i) => ({
     id: p.id,
     name: p.displayName,
-    token: pilotTokenMap[p.id],
+    ocrToken: p.token,
     speed: 0.08 + i * 0.01,
     lapsDone: 0,
     cpIdx: 0,
@@ -181,20 +204,20 @@ async function simulate(): Promise<void> {
 
         if (ps.cpIdx === 0) {
           ps.lapsDone++;
-          console.log(`  🏎  ${ps.name.padEnd(12)} — Lap ${ps.lapsDone}/${LAP_COUNT} completed`);
+          console.log(`  ✓ ${ps.name.padEnd(16)} — Lap ${ps.lapsDone}/${LAP_COUNT}`);
         }
       }
 
       const pos = lerp3(prevPos, nextPos, ps.progress);
-      await pushOcrPosition(ps.token, pos[0], pos[1], pos[2]);
+      await pushOcrPosition(ps.ocrToken, pos[0], pos[1], pos[2]);
     }
 
     if (allDone) break;
     await sleep(OCR_INTERVAL_MS);
   }
 
-  // 8. Finish
-  log('7. Race finish');
+  // 9. Finish
+  log('9. Race finish');
   await step('Finish race', () => api('POST', `/api/races/${race.id}/finish`, undefined, jwt));
 
   log('✅ AUTO simulation completed successfully.\n');
