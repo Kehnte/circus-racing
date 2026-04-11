@@ -58,7 +58,6 @@ export default function RecordCard({ state, onOpenEditor }: Props) {
     window.open('/api/record/last', '_blank');
   };
 
-
   return (
     <Paper elevation={0} sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Typography variant="overline" color="text.secondary">Record</Typography>
@@ -95,46 +94,28 @@ export default function RecordCard({ state, onOpenEditor }: Props) {
       <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
         <Tooltip title="Ctrl+Num1" placement="bottom">
           <span>
-            <Button
-              variant="contained"
-              disabled={recording}
-              onClick={() => handleMark('start')}
-            >
+            <Button variant="contained" disabled={recording} onClick={() => handleMark('start')}>
               Start
             </Button>
           </span>
         </Tooltip>
         <Tooltip title="Ctrl+Num2" placement="bottom">
           <span>
-            <Button
-              variant="outlined"
-              disabled={!recording}
-              onClick={() => handleMark('checkpoint')}
-            >
+            <Button variant="outlined" disabled={!recording} onClick={() => handleMark('checkpoint')}>
               Checkpoint
             </Button>
           </span>
         </Tooltip>
         <Tooltip title="Ctrl+Num3" placement="bottom">
           <span>
-            <Button
-              variant="contained"
-              color="success"
-              disabled={!recording}
-              onClick={() => handleMark('stop')}
-            >
+            <Button variant="contained" color="success" disabled={!recording} onClick={() => handleMark('stop')}>
               Stop
             </Button>
           </span>
         </Tooltip>
         <Tooltip title="Ctrl+Num4" placement="bottom">
           <span>
-            <Button
-              variant="outlined"
-              color="error"
-              disabled={!recording}
-              onClick={() => handleMark('cancel')}
-            >
+            <Button variant="outlined" color="error" disabled={!recording} onClick={() => handleMark('cancel')}>
               Cancel
             </Button>
           </span>

@@ -29,7 +29,11 @@ export default function MonitorView({ state, onOpenEditor }: Props) {
         <ModeCard mode={state?.mode} onSetMode={setMode} />
         <PositionCard state={state} />
         {isRecord && state && <RecordCard state={state} onOpenEditor={onOpenEditor} />}
-        <CaptureTestCard captureTest={state?.last_capture_test ?? null} />
+        <CaptureTestCard
+          captureTest={state?.last_capture_test ?? null}
+          anchorPosition={state?.anchor_position ?? null}
+          anchorRadius={state?.anchor_radius ?? 500000}
+        />
         <ConfigCard recordMode={isRecord} />
       </Box>
     </Container>

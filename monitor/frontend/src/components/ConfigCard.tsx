@@ -56,14 +56,14 @@ export default function ConfigCard({ recordMode }: Props) {
     hotkey_record_checkpoint: 'alt+num 2',
     hotkey_record_finish: 'alt+num 3',
     hotkey_record_cancel: 'alt+num 4',
-    filter_jump_enabled: true,
-    filter_jump_threshold: 500,
+    filter_speed_enabled: true,
+    filter_speed_max_ms: 3000,
     filter_iqr_enabled: true,
     filter_iqr_multiplier: 1.5,
-    filter_angular_enabled: true,
+    filter_angular_enabled: false,
     filter_angular_max_angle: 120,
-    filter_rolling_enabled: true,
-    filter_rolling_window: 5,
+    filter_rdp_enabled: false,
+    filter_rdp_tolerance: 1.0,
   });
 
   const tokenError = cfg.token.length > 0 && !TOKEN_REGEX.test(cfg.token);

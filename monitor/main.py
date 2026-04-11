@@ -107,14 +107,14 @@ def _load_config() -> configparser.ConfigParser:
         "record_cancel": "ctrl+num 4",
     }
     config["filters"] = {
-        "jump_enabled": "true",
-        "jump_threshold": "500.0",
+        "speed_enabled": "true",
+        "speed_max_ms": "3000.0",
         "iqr_enabled": "true",
         "iqr_multiplier": "1.5",
-        "angular_enabled": "true",
+        "angular_enabled": "false",
         "angular_max_angle": "120.0",
-        "rolling_enabled": "true",
-        "rolling_window": "5",
+        "rdp_enabled": "false",
+        "rdp_tolerance": "1.0",
     }
     return config
 
@@ -155,6 +155,10 @@ class MonitorState:
     # Last Ctrl+Shift+T capture test result
     last_capture_test: Optional[dict] = None
 
+    # Anchor position: if set, OCR points too far from it are rejected as gaps
+    anchor_position: Optional[list] = None
+    anchor_radius: float = 500000.0
+
     # Path of the last exported recording JSON (for download)
     last_export_path: Optional[Path] = None
 
@@ -169,14 +173,9 @@ state = MonitorState()
 # OCR helpers
 # ---------------------------------------------------------------------------
 
+# Matches exactly X.XXXXkm Y.XXXXkm Z.XXXXkm — km is the natural delimiter
 POS_PATTERN = re.compile(
-    r"[PpRr]os:\s*(.+?)\s*[kK]?m\S*\s+(.+?)\s*[kK]?m\S*\s+(.+?)\s*[kK]?m",
-    re.IGNORECASE,
-)
-# Fallback when "Pos:" is outside the capture zone
-POS_PATTERN_BARE = re.compile(
-    r"([\d.+-]+)\s*[kK]?m\s*([\d.+-]+)\s*[kK]?m\s*([\d.+-]+)\s*[kK]?m",
-    re.IGNORECASE,
+    r"(-?\d+\.\d{4})[kK]m(-?\d+\.\d{4})[kK]m(-?\d+\.\d{4})[kK]m",
 )
 
 _OCR_DIGIT_TR = str.maketrans("oOlISsBG}", "001155890")
@@ -190,21 +189,24 @@ def _clean_number(raw: str) -> float:
         s = parts[0] + "." + "".join(parts[1:])
         parts = s.split(".")
     if len(parts) == 2:
-        decimals = parts[1][:4]
-        s = parts[0] + "." + decimals
+        if len(parts[1]) != 4:
+            raise ValueError(f"expected 4 decimals, got {len(parts[1])!r} in {raw!r}")
+        s = parts[0] + "." + parts[1]
+    else:
+        raise ValueError(f"no decimal point in {raw!r}")
     return float(s)
 
 
 def parse_pos(text: str):
-    text = text.replace(", ", ",").replace(". ", ".")
-    match = POS_PATTERN.search(text) or POS_PATTERN_BARE.search(text)
+    match = POS_PATTERN.search(text)
     if match:
         try:
-            x, y, z = [_clean_number(g) for g in match.groups()]
+            x, y, z = [float(g) * 1000 for g in match.groups()]
             return [round(x, 3), round(y, 3), round(z, 3)]
         except ValueError as e:
             log.warning("Parse error: %s", e)
             return None
+    log.warning("No match for OCR text: %r", text.strip())
     return None
 
 
@@ -256,7 +258,7 @@ def _capture_pos():
     processed = cv2.bitwise_not(thresh)
     cv2.imwrite(str(DATA_DIR / "debug_image.png"), processed)
 
-    text = pytesseract.image_to_string(processed, config="--oem 3 --psm 7 -c tessedit_char_whitelist=0123456789.km-Pos: ")
+    text = pytesseract.image_to_string(processed, config="--oem 3 --psm 7 -c tessedit_char_whitelist=0123456789.km-RootPs:")
     log.info("OCR raw: %r", text)
     return parse_pos(text)
 
@@ -469,7 +471,7 @@ def _build_checkpoints(raw_trace, marks, circuit_type):
 
 
 def _filter_trace(raw_trace, filter_cfg=None):
-    """Filter outliers via jump detection, IQR, angular coherence, then rolling median smoothing.
+    """Filter outliers via speed check, IQR, angular coherence, then RDP simplification.
 
     filter_cfg overrides global config values for each filter stage.
     Gap entries (gap=True, position=None) are preserved as-is and skipped by all filter stages.
@@ -487,19 +489,17 @@ def _filter_trace(raw_trace, filter_cfg=None):
             return float(filter_cfg[key])
         return config.getfloat("filters", key, fallback=fallback)
 
-    def _cfg_int(key, fallback):
-        if filter_cfg and key in filter_cfg:
-            return int(filter_cfg[key])
-        return config.getint("filters", key, fallback=fallback)
-
-    jump_enabled    = _cfg_bool("jump_enabled",    True)
-    max_jump        = _cfg_float("jump_threshold",  500.0)
-    iqr_enabled     = _cfg_bool("iqr_enabled",     True)
+    speed_enabled   = _cfg_bool("speed_enabled",   True)
+    speed_max_ms    = _cfg_float("speed_max_ms",    3000.0)
+    iqr_enabled     = _cfg_bool("iqr_enabled",      True)
     iqr_multiplier  = _cfg_float("iqr_multiplier",  1.5)
-    angular_enabled = _cfg_bool("angular_enabled", True)
+    angular_enabled = _cfg_bool("angular_enabled",  False)
     max_angle_deg   = _cfg_float("angular_max_angle", 120.0)
-    rolling_enabled = _cfg_bool("rolling_enabled", True)
-    rolling_window  = _cfg_int("rolling_window",   5)
+    rdp_enabled     = _cfg_bool("rdp_enabled",      False)
+    rdp_tolerance   = _cfg_float("rdp_tolerance",   1.0)
+
+    def _dist(a, b):
+        return math.sqrt(sum((a["position"][k] - b["position"][k]) ** 2 for k in range(3)))
 
     # Separate gap entries so filters only operate on real positions
     real_pts = [p for p in raw_trace if not p.get("gap")]
@@ -507,21 +507,9 @@ def _filter_trace(raw_trace, filter_cfg=None):
     if len(real_pts) < _MIN_SURVIVORS:
         return list(raw_trace)
 
-    # Step 0 — Jump filter: remove isolated points far from both neighbours
-    if jump_enabled:
-        def _jump_filter(pts):
-            if len(pts) < 3:
-                return list(pts)
-            def dist(a, b):
-                return math.sqrt(sum((a["position"][k] - b["position"][k]) ** 2 for k in range(3)))
-            keep = [True] * len(pts)
-            for i in range(1, len(pts) - 1):
-                if dist(pts[i], pts[i - 1]) > max_jump and dist(pts[i], pts[i + 1]) > max_jump:
-                    keep[i] = False
-            return [p for p, k in zip(pts, keep) if k]
-        real_pts = _jump_filter(real_pts)
-
-    # Step 1 — IQR filter: remove points outside multiplier×IQR per axis
+    # Step 1 — IQR filter: two passes per axis. Runs first because it handles dense
+    # clusters of aberrant points that would defeat the bidirectional speed check.
+    # Second pass tightens bounds on already-cleaned data to catch subtler errors.
     def _iqr_filter(pts):
         axes = [[p["position"][i] for p in pts] for i in range(3)]
         bounds = []
@@ -535,12 +523,44 @@ def _filter_trace(raw_trace, filter_cfg=None):
 
     if iqr_enabled:
         filtered = _iqr_filter(real_pts)
-        if len(filtered) < _MIN_SURVIVORS:
+        if len(filtered) >= _MIN_SURVIVORS:
+            filtered2 = _iqr_filter(filtered)
+            if len(filtered2) >= _MIN_SURVIVORS:
+                filtered = filtered2
+        else:
             filtered = list(real_pts)
     else:
         filtered = list(real_pts)
 
-    # Step 2 — Angular filter: iteratively remove points creating a direction reversal
+    # Step 2 — Speed filter: iteratively remove points whose speed to both neighbours
+    # exceeds the threshold. Runs after IQR so only residual outliers remain (e.g. a
+    # single wrong digit that IQR bounds couldn't catch). Iterates until stable.
+    if speed_enabled:
+        def _speed_pass(pts):
+            if len(pts) < 3:
+                return list(pts)
+            keep = [True] * len(pts)
+            for i in range(1, len(pts) - 1):
+                dt_prev = pts[i]["t"] - pts[i - 1]["t"]
+                dt_next = pts[i + 1]["t"] - pts[i]["t"]
+                if dt_prev <= 0 or dt_next <= 0:
+                    continue
+                v_prev = _dist(pts[i], pts[i - 1]) / dt_prev
+                v_next = _dist(pts[i + 1], pts[i]) / dt_next
+                if v_prev > speed_max_ms and v_next > speed_max_ms:
+                    keep[i] = False
+            return [p for p, k in zip(pts, keep) if k]
+
+        prev_len = -1
+        while len(filtered) != prev_len:
+            prev_len = len(filtered)
+            candidate = _speed_pass(filtered)
+            if len(candidate) >= _MIN_SURVIVORS:
+                filtered = candidate
+            else:
+                break
+
+    # Step 3 — Angular filter: iteratively remove points creating a direction reversal
     if angular_enabled:
         cos_threshold = math.cos(math.radians(max_angle_deg))
 
@@ -571,21 +591,33 @@ def _filter_trace(raw_trace, filter_cfg=None):
                 filtered = _iqr_filter(real_pts) if iqr_enabled else list(real_pts)
                 break
 
-    # Step 3 — Rolling median: smooth each axis
-    if rolling_enabled:
-        def _median(vals):
-            sv = sorted(vals)
-            return sv[len(sv) // 2]
+    # Step 4 — RDP simplification: reduce point count while preserving shape.
+    # Uses Ramer-Douglas-Peucker on the XY plane (ignores altitude for simplification).
+    if rdp_enabled and len(filtered) >= 3:
+        def _rdp(pts, tolerance):
+            if len(pts) <= 2:
+                return list(pts)
+            start, end = pts[0]["position"], pts[-1]["position"]
+            dx, dy = end[0] - start[0], end[1] - start[1]
+            seg_len = math.sqrt(dx * dx + dy * dy)
+            max_dist, max_idx = 0.0, 0
+            for i in range(1, len(pts) - 1):
+                px, py = pts[i]["position"][0], pts[i]["position"][1]
+                if seg_len < 1e-10:
+                    d = math.sqrt((px - start[0]) ** 2 + (py - start[1]) ** 2)
+                else:
+                    d = abs(dy * px - dx * py + end[0] * start[1] - end[1] * start[0]) / seg_len
+                if d > max_dist:
+                    max_dist, max_idx = d, i
+            if max_dist > tolerance:
+                left  = _rdp(pts[:max_idx + 1], tolerance)
+                right = _rdp(pts[max_idx:], tolerance)
+                return left[:-1] + right
+            return [pts[0], pts[-1]]
 
-        smoothed = []
-        half = rolling_window // 2
-        for i, p in enumerate(filtered):
-            lo = max(0, i - half)
-            hi = min(len(filtered), i + half + 1)
-            window = filtered[lo:hi]
-            smoothed_pos = [_median([w["position"][j] for w in window]) for j in range(3)]
-            smoothed.append({"t": p["t"], "position": smoothed_pos})
-        filtered = smoothed
+        simplified = _rdp(filtered, rdp_tolerance)
+        if len(simplified) >= _MIN_SURVIVORS:
+            filtered = simplified
 
     return filtered
 
@@ -925,13 +957,18 @@ def run_record_loop():
                 break
 
         pos = _capture_pos()
+        wall_t = time.time()
         with state.lock:
+            # Reject point if it falls outside the anchor radius
+            if pos and state.anchor_position and calculate_distance(pos, state.anchor_position) > state.anchor_radius:
+                log.debug("Point rejected by anchor filter: dist=%.1f > %.1f", calculate_distance(pos, state.anchor_position), state.anchor_radius)
+                pos = None
             if pos:
                 now = datetime.datetime.now(datetime.UTC).isoformat()
                 state.position = pos
                 state.last_ocr_at = now
                 if state.recording:
-                    state.raw_trace.append({"t": round(time.time() - state.record_t0, 2), "position": pos})
+                    state.raw_trace.append({"t": round(wall_t - state.record_t0, 2), "position": pos})
                     if state.pending_start_mark:
                         state.marks.append({
                             "order": 0,
@@ -1012,6 +1049,8 @@ def api_state():
             "has_export": state.last_export_path is not None and state.last_export_path.exists(),
             "last_export_name": state.last_export_path.stem if state.last_export_path and state.last_export_path.exists() else None,
             "last_capture_test": state.last_capture_test,
+            "anchor_position": state.anchor_position,
+            "anchor_radius": state.anchor_radius,
         })
 
 
@@ -1184,7 +1223,7 @@ def api_test_capture():
         processed = cv2.bitwise_not(thresh)
         cv2.imwrite(str(DATA_DIR / "capture_test_processed.png"), processed)
 
-        ocr_text = pytesseract.image_to_string(processed, config="--oem 3 --psm 7 -c tessedit_char_whitelist=0123456789.km-Pos: ")
+        ocr_text = pytesseract.image_to_string(processed, config="--oem 3 --psm 7 -c tessedit_char_whitelist=0123456789.km-RootPs:")
         parsed = parse_pos(ocr_text)
 
         with open(DATA_DIR / "capture_test.png", "rb") as f:
@@ -1206,6 +1245,18 @@ def api_test_capture():
         with state.lock:
             state.last_capture_test = result
         return jsonify(result), 500
+
+
+@flask_app.route("/api/anchor", methods=["POST"])
+def api_anchor():
+    data = request.get_json(force=True)
+    pos = data.get("position")   # [x, y, z] or null to clear
+    radius = data.get("radius")
+    with state.lock:
+        state.anchor_position = pos
+        if radius is not None:
+            state.anchor_radius = float(radius)
+    return jsonify({"anchor_position": state.anchor_position, "anchor_radius": state.anchor_radius})
 
 
 @flask_app.route("/api/config", methods=["GET"])
@@ -1329,7 +1380,7 @@ def main():
             _, thresh = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
             processed = cv2.bitwise_not(thresh)
 
-            ocr_text = pytesseract.image_to_string(processed, config="--oem 3 --psm 7 -c tessedit_char_whitelist=0123456789.km-Pos: ")
+            ocr_text = pytesseract.image_to_string(processed, config="--oem 3 --psm 7 -c tessedit_char_whitelist=0123456789.km-RootPs:")
             parsed = parse_pos(ocr_text)
 
             with open(DATA_DIR / "capture_test.png", "rb") as f:

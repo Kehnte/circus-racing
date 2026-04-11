@@ -14,6 +14,8 @@ export interface MonitorState {
   has_export: boolean;
   last_export_name: string | null;
   last_capture_test: CaptureTestResult | null;
+  anchor_position: [number, number, number] | null;
+  anchor_radius: number;
 }
 
 export interface CaptureTestResult {
@@ -38,14 +40,14 @@ export interface MonitorConfig {
   hotkey_record_checkpoint: string;
   hotkey_record_finish: string;
   hotkey_record_cancel: string;
-  filter_jump_enabled: boolean;
-  filter_jump_threshold: number;
+  filter_speed_enabled: boolean;
+  filter_speed_max_ms: number;
   filter_iqr_enabled: boolean;
   filter_iqr_multiplier: number;
   filter_angular_enabled: boolean;
   filter_angular_max_angle: number;
-  filter_rolling_enabled: boolean;
-  filter_rolling_window: number;
+  filter_rdp_enabled: boolean;
+  filter_rdp_tolerance: number;
 }
 
 export interface MonitorInfo {
@@ -57,14 +59,14 @@ export interface MonitorInfo {
 // --- Editor types ---
 
 export interface FilterConfig {
-  jump_enabled: boolean;
-  jump_threshold: number;
+  speed_enabled: boolean;
+  speed_max_ms: number;
   iqr_enabled: boolean;
   iqr_multiplier: number;
   angular_enabled: boolean;
   angular_max_angle: number;
-  rolling_enabled: boolean;
-  rolling_window: number;
+  rdp_enabled: boolean;
+  rdp_tolerance: number;
 }
 
 export interface TracePoint {

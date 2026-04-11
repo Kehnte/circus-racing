@@ -27,8 +27,11 @@ const CP_COLOR: Record<EditorCheckpoint['type'], string> = {
 
 type V3 = [number, number, number];
 
+// JSON coords: [x, y, z] where x/y are horizontal and z is altitude.
+// Three.js uses Y as vertical: world-x → Three-x, world-z(alt) → Three-y, world-y → Three-z.
+// offset stores JSON-space center: offset.x=cx, offset.y=cy, offset.z=cz.
 function localPos(pos: V3, offset: THREE.Vector3): V3 {
-  return [pos[0] - offset.x, pos[1] - offset.y, pos[2] - offset.z];
+  return [pos[0] - offset.x, pos[2] - offset.z, pos[1] - offset.y];
 }
 
 // ---------------------------------------------------------------------------
@@ -44,7 +47,7 @@ function snapToPreset(
   controls: OrbitControlsType,
 ) {
   const fovRad = ((camera as THREE.PerspectiveCamera).fov ?? 60) * (Math.PI / 180);
-  const d = (extent * 0.8) / Math.tan(fovRad / 2);
+  const d = (extent * 1.5) / Math.tan(fovRad / 2);
   const cfg: Record<ViewPreset, { pos: V3; up: V3 }> = {
     top:   { pos: [0, d, 0],             up: [0, 0, -1] },
     front: { pos: [0, 0, d],             up: [0, 1, 0]  },
@@ -181,6 +184,35 @@ function HoverIndicator({ points, offset, extent, hoveredId, onHover, onClick, o
 }
 
 // ---------------------------------------------------------------------------
+// FocusController — move camera to a specific local position
+// ---------------------------------------------------------------------------
+
+interface FocusControllerProps {
+  target: { pos: V3; radius: number } | null;
+  controlsRef: React.RefObject<OrbitControlsType | null>;
+  onDone: () => void;
+}
+
+function FocusController({ target, controlsRef, onDone }: FocusControllerProps) {
+  const { camera } = useThree();
+
+  useEffect(() => {
+    if (!target || !controlsRef.current) return;
+    const [tx, ty, tz] = target.pos;
+    const fovRad = ((camera as THREE.PerspectiveCamera).fov ?? 60) * (Math.PI / 180);
+    const dist = (target.radius * 2) / Math.tan(fovRad / 2);
+    camera.position.set(tx, ty + dist * 0.6, tz + dist * 0.8);
+    camera.up.set(0, 1, 0);
+    camera.lookAt(tx, ty, tz);
+    (controlsRef.current as unknown as { target: THREE.Vector3; update: () => void }).target.set(tx, ty, tz);
+    (controlsRef.current as unknown as { update: () => void }).update();
+    onDone();
+  }, [target, camera, controlsRef, onDone]);
+
+  return null;
+}
+
+// ---------------------------------------------------------------------------
 // CameraSetup — fit on load or fitKey change
 // ---------------------------------------------------------------------------
 
@@ -192,11 +224,14 @@ interface CameraSetupProps {
 
 function CameraSetup({ extent, controlsRef, fitKey }: CameraSetupProps) {
   const { camera } = useThree();
+  const extentRef = useRef(extent);
+  extentRef.current = extent;
 
   useEffect(() => {
-    if (extent === 0) return;
+    const e = extentRef.current;
+    if (e === 0) return;
     const fovRad = ((camera as THREE.PerspectiveCamera).fov ?? 60) * (Math.PI / 180);
-    const dist = (extent * 0.8) / Math.tan(fovRad / 2);
+    const dist = (e * 1.5) / Math.tan(fovRad / 2);
     camera.position.set(0, dist * 0.6, dist * 0.8);
     camera.up.set(0, 1, 0);
     camera.lookAt(0, 0, 0);
@@ -331,7 +366,7 @@ function PointsPanel({ points, hoveredId, onHover, onClick }: PointsPanelProps) 
             {p.gap ? (
               <Typography variant="inherit" sx={{ color: 'text.disabled' }}>— gap —</Typography>
             ) : (
-              <span>#{idx} {Math.round(p.position[0])} {Math.round(p.position[2])}</span>
+              <span>#{idx} {Math.round(p.position[0])} {Math.round(p.position[1])} {Math.round(p.position[2])}</span>
             )}
           </Box>
         );
@@ -374,6 +409,7 @@ export default function TraceViewer({
   const [fitKey, setFitKey] = useState(0);
   const [pendingPreset, setPendingPreset] = useState<ViewPreset | null>(null);
   const [hoveredId, setHoveredId] = useState<number | null>(null);
+  const [focusTarget, setFocusTarget] = useState<{ pos: V3; radius: number } | null>(null);
   const controlsRef = useRef<OrbitControlsType | null>(null);
 
   // Re-fit on new circuit load
@@ -396,19 +432,19 @@ export default function TraceViewer({
     const cpPts = (circuit?.checkpoints ?? []).map(cp => ({ position: cp.position }));
     const source = [...tracePts, ...cpPts];
     if (source.length === 0) return { center: new THREE.Vector3(), extent: 1000 };
-    const sum = source.reduce((acc, p) => [
-      acc[0] + p.position[0],
-      acc[1] + p.position[1],
-      acc[2] + p.position[2],
-    ], [0, 0, 0]);
-    const c = new THREE.Vector3(sum[0] / source.length, sum[1] / source.length, sum[2] / source.length);
+    // Use per-axis median for center — robust against aberrant OCR points
+    const sorted0 = [...source].sort((a, b) => a.position[0] - b.position[0]);
+    const sorted1 = [...source].sort((a, b) => a.position[1] - b.position[1]);
+    const sorted2 = [...source].sort((a, b) => a.position[2] - b.position[2]);
+    const mid = Math.floor(source.length / 2);
+    const c = new THREE.Vector3(sorted0[mid].position[0], sorted1[mid].position[1], sorted2[mid].position[2]);
     const dists = source.map(p => {
-      const dx = p.position[0] - c.x, dz = p.position[2] - c.z;
-      return Math.sqrt(dx * dx + dz * dz);
+      const dx = p.position[0] - c.x, dy = p.position[1] - c.y;
+      return Math.sqrt(dx * dx + dy * dy);
     }).sort((a, b) => a - b);
-    // Use 95th percentile to ignore aberrant outliers
-    const p95 = dists[Math.floor(dists.length * 0.95)] ?? dists[dists.length - 1];
-    return { center: c, extent: Math.max(p95, 100) };
+    // Use 80th percentile — tighter than p95 to avoid outliers inflating the extent
+    const p80 = dists[Math.floor(dists.length * 0.80)] ?? dists[dists.length - 1];
+    return { center: c, extent: Math.max(p80, 100) };
   }, [circuit, filteredPoints]);
 
   const showRaw = !!filteredPoints;
@@ -458,6 +494,7 @@ export default function TraceViewer({
             />
 
             <CameraSetup extent={extent} controlsRef={controlsRef} fitKey={fitKey} />
+            <FocusController target={focusTarget} controlsRef={controlsRef} onDone={() => setFocusTarget(null)} />
             <PresetController
               preset={pendingPreset}
               extent={extent}
@@ -511,7 +548,13 @@ export default function TraceViewer({
             points={displayPoints}
             hoveredId={hoveredId}
             onHover={setHoveredId}
-            onClick={onPointClick}
+            onClick={(id, shift) => {
+              onPointClick(id, shift);
+              const pt = displayPoints.find(p => p.id === id);
+              if (pt && !pt.gap) {
+                setFocusTarget({ pos: localPos(pt.position, center), radius: Math.max(extent * 0.05, 10) });
+              }
+            }}
           />
         </>
       ) : (

@@ -7,17 +7,15 @@ import EditorToolbar from './EditorToolbar';
 import TraceViewer from './TraceViewer';
 import FilterPanel from './FilterPanel';
 import CheckpointList from './CheckpointList';
-import { suggestJumpThreshold } from './FilterPanel';
-
 const DEFAULT_FILTER: FilterConfig = {
-  jump_enabled: true,
-  jump_threshold: 500,
-  iqr_enabled: false,
+  speed_enabled: true,
+  speed_max_ms: 3000,
+  iqr_enabled: true,
   iqr_multiplier: 1.5,
   angular_enabled: false,
   angular_max_angle: 120,
-  rolling_enabled: false,
-  rolling_window: 5,
+  rdp_enabled: false,
+  rdp_tolerance: 1.0,
 };
 
 interface EditorViewProps {
@@ -33,17 +31,21 @@ export default function EditorView({ autoLoadLast, onAutoLoadDone }: EditorViewP
   const [filteredPoints, setFilteredPoints] = useState<TracePoint[] | null>(null);
   const [previewEnabled, setPreviewEnabled] = useState(true);
   const [fitRequest, setFitRequest] = useState(0);
+  const [pendingFit, setPendingFit] = useState(false);
+
+  // Trigger fit after circuit points actually update in the next render
+  useEffect(() => {
+    if (pendingFit) {
+      setFitRequest(r => r + 1);
+      setPendingFit(false);
+    }
+  }, [circuit?.points, pendingFit]);
 
   const handleLoad = useCallback((c: EditorCircuit) => {
     dispatch({ type: 'LOAD_CIRCUIT', payload: c });
     setSelectedPointIds(new Set());
     setSelectedCpId(null);
     setFilteredPoints(null);
-    // Auto-apply suggested jump threshold and enable preview
-    const suggested = suggestJumpThreshold(c.points);
-    if (suggested !== null) {
-      setFilterConfig(prev => ({ ...prev, jump_threshold: suggested }));
-    }
     setPreviewEnabled(true);
   }, [dispatch]);
 
@@ -121,7 +123,7 @@ export default function EditorView({ autoLoadLast, onAutoLoadDone }: EditorViewP
           filterConfig={filterConfig}
           onChange={handleFilterChange}
           onPreviewReady={handlePreviewReady}
-          onApply={pts => { dispatch({ type: 'APPLY_FILTER_PREVIEW', filtered: pts }); setPreviewEnabled(false); setFilteredPoints(null); setFitRequest(r => r + 1); }}
+          onApply={pts => { dispatch({ type: 'APPLY_FILTER_PREVIEW', filtered: pts }); setPreviewEnabled(false); setFilteredPoints(null); setPendingFit(true); }}
           previewEnabled={previewEnabled}
           onTogglePreview={handleTogglePreview}
         />
