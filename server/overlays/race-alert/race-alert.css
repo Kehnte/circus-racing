@@ -168,7 +168,7 @@ body {
     background-color: #e91e63;
 }
 
-.event-row[data-status="incident"] .event-icon {
+.event-row[data-status="dnf"] .event-icon {
     background-color: #ffc107;
 }
 

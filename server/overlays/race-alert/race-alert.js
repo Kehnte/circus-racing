@@ -1,4 +1,4 @@
-// race-alert.js — OBS overlay for race events (fastest lap, incident, finished).
+// race-alert.js — OBS overlay for race events (fastest lap, dnf, finished).
 
 const socket = io();
 
@@ -8,16 +8,19 @@ let displayTimer = null;
 
 let currentTeamDisplayMode = "color-bar";
 let currentTimingEnabled = true;
+let currentChronoDisplayMode = "gap";
 
 // Keep display mode and timing state in sync
 socket.on("race-data", (data) => {
     if (data.teamDisplayMode !== undefined) currentTeamDisplayMode = data.teamDisplayMode;
     if (data.timingEnabled !== undefined) currentTimingEnabled = data.timingEnabled;
+    if (data.chronoDisplayMode !== undefined) currentChronoDisplayMode = data.chronoDisplayMode;
 });
 
 socket.on("race-state", (data) => {
     if (data.teamDisplayMode !== undefined) currentTeamDisplayMode = data.teamDisplayMode;
     if (data.timingEnabled !== undefined) currentTimingEnabled = data.timingEnabled;
+    if (data.chronoDisplayMode !== undefined) currentChronoDisplayMode = data.chronoDisplayMode;
 });
 
 // Queue incoming events and start processing if idle
@@ -70,12 +73,18 @@ function showAlert(event) {
 
     const chronoEl = document.querySelector(".event-chrono");
     if (chronoEl) {
-        if (event.type === "incident" || event.type === "dnf") {
+        const chronoHidden = currentChronoDisplayMode === "hidden" || currentChronoDisplayMode === "static";
+        if (event.type === "dnf") {
             chronoEl.textContent = "DNF";
-        } else if (currentTimingEnabled && (event.lapFormatted || event.time)) {
+            chronoEl.style.display = "";
+        } else if (chronoHidden || !currentTimingEnabled) {
+            chronoEl.style.display = "none";
+        } else if (event.lapFormatted || event.time) {
             chronoEl.textContent = event.lapFormatted || event.time;
+            chronoEl.style.display = "";
         } else {
             chronoEl.textContent = "—";
+            chronoEl.style.display = "";
         }
     }
 
@@ -96,14 +105,12 @@ function setAlertStatus(type) {
     const label = document.querySelector(".event-label");
     if (!row) return;
 
-    // Map "dnf" to "incident" styling/label
-    const displayType = type === "dnf" ? "incident" : type;
-    row.setAttribute("data-status", displayType);
-    if (RACE_ICONS[displayType]) iconContainer.innerHTML = RACE_ICONS[displayType];
+    row.setAttribute("data-status", type);
+    if (RACE_ICONS[type]) iconContainer.innerHTML = RACE_ICONS[type];
 
-    switch (displayType) {
+    switch (type) {
         case "fastest-lap": label.textContent = "Fastest lap"; break;
-        case "incident":    label.textContent = "Incident";    break;
+        case "dnf":         label.textContent = "DNF";         break;
         case "finished":    label.textContent = "Finished";    break;
     }
 }
