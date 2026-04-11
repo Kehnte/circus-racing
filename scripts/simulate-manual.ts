@@ -1,19 +1,33 @@
 #!/usr/bin/env npx tsx
 // simulate-manual.ts — Simulate a full MANUAL race via the REST API.
-// Requires a running server and seeded DB (scripts/seed.ts).
+// Requires a running server with at least one MANUAL race and some pilots in the DB.
 //
 // Usage:
-//   npx tsx scripts/simulate-manual.ts              # fast mode (all chained)
-//   npx tsx scripts/simulate-manual.ts --interactive # pause between each action
-//   npx tsx scripts/simulate-manual.ts --base-url http://localhost:3000
+//   npx tsx scripts/simulate-manual.ts
+//   npx tsx scripts/simulate-manual.ts --interactive
+//   npx tsx scripts/simulate-manual.ts --base-url http://localhost:1959
+//   npx tsx scripts/simulate-manual.ts --countdown 10
+//   npx tsx scripts/simulate-manual.ts --admin Kehnte --password mypassword
 
 import type { Race, Pilot } from '@circus-racing/types';
 
 const BASE_URL = (() => {
   const i = process.argv.indexOf('--base-url');
-  return i !== -1 ? process.argv[i + 1] : 'http://localhost:3000';
+  return i !== -1 ? process.argv[i + 1] : 'http://localhost:1959';
 })();
 const INTERACTIVE = process.argv.includes('--interactive');
+const COUNTDOWN = (() => {
+  const i = process.argv.indexOf('--countdown');
+  return i !== -1 ? parseInt(process.argv[i + 1], 10) : 5;
+})();
+const ADMIN_NAME = (() => {
+  const i = process.argv.indexOf('--admin');
+  return i !== -1 ? process.argv[i + 1] : 'Kehnte';
+})();
+const ADMIN_PASS = (() => {
+  const i = process.argv.indexOf('--password');
+  return i !== -1 ? process.argv[i + 1] : 'kehnteazerty';
+})();
 
 interface AuthResponse { token: string; }
 interface RaceEntry { id: string; status: string; pilotId: string; pilot?: { displayName: string }; gridPosition?: number; }
@@ -50,49 +64,45 @@ function log(msg: string): void { console.log(`\n${msg}`); }
 
 async function simulate(): Promise<void> {
   log('🏁 MANUAL race simulation');
-  console.log(`   Server : ${BASE_URL}`);
-  console.log(`   Mode   : ${INTERACTIVE ? 'interactive' : 'fast'}\n`);
+  console.log(`   Server    : ${BASE_URL}`);
+  console.log(`   Mode      : ${INTERACTIVE ? 'interactive' : 'fast'}`);
+  console.log(`   Countdown : ${COUNTDOWN}s\n`);
 
   // 1. Login admin
   log('1. Admin authentication');
-  const loginRes = await step('Login', () =>
-    api<AuthResponse>('POST', '/api/auth/login', { displayName: 'Kehnte', password: 'kehnteazerty' })
+  const loginRes = await step(`Login as ${ADMIN_NAME}`, () =>
+    api<AuthResponse>('POST', '/api/auth/login', { displayName: ADMIN_NAME, password: ADMIN_PASS })
   );
   const jwt = loginRes.token;
 
-  // 2. Find MANUAL race
+  // 2. Find a MANUAL race (PENDING or SCHEDULED)
   log('2. Selecting MANUAL race');
   const races = await step('GET /api/races', () => api<Race[]>('GET', '/api/races', undefined, jwt));
-  const race = races.find(r => r.trackingMode === 'manual');
-  if (!race) throw new Error('No MANUAL race found. Run seed.ts first.');
-  console.log(`   Race : "${race.name}" [${race.id}]`);
+  const race = races.find(r => r.trackingMode === 'manual' && (r.status === 'PENDING' || r.status === 'SCHEDULED'));
+  if (!race) throw new Error('No available MANUAL race found (PENDING or SCHEDULED).');
+  console.log(`   Race     : "${race.name}" [${race.id}]`);
+  console.log(`   Laps     : ${race.lapCount}`);
+  console.log(`   Session  : ${race.session}`);
 
-  // 3. Open registrations
+  // 3. Open registrations if needed
   log('3. Opening registrations');
   if (race.status === 'PENDING') {
     await step('open-registrations', () =>
       api('POST', `/api/races/${race.id}/open-registrations`, undefined, jwt)
     );
+  } else {
+    console.log('  → Already open ✓');
   }
 
-  // 4. Register & validate 6 pilots
-  log('4. Registrations and validations');
+  // 4. Add all pilots in DB as validated entries (admin direct add)
+  log('4. Adding pilots as validated entries');
   const allPilots = await api<Pilot[]>('GET', '/api/pilots', undefined, jwt);
-  const pilots = allPilots.filter(p => p.role !== 'ADMIN').slice(0, 6);
+  if (allPilots.length === 0) throw new Error('No pilots in DB. Run seed.ts first.');
 
-  for (const p of pilots) {
-    const pilotLogin = await api<AuthResponse>('POST', '/api/auth/login', {
-      displayName: p.displayName, password: 'pilot123',
-    });
-    await step(`Register ${p.displayName}`, () =>
-      api('POST', `/api/races/${race.id}/entries`, undefined, pilotLogin.token)
-    );
-  }
-
-  const entries = await api<RaceEntry[]>('GET', `/api/races/${race.id}/entries`, undefined, jwt);
-  for (const e of entries.filter(e => e.status === 'PENDING')) {
-    await step(`Validate ${e.pilot?.displayName}`, () =>
-      api('PATCH', `/api/races/${race.id}/entries/${e.id}/validate`, undefined, jwt)
+  const pilotSubset = allPilots.slice(0, 6);
+  for (const p of pilotSubset) {
+    await step(`Add ${p.displayName}`, () =>
+      api('POST', `/api/races/${race.id}/entries/admin`, { pilotId: p.id }, jwt)
     );
   }
 
@@ -111,11 +121,11 @@ async function simulate(): Promise<void> {
   );
 
   // 6. Countdown + Start
-  log('6. Countdown + Start');
-  await step('Countdown 5s', () =>
-    api('POST', `/api/race-events/races/${race.id}/countdown`, { seconds: 5 }, jwt)
+  log(`6. Countdown (${COUNTDOWN}s) + Start`);
+  await step(`Countdown ${COUNTDOWN}s`, () =>
+    api('POST', `/api/race-events/races/${race.id}/countdown`, { seconds: COUNTDOWN }, jwt)
   );
-  if (INTERACTIVE) await sleep(3000);
+  if (INTERACTIVE) await sleep(Math.min(COUNTDOWN * 1000, 3000));
   await step('Countdown stop', () =>
     api('POST', `/api/race-events/races/${race.id}/countdown-stop`, undefined, jwt)
   );
@@ -123,17 +133,18 @@ async function simulate(): Promise<void> {
 
   // 7. Simulate laps
   log('7. Lap simulation');
-  const LAP_COUNT = 3;
+  const LAP_COUNT = race.lapCount;
   const pilotIds = validatedEntries.map(e => e.pilotId);
 
-  const paces = [8000, 8400, 8800, 9200, 9600, 10000];
-  const nextLapTime = pilotIds.map((_, i) => paces[i]);
+  const basePace = 8000;
+  const paces = pilotIds.map((_, i) => basePace + i * 400);
+  const nextLapTime = [...paces];
   const lapsDone: number[] & { _paused?: boolean; _dnfDone?: boolean } = new Array(pilotIds.length).fill(0);
-  const dnfPilot = pilotIds[4];
+  const dnfPilot = pilotIds.length >= 5 ? pilotIds[4] : null;
 
   const simStart = Date.now();
 
-  for (let tick = 0; tick < 200; tick++) {
+  for (let tick = 0; tick < 500; tick++) {
     const elapsed = Date.now() - simStart;
     let allDone = true;
 
@@ -144,7 +155,7 @@ async function simulate(): Promise<void> {
 
       if (elapsed >= nextLapTime[i]) {
         if (pid === dnfPilot && lapsDone[i] === 1 && !lapsDone._dnfDone) {
-          await step(`DNF ${validatedEntries[i].pilot?.displayName}`, () =>
+          await step(`DNF ${validatedEntries[i].pilot?.displayName ?? pid}`, () =>
             api('POST', `/api/race-events/races/${race.id}/manual-dnf`, { pilotId: pid }, jwt)
           );
           lapsDone._dnfDone = true;
@@ -155,9 +166,7 @@ async function simulate(): Promise<void> {
         lapsDone[i]++;
         const name = validatedEntries[i].pilot?.displayName ?? pid;
         await step(`Lap ${lapsDone[i]}/${LAP_COUNT} → ${name}`, () =>
-          api('POST', `/api/race-events/races/${race.id}/manual-lap`, {
-            pilotId: pid, delta: 1,
-          }, jwt)
+          api('POST', `/api/race-events/races/${race.id}/manual-lap`, { pilotId: pid, delta: 1 }, jwt)
         );
         nextLapTime[i] += paces[i] + Math.floor(Math.random() * 500 - 250);
       }
@@ -165,9 +174,9 @@ async function simulate(): Promise<void> {
 
     if (allDone) break;
 
-    if (lapsDone[0] === 2 && !lapsDone._paused) {
+    if (lapsDone[0] >= 2 && !lapsDone._paused) {
       lapsDone._paused = true;
-      log('   [2-second pause]');
+      log('   [brief pause]');
       await step('Pause race', () => api('POST', `/api/races/${race.id}/pause`, undefined, jwt));
       await sleep(INTERACTIVE ? 3000 : 500);
       await step('Resume race', () => api('POST', `/api/races/${race.id}/resume`, undefined, jwt));
