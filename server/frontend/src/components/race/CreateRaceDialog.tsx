@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { mutate } from 'swr';
+import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
@@ -29,7 +30,7 @@ export default function CreateRaceDialog({ open, onClose, onCreated }: Props) {
   const [weather, setWeather] = useState('Clear');
   const [startType, setStartType] = useState('Grid Start');
   const [sessionMode, setSessionMode] = useState<'laps' | 'timed'>('laps');
-  const [lapCount, setLapCount] = useState('5');
+  const [lapCount, setLapCount] = useState('3');
   const [durationMin, setDurationMin] = useState('30');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -37,7 +38,7 @@ export default function CreateRaceDialog({ open, onClose, onCreated }: Props) {
   function reset() {
     setName(''); setTrackingMode('manual');
     setSession('Race'); setWeather('Clear'); setStartType('Grid Start');
-    setSessionMode('laps'); setLapCount('5'); setDurationMin('30');
+    setSessionMode('laps'); setLapCount('3'); setDurationMin('30');
     setError('');
   }
 
@@ -125,7 +126,7 @@ export default function CreateRaceDialog({ open, onClose, onCreated }: Props) {
 
           {error && (
             <Grid size={12}>
-              <TextField value={error} size="small" fullWidth disabled error sx={{ '& input': { color: 'error.main' } }} />
+              <Alert severity="error">{error}</Alert>
             </Grid>
           )}
         </Grid>

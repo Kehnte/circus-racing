@@ -16,10 +16,12 @@ interface RaceStore {
   ocrStatusMap: OcrStatusMap;
   ocrHealthMap: OcrHealthMap;
   rejectionHistory: RejectionHistoryMap;
+  entryCancelledPilot: string | null;
   setRaceState: (s: RaceStatePayload | null) => void;
   setActiveRaceId: (id: string | null) => void;
   setOcrStatusMap: (m: OcrStatusMap) => void;
   setOcrHealthMap: (m: OcrHealthMap) => void;
+  setEntryCancelledPilot: (name: string | null) => void;
 }
 
 export const useRaceStore = create<RaceStore>((set, get) => ({
@@ -28,9 +30,11 @@ export const useRaceStore = create<RaceStore>((set, get) => ({
   ocrStatusMap: {},
   ocrHealthMap: {},
   rejectionHistory: {},
+  entryCancelledPilot: null,
   setRaceState: (s) => set({ raceState: s }),
   setActiveRaceId: (id) => set({ activeRaceId: id, ...(id === null ? { raceState: null } : {}) }),
   setOcrStatusMap: (m) => set({ ocrStatusMap: m }),
+  setEntryCancelledPilot: (name) => set({ entryCancelledPilot: name }),
   setOcrHealthMap: (m) => {
     const now = Date.now();
     const prev = get().rejectionHistory;

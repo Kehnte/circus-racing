@@ -4,8 +4,8 @@ import { z } from "zod";
 // Auth
 
 export const registerSchema = z.object({
-  displayName: z.string().min(2).max(50),
-  password:    z.string().min(6),
+  displayName: z.string().min(2, 'Name must be at least 2 characters').max(50, 'Name must be at most 50 characters'),
+  password:    z.string().min(6, 'Password must be at least 6 characters'),
   country:     z.string().length(2).optional(),
   avatarUrl:   z.string().url().optional().nullable(),
   teamId:      z.string().uuid().optional().nullable(),
@@ -39,7 +39,7 @@ export const createRaceSchema = z.object({
   sessionMode:       sessionMode.optional(),
   sessionDurationMs: z.number().int().positive().optional().nullable(),
   teamDisplayMode:   z.enum(["color-bar", "acronym", "hidden"]).optional(),
-  chronoDisplayMode: z.enum(["leader", "gap", "best-lap", "last-lap"]).optional(),
+  chronoDisplayMode: z.enum(["leader", "gap", "best-lap", "last-lap", "hidden", "static"]).optional(),
   timingEnabled:     z.boolean().optional(),
   eventDuration:     z.number().int().min(1).optional(),
 });

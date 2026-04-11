@@ -8,6 +8,13 @@
       "when": 1774618563928,
       "tag": "0000_sharp_the_leader",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1775900674007,
+      "tag": "0001_bright_absorbing_man",
+      "breakpoints": true
     }
   ]
 }

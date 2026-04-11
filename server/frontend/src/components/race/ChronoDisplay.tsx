@@ -44,9 +44,13 @@ export default function ChronoDisplay({ pilot, raceState }: Props) {
   const now = Date.now();
   const { chronoDisplayMode } = raceState;
 
+  if (chronoDisplayMode === 'hidden') return null;
+
   let display = '—';
 
-  if (chronoDisplayMode === 'best-lap') {
+  if (chronoDisplayMode === 'static') {
+    display = '--:--.---';
+  } else if (chronoDisplayMode === 'best-lap') {
     if (pilot.lapTimes.length > 0) {
       display = formatMs(Math.min(...pilot.lapTimes));
     }

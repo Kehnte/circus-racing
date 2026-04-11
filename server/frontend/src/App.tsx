@@ -5,6 +5,8 @@ import AppLayout from './components/AppLayout.tsx';
 import PublicLayout from './components/PublicLayout.tsx';
 import ProtectedRoute from './components/ProtectedRoute.tsx';
 import ModoRoute from './components/ModoRoute.tsx';
+import AdminRoute from './components/AdminRoute.tsx';
+import StandaloneLayout from './components/StandaloneLayout.tsx';
 import LoginPage from './pages/LoginPage.tsx';
 import RegisterPage from './pages/RegisterPage.tsx';
 import ProfilePage from './pages/ProfilePage.tsx';
@@ -22,6 +24,9 @@ import ControlsListPage from './pages/controls/ControlsListPage.tsx';
 import ControlCreatePage from './pages/controls/ControlCreatePage.tsx';
 import ControlEditPage from './pages/controls/ControlEditPage.tsx';
 import TelemetryPage from './pages/TelemetryPage.tsx';
+import AdminPage from './pages/AdminPage.tsx';
+import OpenRacesPage from './pages/OpenRacesPage.tsx';
+import DashboardGridPage from './pages/DashboardGridPage.tsx';
 
 const router = createBrowserRouter(
   [
@@ -35,6 +40,23 @@ const router = createBrowserRouter(
     {
       element: <ProtectedRoute />,
       children: [
+        {
+          element: <StandaloneLayout />,
+          children: [
+            { path: 'standalone/dashboard', element: <DashboardGridPage /> },
+            { path: 'standalone/races', element: <OpenRacesPage /> },
+            {
+              element: <ModoRoute />,
+              children: [
+                { path: 'standalone/pilots', element: <PilotsListPage /> },
+                { path: 'standalone/teams', element: <TeamsListPage /> },
+                { path: 'standalone/vehicles', element: <VehiclesListPage /> },
+                { path: 'standalone/controls', element: <ControlsListPage /> },
+                { path: 'standalone/telemetry', element: <TelemetryPage /> },
+              ],
+            },
+          ],
+        },
         {
           element: <AppLayout />,
           children: [
@@ -78,6 +100,12 @@ const router = createBrowserRouter(
               ],
             },
             { path: 'profile', element: <ProfilePage /> },
+            {
+              element: <AdminRoute />,
+              children: [
+                { path: 'admin', element: <AdminPage /> },
+              ],
+            },
           ],
         },
       ],

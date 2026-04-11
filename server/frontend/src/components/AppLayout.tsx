@@ -16,6 +16,7 @@ import MenuItem from '@mui/material/MenuItem';
 import Toolbar from '@mui/material/Toolbar';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
+import AdminPanelSettingsOutlined from '@mui/icons-material/AdminPanelSettingsOutlined';
 import CampaignOutlined from '@mui/icons-material/CampaignOutlined';
 import EmojiEventsOutlined from '@mui/icons-material/EmojiEventsOutlined';
 import GroupsOutlined from '@mui/icons-material/GroupsOutlined';
@@ -74,8 +75,16 @@ export default function AppLayout() {
   useRaceSocket();
   const { logout, displayName, role } = useAuth();
   const { data: me } = useSWR<Pilot>('/api/pilots/me', fetcher);
+  const isAdmin = role === 'ADMIN';
   const isPilot = role === 'PILOT';
-  const navSections = isPilot ? NAV_SECTIONS_PILOT : NAV_SECTIONS_MODO;
+  const adminSection: NavSection = {
+    label: 'Admin',
+    items: [{ label: 'Admin', path: '/admin', icon: <AdminPanelSettingsOutlined /> }],
+  };
+  const navSections: NavSection[] = [
+    ...(isPilot ? NAV_SECTIONS_PILOT : NAV_SECTIONS_MODO),
+    ...(isAdmin ? [adminSection] : []),
+  ];
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [open, setOpen] = useState(true);

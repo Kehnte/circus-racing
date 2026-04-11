@@ -8,7 +8,6 @@ import { NoRowsOverlay } from '../../components/DataGridOverlays.tsx';
 import type { GridActionsColDef, GridColDef, GridFilterModel, GridPaginationModel, GridRenderCellParams, GridRowParams, GridSortModel } from '@mui/x-data-grid';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import AddOutlined from '@mui/icons-material/AddOutlined';
 import DeleteOutlined from '@mui/icons-material/DeleteOutlined';
@@ -97,7 +96,7 @@ export default function CircuitsListPage() {
       headerName: 'Actions',
       minWidth: 120,
       getActions: (params: GridRowParams<Racetrack>) => [
-        <Tooltip title="Delete" placement="bottom"><GridActionsCellItem icon={<DeleteOutlined />} label="Delete" onClick={() => void handleDelete(params.row)} showInMenu={false} /></Tooltip>,
+        <GridActionsCellItem icon={<DeleteOutlined />} label="Delete" onClick={() => void handleDelete(params.row)} showInMenu={false} />,
       ],
     },
   ];

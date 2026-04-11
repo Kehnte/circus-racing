@@ -71,6 +71,10 @@ function computeChronoDisplay(pilot, raceState, leaderElapsedMs, now) {
     if (!raceState.startedAt || isDnf) return "";
     const elapsedMs = computePilotElapsed(pilot, raceState, now);
     switch (raceState.chronoDisplayMode) {
+        case "hidden":
+            return "";
+        case "static":
+            return "--:--.---";
         case "leader":
             return elapsedMs === leaderElapsedMs
                 ? lbFormatTime(elapsedMs)
@@ -599,6 +603,9 @@ function buildPage(pageSlice, teams, start, chronoDisplayMode, timingEnabled, to
             teamCellHTML = `<div class="team-acronym" style="color: ${teamColor}">${teamAcronym}</div>`;
         }
 
+        if (chronoExtraClass.includes("chrono-hidden")) rowEl.classList.add("chrono-hidden");
+        else rowEl.classList.remove("chrono-hidden");
+
         rowEl.innerHTML = `
             <div class="pilot-rank${rankClass}">${pilot.position}</div>
             ${teamCellHTML}
@@ -653,6 +660,8 @@ function updatePage(pageSlice, teams, start, chronoDisplayMode, timingEnabled, t
         const chronoEl = rowEl.querySelector(".pilot-chrono");
         chronoEl.className = `pilot-chrono${chronoExtraClass}`;
         chronoEl.textContent = chronoContent;
+        if (chronoExtraClass.includes("chrono-hidden")) rowEl.classList.add("chrono-hidden");
+        else rowEl.classList.remove("chrono-hidden");
 
         const teamColorEl = rowEl.querySelector(".team-color");
         if (teamColorEl) teamColorEl.style.backgroundColor = teamColor;
@@ -663,6 +672,9 @@ function updatePage(pageSlice, teams, start, chronoDisplayMode, timingEnabled, t
 
 // Builds the chrono cell content and extra CSS class for a given pilot and display mode
 function buildChronoCell(pilot, globalIndex, chronoDisplayMode, timingEnabled) {
+    if (chronoDisplayMode === "hidden") return { chronoContent: "", chronoExtraClass: " chrono-hidden" };
+    if (chronoDisplayMode === "static") return { chronoContent: "--:--.---", chronoExtraClass: "" };
+
     let chronoContent = "--:--.---";
     let chronoExtraClass = "";
     if (timingEnabled) {

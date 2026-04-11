@@ -296,6 +296,7 @@ router.patch("/:raceId/entries/:entryId/validate", ...requireModo, async (req, r
     }
   } catch { /* fire-and-forget */ }
 
+  emitDashboard("race-list-changed");
   res.json(updated);
 });
 
@@ -329,6 +330,11 @@ router.delete("/:raceId/entries/:entryId", requireAuth, async (req, res) => {
     }
   } catch { /* fire-and-forget */ }
 
+  // Notify dashboard when a pilot cancels their own registration (not a modo removal).
+  if (isOwner) {
+    emitDashboard("entry-cancelled", { displayName: user.displayName });
+  }
+  emitDashboard("race-list-changed");
   res.sendStatus(204);
 });
 

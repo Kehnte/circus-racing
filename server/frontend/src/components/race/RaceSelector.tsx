@@ -74,7 +74,7 @@ export default function RaceSelector() {
 
   return (
     <>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
         <FormControl size="small" sx={{ minWidth: 260 }}>
           <InputLabel shrink>Active race</InputLabel>
           <Select

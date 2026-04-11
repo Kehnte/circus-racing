@@ -58,6 +58,10 @@ function getChronoDisplay(
   const elapsedMs = getPilotElapsedMs(ctx, pilotId, now);
 
   switch (ctx.chronoDisplayMode) {
+    case "hidden":
+      return "";
+    case "static":
+      return "--:--.---";
     case "leader":
       return elapsedMs === leaderElapsedMs
         ? formatTime(elapsedMs)

@@ -42,6 +42,38 @@ function patchLiveContext(pilotId: string, patch: Partial<{
   return true;
 }
 
+export async function clearTeamSnapshots(teamId: string, isLastTeam: boolean): Promise<void> {
+  // pilot.teamId is already null (set null on delete) — query entries by snapshot id instead.
+  const entries = await db
+    .select({ entryId: raceEntry.id, pilotId: raceEntry.pilotId, teamSnapshot: raceEntry.teamSnapshot })
+    .from(raceEntry)
+    .innerJoin(race, eq(raceEntry.raceId, race.id))
+    .where(and(eq(raceEntry.status, "VALIDATED"), ne(race.status, "FINISHED")))
+    .all();
+
+  const toUpdate = entries.filter(
+    (e) => e.teamSnapshot && (e.teamSnapshot as Record<string, unknown>).id === teamId,
+  );
+
+  let ctxChanged = toUpdate.length > 0;
+  for (const entry of toUpdate) {
+    await db.update(raceEntry).set({ teamSnapshot: null }).where(eq(raceEntry.id, entry.entryId));
+    patchLiveContext(entry.pilotId, { teamSnapshot: null });
+  }
+
+  // If this was the last team, force hidden display mode immediately in the live context and DB.
+  if (isLastTeam) {
+    const ctx = getContext();
+    if (ctx && ctx.teamDisplayMode !== "hidden") {
+      ctx.teamDisplayMode = "hidden";
+      await db.update(race).set({ teamDisplayMode: "hidden" }).where(eq(race.id, ctx.raceId));
+      ctxChanged = true;
+    }
+  }
+
+  if (ctxChanged) broadcastRaceState(getContext()!);
+}
+
 export async function refreshTeamSnapshots(teamId: string): Promise<void> {
   const teamRow = await db.select().from(team).where(eq(team.id, teamId)).get();
   if (!teamRow) return;

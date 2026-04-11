@@ -36,6 +36,7 @@ body {
     grid-template-columns: 30px auto 30px;
     gap: 2px;
     width: fit-content;
+    max-width: 454px;
     position: absolute;
     top: 40px;
     left: 48px;
@@ -111,6 +112,9 @@ body {
 .circuit-name {
     font-weight: 800;
     font-size: 14px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 }
 
 .weather-icon {
@@ -293,6 +297,15 @@ body {
     font-size: 11px;
     font-weight: 500;
     letter-spacing: 0.05em;
+}
+
+.pilot-chrono.chrono-hidden {
+    display: none;
+}
+
+.pilot-row.chrono-hidden .pilot-infos {
+    width: auto;
+    flex: 1;
 }
 
 /* base icon cell, shared by both sides */

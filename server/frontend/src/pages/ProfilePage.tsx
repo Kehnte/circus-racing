@@ -1,9 +1,7 @@
 // ProfilePage — pilot profile: identity, race config, OCR token, open races enrollment.
 
-import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import useSWR from 'swr';
-import { DataGrid, GridActionsCellItem } from '@mui/x-data-grid';
-import type { GridActionsColDef, GridColDef, GridFilterModel, GridPaginationModel, GridRenderCellParams, GridRowParams, GridSortModel } from '@mui/x-data-grid';
 import Alert from '@mui/material/Alert';
 import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
@@ -22,27 +20,20 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import InputAdornment from '@mui/material/InputAdornment';
-import CancelOutlined from '@mui/icons-material/CancelOutlined';
 import ContentCopyOutlined from '@mui/icons-material/ContentCopyOutlined';
 import DownloadOutlined from '@mui/icons-material/DownloadOutlined';
-import HowToRegOutlined from '@mui/icons-material/HowToRegOutlined';
 import KeyOutlined from '@mui/icons-material/KeyOutlined';
-import LogoutOutlined from '@mui/icons-material/LogoutOutlined';
 import RefreshOutlined from '@mui/icons-material/RefreshOutlined';
 import VisibilityOutlined from '@mui/icons-material/VisibilityOutlined';
 import VisibilityOffOutlined from '@mui/icons-material/VisibilityOffOutlined';
 import { apiFetch, fetcher } from '../api.ts';
 import CountrySelect from '../components/CountrySelect.tsx';
 import PageContainer from '../components/PageContainer.tsx';
-import { NoRowsOverlay } from '../components/DataGridOverlays.tsx';
-import CrudToolbar from '../components/CrudToolbar.tsx';
+import OpenRacesGrid from '../components/OpenRacesGrid.tsx';
 import useNotifications from '../hooks/useNotifications/useNotifications.tsx';
 import type { Controls, Pilot, Team, Vehicle } from '../types.ts';
 
 const TOKEN_KEY = 'circus_token';
-
-interface OpenRace { id: string; name: string; lapCount: number; trackingMode: string; sessionMode: string; session: string; startType: string; status: string; }
-interface RaceEntry { id: string; status: 'PENDING' | 'VALIDATED'; }
 
 function roleChipColor(role: string): 'error' | 'warning' | 'default' {
   if (role === 'ADMIN') return 'error';
@@ -57,114 +48,6 @@ export default function ProfilePage() {
   const { data: teams }     = useSWR<Team[]>('/api/teams', fetcher);
   const { data: vehicles }  = useSWR<Vehicle[]>('/api/vehicles', fetcher);
   const { data: controls }  = useSWR<Controls[]>('/api/controls', fetcher);
-  const { data: openRaces } = useSWR<OpenRace[]>('/api/races?status=PENDING,SCHEDULED', fetcher);
-
-  const [entries, setEntries] = useState<Record<string, RaceEntry | null>>({});
-  const [acting, setActing] = useState<Record<string, boolean>>({});
-  const [racesPagination, setRacesPagination] = useState<GridPaginationModel>({ page: 0, pageSize: 25 });
-  const [racesSortModel, setRacesSortModel] = useState<GridSortModel>([]);
-  const [racesFilterModel, setRacesFilterModel] = useState<GridFilterModel>({ items: [] });
-
-  useEffect(() => {
-    if (!openRaces) return;
-    openRaces.forEach((race) => {
-      fetcher<RaceEntry>(`/api/races/${race.id}/entries/me`)
-        .catch(() => null)
-        .then((entry) => setEntries((prev) => ({ ...prev, [race.id]: entry })));
-    });
-  }, [openRaces]);
-
-  const handleRegister = useCallback(async (race: OpenRace) => {
-    setActing((prev) => ({ ...prev, [race.id]: true }));
-    try {
-      const entry = await apiFetch<RaceEntry>(`/api/races/${race.id}/entries`, { method: 'POST' });
-      setEntries((prev) => ({ ...prev, [race.id]: entry }));
-      notifications.show('Registered! Awaiting admin validation.', { severity: 'success' });
-    } catch (err) {
-      notifications.show((err as Error).message, { severity: 'error' });
-    } finally {
-      setActing((prev) => ({ ...prev, [race.id]: false }));
-    }
-  }, [notifications]);
-
-  const handleCancel = useCallback(async (race: OpenRace) => {
-    const entry = entries[race.id];
-    if (!entry) return;
-    setActing((prev) => ({ ...prev, [race.id]: true }));
-    try {
-      await apiFetch(`/api/races/${race.id}/entries/${entry.id}`, { method: 'DELETE' });
-      setEntries((prev) => ({ ...prev, [race.id]: null }));
-      notifications.show('Registration cancelled.', { severity: 'success' });
-    } catch (err) {
-      notifications.show((err as Error).message, { severity: 'error' });
-    } finally {
-      setActing((prev) => ({ ...prev, [race.id]: false }));
-    }
-  }, [entries, notifications]);
-
-  const openRaceColumns: (GridColDef<OpenRace> | GridActionsColDef<OpenRace>)[] = [
-    { field: 'name', headerName: 'Race', flex: 1, minWidth: 120 },
-    { field: 'session', headerName: 'Session', minWidth: 90 },
-    { field: 'startType', headerName: 'Start type', minWidth: 120 },
-    {
-      field: 'sessionMode',
-      headerName: 'Session mode',
-      minWidth: 120,
-      renderCell: (params: GridRenderCellParams<OpenRace, string>) => params.value === 'laps' ? 'Laps' : 'Timed',
-    },
-    {
-      field: 'trackingMode',
-      headerName: 'Tracking',
-      minWidth: 90,
-      renderCell: (params: GridRenderCellParams<OpenRace, string>) => params.value === 'auto' ? 'Auto' : 'Manual',
-    },
-    {
-      field: 'lapCount',
-      headerName: 'Laps',
-      minWidth: 90,
-      renderCell: (params: GridRenderCellParams<OpenRace, number>) => `${params.value} laps`,
-    },
-    {
-      field: 'entryStatus',
-      headerName: 'Registration',
-      minWidth: 120,
-      sortable: false,
-      renderCell: (params: GridRenderCellParams<OpenRace>) => {
-        const entry = entries[params.row.id];
-        if (entry?.status === 'PENDING') return <Chip label="Pending" size="small" />;
-        if (entry?.status === 'VALIDATED') return <Chip label="Validated" color="success" size="small" />;
-        if (!entry && params.row.status === 'PENDING') return <Chip label="Closed" size="small" color="error" />;
-        if (!entry && params.row.status === 'SCHEDULED') return <Chip label="Open" size="small" color="primary" />;
-        return null;
-      },
-    },
-    {
-      field: 'actions',
-      type: 'actions',
-      headerAlign: 'left',
-      align: 'left',
-      headerName: 'Actions',
-      minWidth: 90,
-      getActions: (params: GridRowParams<OpenRace>) => {
-        const entry = entries[params.row.id];
-        const busy = acting[params.row.id] ?? false;
-        if (entry === undefined) return [];
-        if (!entry) {
-          return [
-            <GridActionsCellItem icon={<HowToRegOutlined />} label="Register" disabled={busy || params.row.status !== 'SCHEDULED'} onClick={() => void handleRegister(params.row)} showInMenu={false} />,
-          ];
-        }
-        if (entry.status === 'VALIDATED') {
-          return [
-            <GridActionsCellItem icon={<LogoutOutlined />} label="Leave" disabled={busy} onClick={() => void handleCancel(params.row)} showInMenu={false} />,
-          ];
-        }
-        return [
-          <GridActionsCellItem icon={<CancelOutlined />} label="Cancel" disabled={busy} onClick={() => void handleCancel(params.row)} showInMenu={false} />,
-        ];
-      },
-    },
-  ];
 
   const [displayName, setDisplayName]       = useState('');
   const [country, setCountry]               = useState('un');
@@ -557,23 +440,7 @@ export default function ProfilePage() {
         {/* ── Open races ── */}
         <Grid size={{ xs: 12 }}>
           <Typography variant="subtitle2" sx={{ mb: 1 }}>Open races</Typography>
-          <DataGrid
-            rows={openRaces ?? []}
-            columns={openRaceColumns}
-            loading={!openRaces}
-            pageSizeOptions={[25, 50]}
-            paginationModel={racesPagination}
-            onPaginationModelChange={setRacesPagination}
-            sortModel={racesSortModel}
-            onSortModelChange={setRacesSortModel}
-            filterModel={racesFilterModel}
-            onFilterModelChange={setRacesFilterModel}
-            density="compact"
-            disableColumnResize
-            disableRowSelectionOnClick
-            slots={{ toolbar: CrudToolbar, noRowsOverlay: NoRowsOverlay }}
-            sx={{ flex: 1 }}
-          />
+          <OpenRacesGrid />
         </Grid>
 
       </Grid>

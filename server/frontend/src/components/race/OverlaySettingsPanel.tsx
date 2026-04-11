@@ -1,7 +1,7 @@
 // OverlaySettingsPanel — Collapsible Accordion for overlay display settings.
-// Controls team display, chrono mode, timing, event duration and countdown.
+// Controls team display, chrono mode, event duration and countdown. Settings are applied on save.
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { ChangeEvent } from 'react';
 import Accordion from '@mui/material/Accordion';
 import AccordionDetails from '@mui/material/AccordionDetails';
@@ -18,7 +18,8 @@ import Typography from '@mui/material/Typography';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import PlayArrowOutlined from '@mui/icons-material/PlayArrowOutlined';
 import StopOutlined from '@mui/icons-material/StopOutlined';
-import { apiFetch } from '../../api.ts';
+import useSWR from 'swr';
+import { apiFetch, fetcher } from '../../api.ts';
 import type { RaceStatePayload } from '../../types.ts';
 
 interface Props {
@@ -29,35 +30,51 @@ export default function OverlaySettingsPanel({ raceState }: Props) {
   const { raceId, status } = raceState;
   const canCountdown = status === 'PENDING' || status === 'SCHEDULED';
 
+  const { data: teams } = useSWR<{ id: string }[]>('/api/teams', fetcher);
+  const hasTeams = (teams?.length ?? 0) > 0;
+  const teamsLoaded = useRef(false);
+
+  // Buffered local state — only sent on Apply.
+  const [teamDisplayMode, setTeamDisplayMode] = useState(raceState.teamDisplayMode);
+  const [chronoDisplayMode, setChronoDisplayMode] = useState(raceState.chronoDisplayMode);
   const [eventDuration, setEventDuration] = useState(String(raceState.eventDuration));
+
   const [countdownSecs, setCountdownSecs] = useState('10');
   const [countdownRunning, setCountdownRunning] = useState(false);
 
+  // Sync when a different race is loaded.
   useEffect(() => {
+    setTeamDisplayMode(raceState.teamDisplayMode);
+    setChronoDisplayMode(raceState.chronoDisplayMode);
     setEventDuration(String(raceState.eventDuration));
   }, [raceId]);
+
+  // Auto-apply hidden team display when teams are deleted.
+  useEffect(() => {
+    if (teams === undefined) return; // still loading
+    if (!teamsLoaded.current) { teamsLoaded.current = true; return; }
+    if (!hasTeams) {
+      void apiFetch(`/api/races/${raceId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ teamDisplayMode: 'hidden' }),
+      });
+      setTeamDisplayMode('hidden');
+    }
+  }, [hasTeams]);
 
   useEffect(() => {
     if (status === 'STARTED' || status === 'PENDING') setCountdownRunning(false);
   }, [status]);
 
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  function immediatePatch(field: string, value: string | number | boolean) {
-    void apiFetch(`/api/races/${raceId}`, {
+  async function handleApply() {
+    await apiFetch(`/api/races/${raceId}`, {
       method: 'PATCH',
-      body: JSON.stringify({ [field]: value }),
+      body: JSON.stringify({
+        teamDisplayMode,
+        chronoDisplayMode,
+        eventDuration: Number(eventDuration),
+      }),
     });
-  }
-
-  function debouncedPatch(field: string, value: number) {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      void apiFetch(`/api/races/${raceId}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ [field]: value }),
-      });
-    }, 600);
   }
 
   async function toggleCountdown() {
@@ -81,12 +98,12 @@ export default function OverlaySettingsPanel({ raceState }: Props) {
 
       <AccordionDetails>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-          <FormControl size="small" sx={{ minWidth: 130 }}>
+          <FormControl size="small" sx={{ minWidth: 130 }} disabled={!hasTeams}>
             <InputLabel>Team display</InputLabel>
             <Select
-              value={raceState.teamDisplayMode}
+              value={hasTeams ? teamDisplayMode : 'hidden'}
               label="Team display"
-              onChange={(e) => immediatePatch('teamDisplayMode', e.target.value)}
+              onChange={(e) => setTeamDisplayMode(e.target.value as typeof teamDisplayMode)}
             >
               <MenuItem value="color-bar">Color bar</MenuItem>
               <MenuItem value="acronym">Acronym</MenuItem>
@@ -97,14 +114,16 @@ export default function OverlaySettingsPanel({ raceState }: Props) {
           <FormControl size="small" sx={{ minWidth: 120 }}>
             <InputLabel>Chrono</InputLabel>
             <Select
-              value={raceState.chronoDisplayMode}
+              value={chronoDisplayMode}
               label="Chrono"
-              onChange={(e) => immediatePatch('chronoDisplayMode', e.target.value)}
+              onChange={(e) => setChronoDisplayMode(e.target.value as typeof chronoDisplayMode)}
             >
               <MenuItem value="gap">Gap</MenuItem>
               <MenuItem value="leader">Leader</MenuItem>
               <MenuItem value="best-lap">Best lap</MenuItem>
               <MenuItem value="last-lap">Last lap</MenuItem>
+              <MenuItem value="static">Static</MenuItem>
+              <MenuItem value="hidden">Hidden</MenuItem>
             </Select>
           </FormControl>
 
@@ -115,20 +134,8 @@ export default function OverlaySettingsPanel({ raceState }: Props) {
             size="small"
             sx={{ width: 140 }}
             inputProps={{ min: 1 }}
-            onChange={(e) => {
-              setEventDuration(e.target.value);
-              debouncedPatch('eventDuration', Number(e.target.value));
-            }}
+            onChange={(e) => setEventDuration(e.target.value)}
           />
-
-          <Button
-            variant="outlined"
-            size="small"
-            color={raceState.timingEnabled ? 'primary' : 'error'}
-            onClick={() => immediatePatch('timingEnabled', !raceState.timingEnabled)}
-          >
-            timing {raceState.timingEnabled ? 'on' : 'off'}
-          </Button>
 
           <Divider orientation="vertical" flexItem />
 
@@ -153,6 +160,14 @@ export default function OverlaySettingsPanel({ raceState }: Props) {
             {countdownRunning ? 'stop' : 'start'}
           </Button>
         </Box>
+        <Divider sx={{ my: 1 }} />
+        <Button
+          size="small"
+          variant="contained"
+          onClick={() => void handleApply()}
+        >
+          apply
+        </Button>
       </AccordionDetails>
     </Accordion>
   );

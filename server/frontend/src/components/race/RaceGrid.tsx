@@ -65,7 +65,7 @@ function ocrTooltip(entry: OcrStatusMap[string] | undefined): string {
 }
 
 export default function RaceGrid({ raceState }: Props) {
-  const { raceId, pilots, trackingMode, status, teamDisplayMode, timingEnabled } = raceState;
+  const { raceId, pilots, trackingMode, status, teamDisplayMode, timingEnabled, chronoDisplayMode } = raceState;
   const ocrStatusMap = useRaceStore((s) => s.ocrStatusMap);
   const isManual = trackingMode === 'manual';
   const canAct = status === 'STARTED';
@@ -223,7 +223,7 @@ export default function RaceGrid({ raceState }: Props) {
         );
       },
     },
-    ...(timingEnabled
+    ...(timingEnabled && chronoDisplayMode !== 'hidden' && chronoDisplayMode !== 'static'
       ? [{
           field: 'chrono' as const,
           headerName: 'Chrono',
@@ -397,7 +397,6 @@ export default function RaceGrid({ raceState }: Props) {
       disableColumnResize
       disableRowSelectionOnClick
       getRowId={(row) => row.id}
-      density="compact"
       slots={{ toolbar: CrudToolbar, noRowsOverlay: NoRowsOverlay }}
       getRowClassName={(params) => (params.row as GridRow)._kind === 'pending' ? 'row-pending' : ''}
       sx={{

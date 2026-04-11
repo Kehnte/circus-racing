@@ -17,6 +17,29 @@ router.get("/", async (_req, res) => {
   res.json(vehicles);
 });
 
+/** POST /vehicles/bulk — admin/modo, creates multiple vehicles from a JSON array */
+router.post("/bulk", ...requireModo, async (req, res) => {
+  const items: Array<{ type: string; manufacturer?: string; model: string; img?: string }> = req.body;
+  if (!Array.isArray(items)) {
+    res.status(400).json({ error: "Body must be an array" });
+    return;
+  }
+  let created = 0;
+  const skipped: string[] = [];
+  for (const item of items) {
+    if (!item.type || !item.model) { skipped.push(item.model ?? "(missing model)"); continue; }
+    await db.insert(vehicle).values({
+      type: item.type,
+      manufacturer: item.manufacturer ?? null,
+      model: item.model,
+      img: item.img ?? null,
+    });
+    created++;
+  }
+  emitDashboard("data-changed", { resource: "vehicles" });
+  res.status(201).json({ created, skipped });
+});
+
 /** GET /vehicles/:id — public */
 router.get("/:id", async (req, res) => {
   const found = await db.select().from(vehicle).where(eq(vehicle.id, String(req.params.id))).get();
@@ -48,6 +71,13 @@ router.patch("/:id", ...requireModo, validate(updateVehicleSchema), async (req, 
   await refreshVehicleSnapshots(String(req.params.id));
   emitDashboard("data-changed", { resource: "vehicles" });
   res.json(updated);
+});
+
+/** DELETE /vehicles — admin/modo, deletes all vehicles */
+router.delete("/", ...requireModo, async (_req, res) => {
+  await db.delete(vehicle);
+  emitDashboard("data-changed", { resource: "vehicles" });
+  res.sendStatus(204);
 });
 
 /** DELETE /vehicles/:id — admin/modo */

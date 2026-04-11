@@ -1,6 +1,6 @@
 // TeamsListPage — DataGrid with URL-persisted state and delete via dialog.
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import useSWR from 'swr';
 import { DataGrid, GridActionsCellItem } from '@mui/x-data-grid';
@@ -8,14 +8,16 @@ import { NoRowsOverlay } from '../../components/DataGridOverlays.tsx';
 import type { GridActionsColDef, GridColDef, GridFilterModel, GridPaginationModel, GridRenderCellParams, GridRowParams, GridSortModel } from '@mui/x-data-grid';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import AddOutlined from '@mui/icons-material/AddOutlined';
 import DeleteOutlined from '@mui/icons-material/DeleteOutlined';
+import DeleteSweepOutlined from '@mui/icons-material/DeleteSweepOutlined';
 import EditOutlined from '@mui/icons-material/EditOutlined';
 import { apiFetch, fetcher } from '../../api.ts';
 import PageContainer from '../../components/PageContainer.tsx';
 import CrudToolbar from '../../components/CrudToolbar.tsx';
+import { useStandalone } from '../../context/StandaloneContext.tsx';
+import { useAuth } from '../../context/AuthContext.tsx';
 import useDialogs from '../../hooks/useDialogs/useDialogs.tsx';
 import useNotifications from '../../hooks/useNotifications/useNotifications.tsx';
 import type { Team } from '../../types.ts';
@@ -29,6 +31,9 @@ function syncParam(params: URLSearchParams, key: string, value: string | null): 
 
 export default function TeamsListPage() {
   const navigate = useNavigate();
+  const standalone = useStandalone();
+  const { role: authRole } = useAuth();
+  const isAdmin = authRole === 'ADMIN';
   const dialogs = useDialogs();
   const notifications = useNotifications();
   const { data, mutate } = useSWR<Team[]>('/api/teams', fetcher);
@@ -56,6 +61,41 @@ export default function TeamsListPage() {
   function handleFilterChange(model: GridFilterModel) {
     setFilterModel(model);
     setSearchParams(syncParam(searchParams, 'filter', model.items.length ? JSON.stringify(model) : null), { replace: true });
+  }
+
+  async function handleDeleteAll() {
+    const confirmed = await dialogs.confirm(
+      'Delete all teams? This cannot be undone.',
+      { title: 'Delete all teams', confirmLabel: 'delete all', confirmColor: 'error' }
+    );
+    if (!confirmed) return;
+    try {
+      await apiFetch('/api/teams', { method: 'DELETE' });
+      await mutate();
+      notifications.show('All teams deleted.', { severity: 'success', autoHideDuration: 3000 });
+    } catch (err) {
+      notifications.show(`Delete failed: ${(err as Error).message}`, { severity: 'error', autoHideDuration: 5000 });
+    }
+  }
+
+  const importFileRef = useRef<HTMLInputElement>(null);
+
+  async function handleImportJson() {
+    const file = importFileRef.current?.files?.[0];
+    if (!file) return;
+    importFileRef.current!.value = '';
+    try {
+      const json = JSON.parse(await file.text());
+      const result = await apiFetch<{ created: number; skipped: string[] }>('/api/teams/bulk', {
+        method: 'POST',
+        body: JSON.stringify(Array.isArray(json) ? json : [json]),
+      });
+      await mutate();
+      const msg = `Imported ${result.created} team(s)` + (result.skipped.length ? `, skipped: ${result.skipped.join(', ')}` : '');
+      notifications.show(msg, { severity: result.created > 0 ? 'success' : 'warning', autoHideDuration: 5000 });
+    } catch (err) {
+      notifications.show(`Import failed: ${(err as Error).message}`, { severity: 'error', autoHideDuration: 5000 });
+    }
   }
 
   async function handleDelete(team: Team) {
@@ -95,8 +135,8 @@ export default function TeamsListPage() {
       headerName: 'Actions',
       minWidth: 120,
       getActions: (params: GridRowParams<Team>) => [
-        <Tooltip title="Edit" placement="bottom"><GridActionsCellItem icon={<EditOutlined />} label="Edit" onClick={() => navigate(`/teams/${params.row.id}/edit`)} showInMenu={false} /></Tooltip>,
-        <Tooltip title="Delete" placement="bottom"><GridActionsCellItem icon={<DeleteOutlined />} label="Delete" onClick={() => void handleDelete(params.row)} showInMenu={false} /></Tooltip>,
+        <GridActionsCellItem icon={<EditOutlined />} label="Edit" onClick={() => navigate(`/teams/${params.row.id}/edit`)} showInMenu={false} />,
+        <GridActionsCellItem icon={<DeleteOutlined />} label="Delete" onClick={() => void handleDelete(params.row)} showInMenu={false} />,
       ],
     },
   ];
@@ -105,11 +145,25 @@ export default function TeamsListPage() {
     <PageContainer
       title="Teams"
       actions={
-        <Button variant="contained" size="small" startIcon={<AddOutlined />} onClick={() => navigate('/teams/new')}>
-          add team
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          {isAdmin && (
+            <Button variant="outlined" size="small" color="error" startIcon={<DeleteSweepOutlined />} onClick={() => void handleDeleteAll()}>
+              delete all
+            </Button>
+          )}
+          <Button variant="contained" size="small" startIcon={<AddOutlined />} onClick={() => navigate('/teams/new')}>
+            add team
+          </Button>
+        </Box>
       }
     >
+      <input
+        ref={importFileRef}
+        type="file"
+        accept=".json"
+        style={{ display: 'none' }}
+        onChange={() => void handleImportJson()}
+      />
       <DataGrid
         rows={data ?? []}
         columns={columns}
@@ -124,7 +178,9 @@ export default function TeamsListPage() {
         disableColumnResize
         disableRowSelectionOnClick
         slots={{ toolbar: CrudToolbar, noRowsOverlay: NoRowsOverlay }}
-        sx={{ flex: 1 }}
+        slotProps={{ toolbar: { onImportJson: () => importFileRef.current?.click() } }}
+        autoHeight={standalone}
+        sx={standalone ? {} : { flex: 1 }}
       />
     </PageContainer>
   );

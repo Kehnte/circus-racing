@@ -35,7 +35,6 @@ export default function RegisterPage() {
       void navigate('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');
-      setTimeout(() => setError(''), 3000);
     } finally {
       setLoading(false);
     }
@@ -69,7 +68,7 @@ export default function RegisterPage() {
         <TextField
           label="Display name"
           value={displayName}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setDisplayName(e.target.value)}
+          onChange={(e: ChangeEvent<HTMLInputElement>) => { setDisplayName(e.target.value); setError(''); }}
           autoComplete="username"
           required
           fullWidth
@@ -79,7 +78,7 @@ export default function RegisterPage() {
           label="Password"
           type={showPassword ? 'text' : 'password'}
           value={password}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+          onChange={(e: ChangeEvent<HTMLInputElement>) => { setPassword(e.target.value); setError(''); }}
           autoComplete="new-password"
           required
           fullWidth

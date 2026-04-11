@@ -1,0 +1,1 @@
+ALTER TABLE `pilot` ADD `tokenVersion` integer DEFAULT 0 NOT NULL;

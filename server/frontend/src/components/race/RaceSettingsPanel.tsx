@@ -1,5 +1,5 @@
 // RaceSettingsPanel — Collapsible Accordion with race settings, registration controls,
-// and circuit management (auto mode only).
+// and circuit management (auto mode only). Settings are buffered locally and applied on save.
 
 import { useState, useEffect, useRef } from 'react';
 import useSWR, { mutate } from 'swr';
@@ -34,69 +34,78 @@ interface Props {
   raceState: RaceStatePayload;
 }
 
+interface LocalSettings {
+  name: string;
+  session: string;
+  weather: string;
+  startType: string;
+  trackingMode: string;
+  sessionMode: string;
+  lapCount: string;
+  sessionDuration: string;
+}
+
+function initLocal(raceState: RaceStatePayload): LocalSettings {
+  return {
+    name: raceState.raceName,
+    session: raceState.session,
+    weather: raceState.weather,
+    startType: raceState.startType,
+    trackingMode: raceState.trackingMode,
+    sessionMode: raceState.sessionMode,
+    lapCount: String(raceState.lapCount),
+    sessionDuration: raceState.sessionDurationMs
+      ? String(Math.round(raceState.sessionDurationMs / 60000))
+      : '',
+  };
+}
+
 export default function RaceSettingsPanel({ raceState }: Props) {
-  const { raceId, status, trackingMode, racetrackId } = raceState;
+  const { raceId, status, racetrackId } = raceState;
   const isStarted = status === 'STARTED';
-  const isAuto = trackingMode === 'auto';
 
-  // Local controlled state for debounced text fields.
-  const [name, setName] = useState(raceState.raceName);
-  const [lapCount, setLapCount] = useState(String(raceState.lapCount));
-  const [sessionDuration, setSessionDuration] = useState(
-    raceState.sessionDurationMs ? String(Math.round(raceState.sessionDurationMs / 60000)) : ''
-  );
+  const [local, setLocal] = useState<LocalSettings>(() => initLocal(raceState));
 
-  // Sync local text state when a new race is loaded.
+  // Sync local state when a different race is loaded.
   useEffect(() => {
-    setName(raceState.raceName);
-    setLapCount(String(raceState.lapCount));
-    setSessionDuration(
-      raceState.sessionDurationMs ? String(Math.round(raceState.sessionDurationMs / 60000)) : ''
-    );
+    setLocal(initLocal(raceState));
   }, [raceId]);
 
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  function debouncedPatch(field: string, value: string | number) {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      void apiFetch(`/api/races/${raceId}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ [field]: value }),
-      });
-    }, 600);
+  function set(field: keyof LocalSettings, value: string) {
+    setLocal((prev) => ({ ...prev, [field]: value }));
   }
 
-  // Name patch also revalidates the race list so the selector dropdown updates.
-  function debouncedPatchName(value: string) {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(async () => {
-      await apiFetch(`/api/races/${raceId}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ name: value }),
-      });
-      void mutate('/api/races');
-    }, 600);
-  }
-
-  function immediatePatch(field: string, value: string | number | boolean | null) {
-    void apiFetch(`/api/races/${raceId}`, {
+  async function handleApply() {
+    const body: Record<string, unknown> = {
+      name: local.name,
+      session: local.session,
+      weather: local.weather,
+      startType: local.startType,
+      trackingMode: local.trackingMode,
+      sessionMode: local.sessionMode,
+      lapCount: Number(local.lapCount),
+    };
+    if (local.sessionMode === 'timed') {
+      body.sessionDurationMs = Number(local.sessionDuration) * 60000;
+    }
+    await apiFetch(`/api/races/${raceId}`, {
       method: 'PATCH',
-      body: JSON.stringify({ [field]: value }),
+      body: JSON.stringify(body),
     });
+    // Revalidate race list so the selector name updates.
+    void mutate('/api/races');
   }
 
-  // Circuit management (auto mode only)
+  // Circuit management (auto mode only) — remains immediate.
+  const isAuto = local.trackingMode === 'auto';
   const { data: racetracks } = useSWR<Racetrack[]>(isAuto ? '/api/racetracks' : null, fetcher);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Import dialog state
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importName, setImportName] = useState('');
 
-  // Inline rename state
   const [renaming, setRenaming] = useState(false);
   const [circuitName, setCircuitName] = useState('');
 
@@ -105,6 +114,13 @@ export default function RaceSettingsPanel({ raceState }: Props) {
     setCircuitName(track?.name ?? '');
     setRenaming(false);
   }, [racetrackId, racetracks]);
+
+  function immediatePatch(field: string, value: string | number | boolean | null) {
+    void apiFetch(`/api/races/${raceId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ [field]: value }),
+    });
+  }
 
   function handleFileChosen(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -184,10 +200,10 @@ export default function RaceSettingsPanel({ raceState }: Props) {
             <Grid size={12}>
               <TextField
                 label="Name"
-                value={name}
+                value={local.name}
                 size="small"
                 fullWidth
-                onChange={(e) => { setName(e.target.value); debouncedPatchName(e.target.value); }}
+                onChange={(e) => set('name', e.target.value)}
               />
             </Grid>
 
@@ -195,7 +211,7 @@ export default function RaceSettingsPanel({ raceState }: Props) {
             <Grid size={4}>
               <FormControl size="small" fullWidth>
                 <InputLabel>Session</InputLabel>
-                <Select value={raceState.session} label="Session" onChange={(e) => immediatePatch('session', e.target.value)}>
+                <Select value={local.session} label="Session" onChange={(e) => set('session', e.target.value)}>
                   {['Practice', 'Qualifying', 'Race', 'Endurance'].map((v) => (
                     <MenuItem key={v} value={v}>{v}</MenuItem>
                   ))}
@@ -205,7 +221,7 @@ export default function RaceSettingsPanel({ raceState }: Props) {
             <Grid size={4}>
               <FormControl size="small" fullWidth>
                 <InputLabel>Weather</InputLabel>
-                <Select value={raceState.weather} label="Weather" onChange={(e) => immediatePatch('weather', e.target.value)}>
+                <Select value={local.weather} label="Weather" onChange={(e) => set('weather', e.target.value)}>
                   {['Clear', 'Cloudy', 'Rain', 'Storm', 'Fog'].map((v) => (
                     <MenuItem key={v} value={v}>{v}</MenuItem>
                   ))}
@@ -215,7 +231,7 @@ export default function RaceSettingsPanel({ raceState }: Props) {
             <Grid size={4}>
               <FormControl size="small" fullWidth>
                 <InputLabel>Start type</InputLabel>
-                <Select value={raceState.startType} label="Start type" onChange={(e) => immediatePatch('startType', e.target.value)}>
+                <Select value={local.startType} label="Start type" onChange={(e) => set('startType', e.target.value)}>
                   {['Grid Start', 'Rolling Start'].map((v) => (
                     <MenuItem key={v} value={v}>{v}</MenuItem>
                   ))}
@@ -228,10 +244,10 @@ export default function RaceSettingsPanel({ raceState }: Props) {
               <FormControl size="small" fullWidth>
                 <InputLabel>Tracking</InputLabel>
                 <Select
-                  value={trackingMode}
+                  value={local.trackingMode}
                   label="Tracking"
                   disabled={isStarted}
-                  onChange={(e) => immediatePatch('trackingMode', e.target.value)}
+                  onChange={(e) => set('trackingMode', e.target.value)}
                 >
                   <MenuItem value="manual">Manual</MenuItem>
                   <MenuItem value="auto">Auto (OCR)</MenuItem>
@@ -243,24 +259,24 @@ export default function RaceSettingsPanel({ raceState }: Props) {
             <Grid size={4}>
               <FormControl size="small" fullWidth>
                 <InputLabel>Session mode</InputLabel>
-                <Select value={raceState.sessionMode} label="Session mode" onChange={(e) => immediatePatch('sessionMode', e.target.value)}>
+                <Select value={local.sessionMode} label="Session mode" onChange={(e) => set('sessionMode', e.target.value)}>
                   <MenuItem value="laps">Laps</MenuItem>
-                  <MenuItem value="time">Timed</MenuItem>
+                  <MenuItem value="timed">Timed</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
 
             {/* Lap count or duration (conditional) */}
-            {raceState.sessionMode === 'laps' ? (
+            {local.sessionMode === 'laps' ? (
               <Grid size={4}>
                 <TextField
                   label="Laps"
                   type="number"
-                  value={lapCount}
+                  value={local.lapCount}
                   size="small"
                   fullWidth
                   inputProps={{ min: 1 }}
-                  onChange={(e) => { setLapCount(e.target.value); debouncedPatch('lapCount', Number(e.target.value)); }}
+                  onChange={(e) => set('lapCount', e.target.value)}
                 />
               </Grid>
             ) : (
@@ -268,14 +284,11 @@ export default function RaceSettingsPanel({ raceState }: Props) {
                 <TextField
                   label="Duration (min)"
                   type="number"
-                  value={sessionDuration}
+                  value={local.sessionDuration}
                   size="small"
                   fullWidth
                   inputProps={{ min: 1 }}
-                  onChange={(e) => {
-                    setSessionDuration(e.target.value);
-                    debouncedPatch('sessionDurationMs', Number(e.target.value) * 60000);
-                  }}
+                  onChange={(e) => set('sessionDuration', e.target.value)}
                 />
               </Grid>
             )}
@@ -388,19 +401,29 @@ export default function RaceSettingsPanel({ raceState }: Props) {
 
           <Divider sx={{ my: 2 }} />
 
-          {/* Actions */}
-          <Button
-            size="small"
-            variant="contained"
-            color={status === 'SCHEDULED' ? 'error' : 'primary'}
-            disabled={status !== 'PENDING' && status !== 'SCHEDULED'}
-            onClick={() => void apiFetch(
-              `/api/races/${raceId}/${status === 'SCHEDULED' ? 'close' : 'open'}-registrations`,
-              { method: 'POST' }
-            )}
-          >
-            {status === 'SCHEDULED' ? 'close registrations' : 'open registrations'}
-          </Button>
+          {/* Apply settings + registration toggle */}
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+            <Button
+              size="small"
+              variant="contained"
+              onClick={() => void handleApply()}
+            >
+              apply
+            </Button>
+
+            <Button
+              size="small"
+              variant="outlined"
+              color={status === 'SCHEDULED' ? 'error' : 'primary'}
+              disabled={status !== 'PENDING' && status !== 'SCHEDULED'}
+              onClick={() => void apiFetch(
+                `/api/races/${raceId}/${status === 'SCHEDULED' ? 'close' : 'open'}-registrations`,
+                { method: 'POST' }
+              )}
+            >
+              {status === 'SCHEDULED' ? 'close registrations' : 'open registrations'}
+            </Button>
+          </Box>
         </AccordionDetails>
       </Accordion>
 

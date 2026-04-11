@@ -50,6 +50,7 @@ export const pilot = sqliteTable("pilot", {
   passwordHash: text().notNull(),
   role:         text().$type<PilotRole>().notNull().default("PILOT"),
   token:        text().notNull().unique(), // OCR auth token + lightweight session id
+  tokenVersion: integer().notNull().default(0), // bumped on admin password reset to invalidate JWTs
   country:      text().default("un"),      // ISO 2-letter code
   avatarUrl:    text(),
   teamId:       text().references(() => team.id, { onDelete: "set null" }),

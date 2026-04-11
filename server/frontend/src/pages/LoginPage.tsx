@@ -24,19 +24,25 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [notFound, setNotFound] = useState(false);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError('');
+    setNotFound(false);
     setLoading(true);
     try {
       await login(displayName, password);
       void navigate('/');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
-      // Auto-hide after 3s
-      setTimeout(() => setError(''), 3000);
+      const msg = err instanceof Error ? err.message : 'Login failed';
+      if (msg === 'Account not found') {
+        setNotFound(true);
+      } else {
+        setError(msg);
+        setTimeout(() => setError(''), 3000);
+      }
     } finally {
       setLoading(false);
     }
@@ -103,6 +109,13 @@ export default function LoginPage() {
 
         <Collapse in={!!error}>
           <Alert severity="error">{error}</Alert>
+        </Collapse>
+
+        <Collapse in={notFound}>
+          <Alert severity="info">
+            Account not found.{' '}
+            <Link component={RouterLink} to="/register">Sign up?</Link>
+          </Alert>
         </Collapse>
 
         <Button

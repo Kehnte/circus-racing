@@ -8,13 +8,13 @@ import { NoRowsOverlay } from '../../components/DataGridOverlays.tsx';
 import type { GridActionsColDef, GridColDef, GridFilterModel, GridPaginationModel, GridRenderCellParams, GridRowParams, GridSortModel } from '@mui/x-data-grid';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import Tooltip from '@mui/material/Tooltip';
 import AddOutlined from '@mui/icons-material/AddOutlined';
 import DeleteOutlined from '@mui/icons-material/DeleteOutlined';
 import EditOutlined from '@mui/icons-material/EditOutlined';
 import { apiFetch, fetcher } from '../../api.ts';
 import PageContainer from '../../components/PageContainer.tsx';
 import CrudToolbar from '../../components/CrudToolbar.tsx';
+import { useStandalone } from '../../context/StandaloneContext.tsx';
 import useDialogs from '../../hooks/useDialogs/useDialogs.tsx';
 import useNotifications from '../../hooks/useNotifications/useNotifications.tsx';
 import type { Controls } from '../../types.ts';
@@ -28,6 +28,7 @@ function syncParam(params: URLSearchParams, key: string, value: string | null): 
 
 export default function ControlsListPage() {
   const navigate = useNavigate();
+  const standalone = useStandalone();
   const dialogs = useDialogs();
   const notifications = useNotifications();
   const { data, mutate } = useSWR<Controls[]>('/api/controls', fetcher);
@@ -96,8 +97,8 @@ export default function ControlsListPage() {
       headerName: 'Actions',
       minWidth: 120,
       getActions: (params: GridRowParams<Controls>) => [
-        <Tooltip title="Edit" placement="bottom"><GridActionsCellItem icon={<EditOutlined />} label="Edit" onClick={() => navigate(`/controls/${params.row.id}/edit`)} showInMenu={false} /></Tooltip>,
-        <Tooltip title="Delete" placement="bottom"><GridActionsCellItem icon={<DeleteOutlined />} label="Delete" onClick={() => void handleDelete(params.row)} showInMenu={false} /></Tooltip>,
+        <GridActionsCellItem icon={<EditOutlined />} label="Edit" onClick={() => navigate(`/controls/${params.row.id}/edit`)} showInMenu={false} />,
+        <GridActionsCellItem icon={<DeleteOutlined />} label="Delete" onClick={() => void handleDelete(params.row)} showInMenu={false} />,
       ],
     },
   ];
@@ -125,7 +126,8 @@ export default function ControlsListPage() {
         disableColumnResize
         disableRowSelectionOnClick
         slots={{ toolbar: CrudToolbar, noRowsOverlay: NoRowsOverlay }}
-        sx={{ flex: 1 }}
+        autoHeight={standalone}
+        sx={standalone ? {} : { flex: 1 }}
       />
     </PageContainer>
   );

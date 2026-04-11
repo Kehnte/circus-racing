@@ -1,6 +1,6 @@
 // pilots.ts — Pilot CRUD routes, profile updates, and config file download.
 import { Router } from "express";
-import { eq } from "drizzle-orm";
+import { eq, ne, sql as drizzleSql } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import * as fs from "fs";
 import * as path from "path";
@@ -169,6 +169,38 @@ router.delete("/me/avatar", requireAuth, async (req, res) => {
   res.json(safePublic(updated));
 });
 
+/** POST /pilots/bulk — admin only, creates multiple pilots from a JSON array */
+router.post("/bulk", ...requireAdmin, async (req, res) => {
+  const items: Array<{ displayName: string; country?: string; role?: string }> = req.body;
+  if (!Array.isArray(items)) {
+    res.status(400).json({ error: "Body must be an array" });
+    return;
+  }
+  let created = 0;
+  const skipped: string[] = [];
+  for (const item of items) {
+    if (!item.displayName) { skipped.push("(missing displayName)"); continue; }
+    const exists = await db.select({ id: pilot.id }).from(pilot).where(eq(pilot.displayName, item.displayName)).get();
+    if (exists) { skipped.push(item.displayName); continue; }
+    const slug   = item.displayName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    const suffix = randomBytes(4).toString("hex");
+    const email  = `manual-${slug}-${suffix}@circus.local`;
+    const passwordHash = await hash(generatePassphrase(), 12);
+    const token  = randomBytes(32).toString("hex");
+    await db.insert(pilot).values({
+      displayName: item.displayName.trim(),
+      email,
+      passwordHash,
+      token,
+      role: (item.role as any) ?? "PILOT",
+      country: item.country ?? "un",
+    });
+    created++;
+  }
+  emitDashboard("data-changed", { resource: "pilots" });
+  res.status(201).json({ created, skipped });
+});
+
 /** GET /pilots/:id — admin/modo only */
 router.get("/:id", ...requireModo, async (req, res) => {
   const found = await db.select().from(pilot).where(eq(pilot.id, String(req.params.id))).get();
@@ -244,13 +276,24 @@ router.patch("/:id", ...requireModo, validate(updatePilotSchema), async (req, re
   res.json(safePublic(updated));
 });
 
-/** POST /pilots/:id/reset-password — admin only, generates and returns a temporary passphrase */
+/** POST /pilots/:id/reset-password — admin only, generates a passphrase and invalidates existing sessions */
 router.post("/:id/reset-password", ...requireAdmin, async (req, res) => {
   const passphrase = generatePassphrase();
   const passwordHash = await hash(passphrase, 12);
-  const updated = await db.update(pilot).set({ passwordHash }).where(eq(pilot.id, String(req.params.id))).returning({ id: pilot.id }).get();
+  const updated = await db.update(pilot)
+    .set({ passwordHash, tokenVersion: drizzleSql`${pilot.tokenVersion} + 1` })
+    .where(eq(pilot.id, String(req.params.id)))
+    .returning({ id: pilot.id })
+    .get();
   if (!updated) { res.status(404).json({ error: "Pilot not found" }); return; }
   res.json({ passphrase });
+});
+
+/** DELETE /pilots — admin only, deletes all pilots except the authenticated requester */
+router.delete("/", ...requireAdmin, async (req, res) => {
+  await db.delete(pilot).where(ne(pilot.id, req.user!.id));
+  emitDashboard("data-changed", { resource: "pilots" });
+  res.sendStatus(204);
 });
 
 /** DELETE /pilots/:id — admin only */

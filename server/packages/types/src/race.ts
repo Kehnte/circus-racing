@@ -4,7 +4,7 @@ export type RaceStatus = "PENDING" | "SCHEDULED" | "STARTED" | "PAUSED" | "FINIS
 export type TrackingMode = "manual" | "auto";
 export type SessionMode = "laps" | "timed";
 export type TeamDisplayMode = "color-bar" | "acronym" | "hidden";
-export type ChronoDisplayMode = "leader" | "gap" | "best-lap" | "last-lap";
+export type ChronoDisplayMode = "leader" | "gap" | "best-lap" | "last-lap" | "hidden" | "static";
 export type RaceEntryStatus = "PENDING" | "VALIDATED";
 
 export interface Race {

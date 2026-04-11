@@ -16,6 +16,7 @@ import pilotsRouter      from './src/api/pilots.js';
 import racesRouter       from './src/api/races.js';
 import ocrRouter         from './src/api/ocr.js';
 import raceEventsRouter  from './src/api/race-events.js';
+import adminRouter       from './src/api/admin.js';
 import { getContext }    from './src/engine/race-context.js';
 import { getOcrStatusMap } from './src/engine/ocr-tracker.js';
 
@@ -50,6 +51,7 @@ app.use('/api/pilots',       pilotsRouter);
 app.use('/api/races',        racesRouter);
 app.use('/api/ocr',          ocrRouter);
 app.use('/api/race-events',  raceEventsRouter);
+app.use('/api/admin',        adminRouter);
 
 // 500ms broadcast interval — keeps overlays in sync whenever a race is loaded
 setInterval(() => {

@@ -12,6 +12,7 @@ export function useRaceSocket() {
   const setRaceState = useRaceStore((s) => s.setRaceState);
   const setOcrStatusMap = useRaceStore((s) => s.setOcrStatusMap);
   const setOcrHealthMap = useRaceStore((s) => s.setOcrHealthMap);
+  const setEntryCancelledPilot = useRaceStore((s) => s.setEntryCancelledPilot);
 
   useEffect(() => {
     const socket = io(window.location.origin, {
@@ -35,11 +36,19 @@ export function useRaceSocket() {
     });
 
     socket.on('race-list-changed', () => {
-      void mutate('/api/races');
+      void mutate((key) => typeof key === 'string' && key.startsWith('/api/races'));
+    });
+
+    socket.on('data-changed', ({ resource }: { resource: string }) => {
+      void mutate(`/api/${resource}`);
+    });
+
+    socket.on('entry-cancelled', ({ displayName }: { displayName: string }) => {
+      setEntryCancelledPilot(displayName);
     });
 
     return () => {
       socket.disconnect();
     };
-  }, [setRaceState, setOcrStatusMap, setOcrHealthMap]);
+  }, [setRaceState, setOcrStatusMap, setOcrHealthMap, setEntryCancelledPilot]);
 }

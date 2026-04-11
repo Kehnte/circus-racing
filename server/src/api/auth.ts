@@ -47,7 +47,7 @@ router.post("/register", validate(registerSchema), async (req, res) => {
     controlsId: controlsId ?? null,
   }).returning();
 
-  const jwt = signToken({ id: created.id, role: created.role });
+  const jwt = signToken({ id: created.id, role: created.role, tokenVersion: created.tokenVersion });
 
   res.status(201).json({
     token: jwt,
@@ -65,17 +65,17 @@ router.post("/login", validate(loginSchema), async (req, res) => {
 
   const found = await db.select().from(pilot).where(eq(pilot.displayName, displayName)).get();
   if (!found) {
-    res.status(401).json({ error: "Invalid credentials" });
+    res.status(401).json({ error: "Account not found" });
     return;
   }
 
   const match = await bcrypt.compare(password, found.passwordHash);
   if (!match) {
-    res.status(401).json({ error: "Invalid credentials" });
+    res.status(401).json({ error: "Incorrect password" });
     return;
   }
 
-  const jwt = signToken({ id: found.id, role: found.role });
+  const jwt = signToken({ id: found.id, role: found.role, tokenVersion: found.tokenVersion });
 
   res.json({
     token: jwt,
