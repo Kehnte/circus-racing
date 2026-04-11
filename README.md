@@ -15,11 +15,9 @@ circus-racing/
 │   └── shared/              ← Shared assets
 ├── monitor/                 ← Windows OCR client (.exe) — reads Star Citizen coordinates
 ├── scripts/                 ← Seed, reset DB, race simulations
-├── docs/                    ← Specifications
 ├── .github/workflows/
 │   ├── server-docker.yml    ← Build & push Docker image on server/ changes
 │   └── monitor-release.yml  ← Build & publish .exe on monitor/ changes
-├── Dockerfile
 ├── docker-compose.yml
 └── .env.example
 ```
@@ -43,7 +41,7 @@ Server available at `http://localhost:1959`.
 ```bash
 cd server
 npm install
-npm run dev:ts
+npm run dev
 ```
 
 Other useful scripts:
@@ -67,7 +65,7 @@ npm run db:studio    # Open Drizzle Studio (DB browser)
 | Frontend | React, Vite, MUI (Material UI) |
 | Overlays | Lightweight HTML/CSS/JS (OBS browser source) |
 | OCR client | Python (PyInstaller → Windows .exe) |
-| CI/CD | GitHub Actions |
+| CI/CD | GitHub Actions → ghcr.io |
 
 ---
 
@@ -75,30 +73,32 @@ npm run db:studio    # Open Drizzle Studio (DB browser)
 
 ### First startup
 
-The database starts empty. Run the seed script to create test data (pilots, teams, races):
+The database starts empty. The **first account created becomes ADMIN** automatically (via the sign-up page or the seed script).
+
+To populate the DB with test data (pilots, teams, vehicles, racetracks, races):
 
 ```bash
 cd scripts
-node seed.js
+npx tsx seed.ts
 ```
 
-The script prints the `displayName` and password for every created pilot. The first pilot is `ADMIN`.
+The script prints the `displayName` and password for every created pilot.
 
-To start from scratch:
+To reset the database:
 
 ```bash
-node reset.js
+npx tsx reset.ts
 ```
 
 ### Roles
 
 | Role | Access |
 |------|--------|
-| `ADMIN` | Everything + user role management (promote/demote) |
-| `MODERATOR` | Everything except role management |
-| `PILOT` | Dashboard — profile, registrations, OCR config download |
+| `ADMIN` | Full access — roster management, race management, role assignment, DB reset |
+| `MODERATOR` | Race management, roster management — cannot manage roles or reset DB |
+| `PILOT` | Profile page, race registration, OCR token |
 
-Login uses `displayName` + `password` (no email). If a pilot loses their password, an admin or moderator resets it from the dashboard.
+Login uses `displayName` + `password`. If a pilot loses their password, an admin resets it from the Pilots list — this invalidates their current session and forces re-login.
 
 ---
 
@@ -106,28 +106,36 @@ Login uses `displayName` + `password` (no email). If a pilot loses their passwor
 
 | App | URL |
 |-----|-----|
-| Dashboard (admin + pilots) | `http://localhost:1959/dashboard/` |
+| Dashboard | `http://localhost:1959/dashboard/` |
 | Leaderboard overlay | `http://localhost:1959/overlays/leaderboard/` |
 | Race alert overlay | `http://localhost:1959/overlays/race-alert/` |
 | REST API | `http://localhost:1959/api/` |
 | Health check | `http://localhost:1959/health` |
 
+### Standalone pop-outs (OBS / second screen)
+
+| View | URL |
+|------|-----|
+| Race grid only | `http://localhost:1959/dashboard/standalone/dashboard` |
+| Telemetry | `http://localhost:1959/dashboard/standalone/telemetry` |
+| Open races | `http://localhost:1959/dashboard/standalone/races` |
+
 ---
 
 ## Usage — Typical workflow
 
-1. **Create entities** in the dashboard: teams, vehicles, controls, racetracks
-2. **Create a race**: name, tracking mode (MANUAL or AUTO), racetrack, session, weather, start type, session mode (laps or timed)
+1. **Create entities** in the dashboard: pilots, teams, vehicles, controls, racetracks
+2. **Create a race**: name, tracking mode (Manual or Auto/OCR), racetrack, session, weather, start type, session mode (laps or timed)
 3. **Open registrations** — the race moves to `SCHEDULED`
-4. **Pilots register** via the dashboard (`/dashboard/register`)
-5. **Validate registrations** in the dashboard, set grid order
+4. **Pilots register** from the Profile page
+5. **Validate registrations** in the dashboard, set grid positions
 6. **Add overlays in OBS**:
    - Leaderboard: `http://localhost:1959/overlays/leaderboard/`
    - Race alert: `http://localhost:1959/overlays/race-alert/`
-7. **Load the race** (`Load`) — pilots appear in the overlays
+7. **Load the race** — pilots appear in the overlays
 8. **Start countdown** then **Start race**
-9. In MANUAL mode: increment laps, adjust positions, mark DNFs
-10. In AUTO mode: pilot OCR monitors push positions, the engine computes everything automatically
+9. In **Manual** mode: increment laps, adjust positions, mark DNFs
+10. In **Auto** mode: pilot OCR monitors push positions automatically
 11. **Finish** — results are persisted, leaderboard is frozen
 
 ---
@@ -136,9 +144,9 @@ Login uses `displayName` + `password` (no email). If a pilot loses their passwor
 
 Pilots download the Windows `.exe` from [GitHub Releases](https://github.com/Kehnte/circus-racing/releases) and their pre-filled `config.cfg` from their profile page.
 
-The monitor reads player coordinates from Star Citizen and sends them to the server every ~2 seconds using a unique token (1 token = 1 pilot).
+The monitor reads player coordinates from Star Citizen and sends them to the server every ~2 seconds using a unique per-pilot token.
 
-See [`monitor/`](monitor/) for build instructions.
+See [`monitor/README.md`](monitor/README.md) for build instructions.
 
 ---
 
@@ -146,10 +154,12 @@ See [`monitor/`](monitor/) for build instructions.
 
 | Script | Description |
 |--------|-------------|
-| `scripts/seed.js` | Populate the DB with test data (teams, vehicles, controls, pilots, racetracks, races) |
-| `scripts/reset.js` | Reset the database |
-| `scripts/simulate-manual.js` | Simulate a race in MANUAL tracking mode |
-| `scripts/simulate-auto.js` | Simulate a race in AUTO tracking mode (checkpoint detection) |
+| `scripts/seed.ts` | Populate the DB with test data (teams, vehicles, controls, pilots, racetracks, races) |
+| `scripts/reset.ts` | Reset the database |
+| `scripts/simulate-manual.ts` | Simulate a race in Manual tracking mode |
+| `scripts/simulate-auto.ts` | Simulate a race in Auto tracking mode (checkpoint detection) |
+
+Run with `npx tsx <script>` from the `server/` directory.
 
 ---
 
@@ -157,16 +167,10 @@ See [`monitor/`](monitor/) for build instructions.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PORT` | `3000` | Server listen port |
-| `DATABASE_URL` | `file:./db/circus.db` | SQLite file path |
+| `PORT` | `1959` | Server listen port |
+| `DATABASE_URL` | `file:./db/circus.db` | SQLite file path (use `file:/app/db/circus.db` in Docker) |
 | `JWT_SECRET` | *(required)* | JWT signing key — generate with `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"` |
-| `DNF_BUFFER_RADIUS` | `500` | DNF geographic buffer radius (Star Citizen units) in AUTO mode. Can be overridden per racetrack. |
 | `OCR_POLL_MS` | `2000` | Interval between OCR monitor position pushes (ms) |
-| `SMTP_HOST` | — | SMTP server host (optional, for future email features) |
-| `SMTP_PORT` | — | SMTP server port |
-| `SMTP_USER` | — | SMTP username |
-| `SMTP_PASS` | — | SMTP password |
-| `SMTP_FROM` | — | Sender address for outgoing emails |
 
 ---
 
