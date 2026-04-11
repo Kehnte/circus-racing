@@ -43,7 +43,7 @@ jobs:
 
       - name: Build executable
         working-directory: monitor
-        run: python build.py
+        run: uv run python build.py
 
       - uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/monitor-v')
