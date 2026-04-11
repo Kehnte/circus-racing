@@ -17,6 +17,7 @@ import Toolbar from '@mui/material/Toolbar';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import AdminPanelSettingsOutlined from '@mui/icons-material/AdminPanelSettingsOutlined';
+import DocumentScannerOutlined from '@mui/icons-material/DocumentScannerOutlined';
 import CampaignOutlined from '@mui/icons-material/CampaignOutlined';
 import EmojiEventsOutlined from '@mui/icons-material/EmojiEventsOutlined';
 import GroupsOutlined from '@mui/icons-material/GroupsOutlined';
@@ -79,7 +80,10 @@ export default function AppLayout() {
   const isPilot = role === 'PILOT';
   const adminSection: NavSection = {
     label: 'Admin',
-    items: [{ label: 'Admin', path: '/admin', icon: <AdminPanelSettingsOutlined /> }],
+    items: [
+      { label: 'Admin', path: '/admin', icon: <AdminPanelSettingsOutlined /> },
+      { label: 'OCR Test', path: '/ocr-test', icon: <DocumentScannerOutlined /> },
+    ],
   };
   const navSections: NavSection[] = [
     ...(isPilot ? NAV_SECTIONS_PILOT : NAV_SECTIONS_MODO),

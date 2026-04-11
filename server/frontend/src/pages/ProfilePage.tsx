@@ -1,4 +1,4 @@
-// ProfilePage — pilot profile: identity, race config, OCR token, open races enrollment.
+// ProfilePage — pilot profile: identity, race config, OCR token, browser tracker, open races enrollment.
 
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import useSWR from 'swr';
@@ -7,6 +7,7 @@ import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
+import FiberManualRecordOutlined from '@mui/icons-material/FiberManualRecordOutlined';
 import CircularProgress from '@mui/material/CircularProgress';
 import Grid from '@mui/material/Grid';
 import IconButton from '@mui/material/IconButton';
@@ -21,8 +22,9 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import InputAdornment from '@mui/material/InputAdornment';
 import ContentCopyOutlined from '@mui/icons-material/ContentCopyOutlined';
-import DownloadOutlined from '@mui/icons-material/DownloadOutlined';
 import KeyOutlined from '@mui/icons-material/KeyOutlined';
+import RadioButtonCheckedOutlined from '@mui/icons-material/RadioButtonCheckedOutlined';
+import StopOutlined from '@mui/icons-material/StopOutlined';
 import RefreshOutlined from '@mui/icons-material/RefreshOutlined';
 import VisibilityOutlined from '@mui/icons-material/VisibilityOutlined';
 import VisibilityOffOutlined from '@mui/icons-material/VisibilityOffOutlined';
@@ -31,6 +33,7 @@ import CountrySelect from '../components/CountrySelect.tsx';
 import PageContainer from '../components/PageContainer.tsx';
 import OpenRacesGrid from '../components/OpenRacesGrid.tsx';
 import useNotifications from '../hooks/useNotifications/useNotifications.tsx';
+import useWebOCR from '../hooks/useWebOCR.ts';
 import type { Controls, Pilot, Team, Vehicle } from '../types.ts';
 
 const TOKEN_KEY = 'circus_token';
@@ -61,6 +64,8 @@ export default function ProfilePage() {
   const [controlsId, setControlsId] = useState('');
   const [locked, setLocked]         = useState(false);
   const [configSaving, setConfigSaving] = useState(false);
+
+  const ocr = useWebOCR(me?.token);
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword]         = useState('');
@@ -220,15 +225,6 @@ export default function ProfilePage() {
     }
   }
 
-  async function handleCopyServerUrl() {
-    try {
-      await copyToClipboard(window.location.origin);
-      notifications.show('Server URL copied to clipboard.', { severity: 'success', autoHideDuration: 2000 });
-    } catch {
-      notifications.show('Could not copy — select and copy manually.', { severity: 'error' });
-    }
-  }
-
   if (meError) return <Alert severity="error">Failed to load profile.</Alert>;
   if (!me) return <Box sx={{ display: 'flex', justifyContent: 'center', pt: 8 }}><CircularProgress /></Box>;
 
@@ -299,23 +295,53 @@ export default function ProfilePage() {
               </Button>
             </Paper>
 
-            {/* Setup Monitor card */}
+            {/* Browser Tracker card */}
             <Paper elevation={0} sx={{ p: 2 }}>
-              <Typography variant="subtitle2" sx={{ mb: 2 }}>Setup Monitor</Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-                Paste these values in the Monitor settings.
-              </Typography>
-              <Stack spacing={1}>
-                <Paper variant="outlined" sx={{ p: 1.5, display: 'flex', alignItems: 'center', gap: 1, fontSize: 12, wordBreak: 'break-all' }}>
-                  <Box sx={{ flex: 1, color: 'text.secondary' }}>{window.location.origin}</Box>
-                  <IconButton size="small" onClick={() => void handleCopyServerUrl()} title="Copy server URL">
-                    <ContentCopyOutlined fontSize="small" />
-                  </IconButton>
-                </Paper>
-                <Button variant="contained" size="small" startIcon={<DownloadOutlined />} onClick={() => window.open('https://github.com/Kehnte/circus-racing/releases/latest', '_blank')} fullWidth>
-                  Download Monitor (.exe)
-                </Button>
+              <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
+                <Typography variant="subtitle2">Browser Tracker</Typography>
+                <Chip
+                  size="small"
+                  icon={<FiberManualRecordOutlined sx={{ fontSize: '10px !important' }} />}
+                  label={ocr.status === 'capturing' ? 'capturing' : ocr.status === 'initializing' ? 'initializing' : ocr.status === 'error' ? 'error' : 'idle'}
+                  color={ocr.status === 'capturing' ? 'success' : ocr.status === 'initializing' ? 'warning' : ocr.status === 'error' ? 'error' : 'default'}
+                />
               </Stack>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                Capture your Star Citizen screen directly from the browser. No external client needed.
+              </Typography>
+              {ocr.error && <Alert severity="error" sx={{ mb: 1.5 }}>{ocr.error}</Alert>}
+              {ocr.lastPreviewUrl && (
+                <Box sx={{ mb: 1 }}>
+                  <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>Last processed frame:</Typography>
+                  <Box component="img" src={ocr.lastPreviewUrl} sx={{ display: 'block', width: '100%', border: '1px solid', borderColor: 'divider' }} />
+                </Box>
+              )}
+              {ocr.lastRawText && (
+                <Paper variant="outlined" sx={{ p: 1, fontFamily: 'monospace', fontSize: 11, wordBreak: 'break-all', mb: 1 }}>
+                  {ocr.lastRawText}
+                </Paper>
+              )}
+              {ocr.lastPosition && (
+                <Alert severity="success" sx={{ py: 0.5, mb: 1.5 }}>
+                  X: {ocr.lastPosition.x} &nbsp; Y: {ocr.lastPosition.y} &nbsp; Z: {ocr.lastPosition.z}
+                </Alert>
+              )}
+              {ocr.status === 'capturing' ? (
+                <Button variant="outlined" color="error" size="small" startIcon={<StopOutlined />} onClick={ocr.stop} fullWidth>
+                  stop
+                </Button>
+              ) : (
+                <Button
+                  variant="contained"
+                  size="small"
+                  startIcon={ocr.status === 'initializing' ? <CircularProgress size={14} color="inherit" /> : <RadioButtonCheckedOutlined />}
+                  onClick={() => void ocr.start()}
+                  disabled={ocr.status === 'initializing'}
+                  fullWidth
+                >
+                  {ocr.status === 'initializing' ? 'initializing…' : 'start tracker'}
+                </Button>
+              )}
             </Paper>
 
           </Stack>

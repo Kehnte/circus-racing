@@ -27,6 +27,7 @@ import TelemetryPage from './pages/TelemetryPage.tsx';
 import AdminPage from './pages/AdminPage.tsx';
 import OpenRacesPage from './pages/OpenRacesPage.tsx';
 import DashboardGridPage from './pages/DashboardGridPage.tsx';
+import OcrTestPage from './pages/OcrTestPage.tsx';
 
 const router = createBrowserRouter(
   [
@@ -104,6 +105,7 @@ const router = createBrowserRouter(
               element: <AdminRoute />,
               children: [
                 { path: 'admin', element: <AdminPage /> },
+                { path: 'ocr-test', element: <OcrTestPage /> },
               ],
             },
           ],
