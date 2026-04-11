@@ -194,6 +194,7 @@ body {
     grid-column: 2;
     display: flex;
     height: 30px;
+    min-width: 390px;
 }
 
 .pilot-rank,
@@ -244,7 +245,8 @@ body {
 
 /* 90% opacity on the three central content cells */
 .pilot-infos {
-    width: 155px;
+    width: 152px;
+    flex-grow: 1;
     flex-shrink: 0;
     overflow: hidden;
     display: flex;

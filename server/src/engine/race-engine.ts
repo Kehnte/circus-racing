@@ -1,7 +1,7 @@
 // race-engine.ts — AUTO mode race engine (checkpoint detection, lap counting).
 import { segmentCrossesGate, type Vec3 } from "./math.js";
 import {
-  getContext, setPilotState, removeFromActiveGrid,
+  getContext, setPilotState, removeFromActiveGrid, isTimerExpired,
   type RaceContext,
 } from "./race-context.js";
 import type { PilotState } from "../db/schema.js";
@@ -88,8 +88,9 @@ export function processPosition(
 
         state.lap += 1;
 
-        // Check finish condition (laps mode)
-        if (ctx.sessionMode === "laps" && state.lap > ctx.lapCount) {
+        // Check finish condition (laps mode, or timed mode when timer has expired)
+        const timedAndExpired = ctx.sessionMode === "timed" && isTimerExpired(ctx);
+        if ((ctx.sessionMode === "laps" && state.lap > ctx.lapCount) || timedAndExpired) {
           state.status = "FINISHED";
           state.frozenTime = nowIso;
           events.push({ type: "finished", pilotId });

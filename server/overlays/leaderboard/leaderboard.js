@@ -585,7 +585,8 @@ function buildPage(pageSlice, teams, start, chronoDisplayMode, timingEnabled, to
         const { chronoContent, chronoExtraClass } = buildChronoCell(pilot, globalIndex, chronoDisplayMode, timingEnabled);
 
         const leftEl = document.createElement("div");
-        if (pilot.id === fastestLapPilotId) {
+        const showFastestLap = chronoDisplayMode !== "hidden" && chronoDisplayMode !== "static" && pilot.id === fastestLapPilotId;
+        if (showFastestLap) {
             leftEl.className = "icon-cell status-fastest-lap";
             leftEl.innerHTML = RACE_ICONS["fastest-lap"];
         } else {
@@ -851,7 +852,8 @@ function updateLeaderboard(data) {
         if (pilot.finished) setFinishedIcon(pilot.id);
     });
 
-    const newFastest = timingEnabled ? (data.globalFastestLapPilotId ?? null) : null;
+    const fastestLapVisible = timingEnabled && chronoDisplayMode !== "hidden" && chronoDisplayMode !== "static";
+    const newFastest = fastestLapVisible ? (data.globalFastestLapPilotId ?? null) : null;
     if (newFastest !== fastestLapPilotId) {
         setFastestLapIcon(newFastest);
     }

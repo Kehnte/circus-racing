@@ -7,12 +7,12 @@ import { race, raceEntry, raceState, pilot, team, vehicle, controls } from "../d
 import { requireAuth } from "../middleware/auth.js";
 import { requireModo } from "../middleware/roles.js";
 import {
-  loadRace, getContext, clearContext, setPilotState, persistState, setGridOrder,
+  loadRace, getContext, clearContext, setPilotState, persistState,
 } from "../engine/race-context.js";
 import { clearCountdownTimer } from "../engine/race-lifecycle.js";
 import { emitAll, emitDashboard, broadcastRaceState } from "../socket/emitter.js";
 import { validate } from "../middleware/validate.js";
-import { createRaceSchema, updateRaceSchema, addEntryAdminSchema } from "../validation/schemas.js";
+import { createRaceSchema, updateRaceSchema, addEntryAdminSchema, addEntriesBatchAdminSchema } from "../validation/schemas.js";
 
 const router = Router();
 
@@ -245,6 +245,62 @@ router.post("/:id/entries/admin", ...requireModo, validate(addEntryAdminSchema),
   res.status(201).json(created);
 });
 
+/** POST /races/:id/entries/admin/batch — modo+ (add multiple pilots at once as VALIDATED) */
+router.post("/:id/entries/admin/batch", ...requireModo, validate(addEntriesBatchAdminSchema), async (req, res) => {
+  const raceId = String(req.params.id);
+  const { pilotIds } = req.body as { pilotIds: string[] };
+
+  const targetRace = await db.select().from(race).where(eq(race.id, raceId)).get();
+  if (!targetRace) { res.status(404).json({ error: "Race not found" }); return; }
+  if (targetRace.status === "FINISHED") {
+    res.status(409).json({ error: "Cannot add pilots to a finished race" }); return;
+  }
+
+  const existingEntries = await db
+    .select({ pilotId: raceEntry.pilotId, gridPosition: raceEntry.gridPosition })
+    .from(raceEntry)
+    .where(and(eq(raceEntry.raceId, raceId), eq(raceEntry.status, "VALIDATED")))
+    .all();
+
+  const alreadyIn = new Set(existingEntries.map((e) => e.pilotId));
+  const maxPos = existingEntries.reduce((m, e) => Math.max(m, e.gridPosition ?? 0), 0);
+
+  const toAdd = pilotIds.filter((id) => !alreadyIn.has(id));
+  if (toAdd.length === 0) { res.json({ added: 0, skipped: pilotIds.length }); return; }
+
+  const created = [];
+  let nextPos = maxPos;
+  for (const pilotId of toAdd) {
+    const p = await db.select().from(pilot).where(eq(pilot.id, pilotId)).get();
+    if (!p) continue;
+
+    const teamSnap     = p.teamId     ? await db.select().from(team).where(eq(team.id, p.teamId)).get()         : null;
+    const vehicleSnap  = p.vehicleId  ? await db.select().from(vehicle).where(eq(vehicle.id, p.vehicleId)).get() : null;
+    const controlsSnap = p.controlsId ? await db.select().from(controls).where(eq(controls.id, p.controlsId)).get() : null;
+
+    nextPos += 1;
+    const [entry] = await db.insert(raceEntry).values({
+      raceId,
+      pilotId,
+      status: "VALIDATED",
+      gridPosition: nextPos,
+      teamSnapshot:     teamSnap     ? { ...teamSnap }     : null,
+      vehicleSnapshot:  vehicleSnap  ? { ...vehicleSnap }  : null,
+      controlsSnapshot: controlsSnap ? { ...controlsSnap } : null,
+    }).returning();
+    created.push(entry);
+  }
+
+  try {
+    const ctx = getContext();
+    if (ctx?.raceId === raceId && (ctx.raceStatus === "PENDING" || ctx.raceStatus === "SCHEDULED")) {
+      broadcastRaceState(await loadRace(raceId));
+    }
+  } catch { /* fire-and-forget */ }
+
+  res.status(201).json({ added: created.length, skipped: pilotIds.length - toAdd.length });
+});
+
 // Entry status transitions
 
 /** PATCH /races/:raceId/entries/:entryId/validate — PENDING → VALIDATED */
@@ -391,10 +447,6 @@ router.post("/:id/load", ...requireModo, async (req, res) => {
   const raceId = String(req.params.id);
   const found = await db.select().from(race).where(eq(race.id, raceId)).get();
   if (!found) { res.status(404).json({ error: "Race not found" }); return; }
-  if (found.status === "FINISHED") {
-    res.status(409).json({ error: "Cannot load a finished race" }); return;
-  }
-
   try {
     const ctx = await loadRace(raceId);
     broadcastRaceState(ctx);

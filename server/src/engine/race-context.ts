@@ -327,6 +327,16 @@ export function toggleDnf(pilotId: string): void {
   }
 }
 
+// Returns true if the session timer has expired (timed mode only).
+export function isTimerExpired(ctx: RaceContext): boolean {
+  if (ctx.sessionMode !== "timed" || ctx.sessionDurationMs === null || !ctx.startedAt) return false;
+  const now = Date.now();
+  const pauseOffset = ctx.pausedAt
+    ? ctx.totalPausedMs + (now - new Date(ctx.pausedAt).getTime())
+    : ctx.totalPausedMs;
+  return now - new Date(ctx.startedAt).getTime() - pauseOffset >= ctx.sessionDurationMs;
+}
+
 // incrementLap — +1 or -1 lap for a pilot (manual mode)
 // Returns engine-like events (fastest-lap, finished, race-finished).
 
@@ -380,8 +390,9 @@ export function incrementLap(
       events.push({ type: "fastest-lap", pilotId, lapMs, lapFormatted: formatLapTime(lapMs) });
     }
 
-    // Check finish condition (laps mode)
-    if (_ctx.sessionMode === "laps" && newLap >= _ctx.lapCount) {
+    // Check finish condition (laps mode, or timed mode when timer has expired)
+    const timedAndExpired = _ctx.sessionMode === "timed" && isTimerExpired(_ctx);
+    if ((_ctx.sessionMode === "laps" && newLap >= _ctx.lapCount) || timedAndExpired) {
       setPilotState(pilotId, {
         lap: newLap,
         lapTimes: newLapTimes,

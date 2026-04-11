@@ -34,12 +34,10 @@ export default function AddPilotDialog({ open, raceState, onClose }: Props) {
 
   async function handleAdd() {
     setLoading(true);
-    for (const pilotId of selected) {
-      await apiFetch(`/api/races/${raceState.raceId}/entries/admin`, {
-        method: 'POST',
-        body: JSON.stringify({ pilotId }),
-      });
-    }
+    await apiFetch(`/api/races/${raceState.raceId}/entries/admin/batch`, {
+      method: 'POST',
+      body: JSON.stringify({ pilotIds: selected }),
+    });
     setLoading(false);
     setSelected([]);
     onClose();

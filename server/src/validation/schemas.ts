@@ -126,3 +126,7 @@ export const ocrPositionSchema = z.object({
 export const addEntryAdminSchema = z.object({
   pilotId: z.string().uuid(),
 });
+
+export const addEntriesBatchAdminSchema = z.object({
+  pilotIds: z.array(z.string().uuid()).min(1),
+});

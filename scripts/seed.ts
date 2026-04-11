@@ -70,7 +70,7 @@ interface PilotDef {
 
 // The FIRST registered pilot automatically becomes ADMIN (see auth.ts)
 const PILOTS: PilotDef[] = [
-  { displayName: 'Kehnte',      password: 'kehnteazerty', country: 'fr', teamIdx: 0, vehicleIdx: 0, controlsIdx: 0 },
+  { displayName: 'Admin',      password: 'admin', country: 'fr', teamIdx: 0, vehicleIdx: 0, controlsIdx: 0 },
   { displayName: 'Neoscris',    password: 'pilot123',     country: 'gb', teamIdx: 0, vehicleIdx: 0, controlsIdx: 0 },
   { displayName: 'Kainan',      password: 'pilot123',     country: 'de', teamIdx: 0, vehicleIdx: 1, controlsIdx: 1 },
   { displayName: 'Heizenberg',  password: 'pilot123',     country: 'gb', teamIdx: 1, vehicleIdx: 1, controlsIdx: 0 },
