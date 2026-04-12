@@ -28,9 +28,12 @@ import RocketLaunchOutlined from '@mui/icons-material/RocketLaunchOutlined';
 import SensorsOutlined from '@mui/icons-material/SensorsOutlined';
 import SpaceDashboardOutlined from '@mui/icons-material/SpaceDashboardOutlined';
 import TuneOutlined from '@mui/icons-material/TuneOutlined';
+import VideocamOutlined from '@mui/icons-material/VideocamOutlined';
+import TvOutlined from '@mui/icons-material/TvOutlined';
 import useSWR from 'swr';
 import { fetcher } from '../api.ts';
 import { useAuth } from '../context/AuthContext.tsx';
+import { useFeatures } from '../context/FeaturesContext.tsx';
 import { useRaceSocket } from '../hooks/useRaceSocket.ts';
 import type { Pilot } from '../types.ts';
 
@@ -74,15 +77,31 @@ const NAV_SECTIONS_PILOT: NavSection[] = [
 export default function AppLayout() {
   useRaceSocket();
   const { logout, displayName, role } = useAuth();
+  const features = useFeatures();
   const { data: me } = useSWR<Pilot>('/api/pilots/me', fetcher);
   const isAdmin = role === 'ADMIN';
   const isPilot = role === 'PILOT';
+  const isModo  = role === 'MODERATOR' || isAdmin;
+
+  const streamingItems: NavItem[] = features.streaming && isModo ? [
+    { label: 'Régie',  path: '/regie',  icon: <VideocamOutlined /> },
+    { label: 'Viewer', path: '/viewer', icon: <TvOutlined /> },
+  ] : [];
+
+  const modoRaceSection: NavSection = {
+    label: 'Race',
+    items: [
+      ...NAV_SECTIONS_MODO[0].items,
+      ...streamingItems,
+    ],
+  };
+
   const adminSection: NavSection = {
     label: 'Admin',
     items: [{ label: 'Admin', path: '/admin', icon: <AdminPanelSettingsOutlined /> }],
   };
   const navSections: NavSection[] = [
-    ...(isPilot ? NAV_SECTIONS_PILOT : NAV_SECTIONS_MODO),
+    ...(isPilot ? NAV_SECTIONS_PILOT : [modoRaceSection, NAV_SECTIONS_MODO[1]]),
     ...(isAdmin ? [adminSection] : []),
   ];
   const navigate = useNavigate();

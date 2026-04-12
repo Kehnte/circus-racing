@@ -6,6 +6,24 @@ services:
     env_file: .env
     volumes:
       - circus-db:/app/db
+    depends_on:
+      - mediamtx
+    restart: unless-stopped
+
+  # mediamtx — WebRTC/HLS media server for pilot POV streaming.
+  # Only started when the streaming profile is active:
+  #   docker compose --profile streaming up
+  # Set FEATURE_STREAMING=false in .env to disable streaming in the app.
+  mediamtx:
+    image: bluenviron/mediamtx:latest
+    profiles:
+      - streaming
+    ports:
+      - "8889:8889"   # WebRTC WHIP/WHEP
+      - "8080:8080"   # HLS
+      - "9997:9997"   # API REST (internal polling by circus-racing)
+    volumes:
+      - ./mediamtx.yml:/mediamtx.yml:ro
     restart: unless-stopped
 
 volumes:

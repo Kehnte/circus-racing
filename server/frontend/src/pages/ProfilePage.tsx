@@ -26,12 +26,20 @@ import KeyOutlined from '@mui/icons-material/KeyOutlined';
 import RefreshOutlined from '@mui/icons-material/RefreshOutlined';
 import VisibilityOutlined from '@mui/icons-material/VisibilityOutlined';
 import VisibilityOffOutlined from '@mui/icons-material/VisibilityOffOutlined';
+import FiberManualRecordOutlined from '@mui/icons-material/FiberManualRecordOutlined';
+import RadioButtonCheckedOutlined from '@mui/icons-material/RadioButtonCheckedOutlined';
+import StopOutlined from '@mui/icons-material/StopOutlined';
+import VideocamOutlined from '@mui/icons-material/VideocamOutlined';
 import { apiFetch, fetcher } from '../api.ts';
 import CountrySelect from '../components/CountrySelect.tsx';
 import PageContainer from '../components/PageContainer.tsx';
 import OpenRacesGrid from '../components/OpenRacesGrid.tsx';
 import useNotifications from '../hooks/useNotifications/useNotifications.tsx';
+import { useFeatures } from '../context/FeaturesContext.tsx';
+import { useWhipStream } from '../hooks/useWhipStream.ts';
 import type { Controls, Pilot, Team, Vehicle } from '../types.ts';
+
+interface StreamConfig { maxResolution: string; maxFps: number; }
 
 const TOKEN_KEY = 'circus_token';
 
@@ -43,6 +51,7 @@ function roleChipColor(role: string): 'error' | 'warning' | 'default' {
 
 export default function ProfilePage() {
   const notifications = useNotifications();
+  const features = useFeatures();
 
   const { data: me, mutate: mutateMe, error: meError } = useSWR<Pilot>('/api/pilots/me', fetcher);
   const { data: teams }     = useSWR<Team[]>('/api/teams', fetcher);
@@ -61,6 +70,9 @@ export default function ProfilePage() {
   const [controlsId, setControlsId] = useState('');
   const [locked, setLocked]         = useState(false);
   const [configSaving, setConfigSaving] = useState(false);
+
+  const { data: streamCfg } = useSWR<StreamConfig>(features.streaming ? '/api/streaming/config' : null, fetcher);
+  const whip = useWhipStream(streamCfg?.maxResolution, streamCfg?.maxFps);
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword]         = useState('');
@@ -317,6 +329,42 @@ export default function ProfilePage() {
                 </Button>
               </Stack>
             </Paper>
+
+            {/* Live stream card — only when STREAMING feature is enabled */}
+            {features.streaming && (
+              <Paper elevation={0} sx={{ p: 2 }}>
+                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
+                  <Typography variant="subtitle2">Live stream</Typography>
+                  <Chip
+                    size="small"
+                    icon={<FiberManualRecordOutlined sx={{ fontSize: '10px !important' }} />}
+                    label={whip.status === 'live' ? 'live' : whip.status === 'connecting' ? 'connecting' : whip.status === 'requesting' ? 'requesting' : whip.status === 'error' ? 'error' : 'idle'}
+                    color={whip.status === 'live' ? 'error' : whip.status === 'connecting' || whip.status === 'requesting' ? 'warning' : whip.status === 'error' ? 'error' : 'default'}
+                  />
+                </Stack>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                  Share your screen or a window as a POV feed. Quality: max {streamCfg?.maxResolution ?? '1080p'} · {streamCfg?.maxFps ?? 30} fps.
+                </Typography>
+                {whip.error && <Alert severity="error" sx={{ mb: 1.5 }}>{whip.error}</Alert>}
+                {whip.status === 'live' || whip.status === 'connecting' ? (
+                  <Button variant="outlined" color="error" size="small" startIcon={<StopOutlined />} onClick={whip.stop} fullWidth>
+                    stop
+                  </Button>
+                ) : (
+                  <Button
+                    variant="contained" size="small"
+                    startIcon={whip.status === 'requesting' || whip.status === 'connecting'
+                      ? <CircularProgress size={14} color="inherit" />
+                      : <VideocamOutlined />}
+                    onClick={() => void whip.start()}
+                    disabled={whip.status === 'requesting' || whip.status === 'connecting'}
+                    fullWidth
+                  >
+                    {whip.status === 'requesting' ? 'selecting screen…' : whip.status === 'connecting' ? 'connecting…' : 'share screen'}
+                  </Button>
+                )}
+              </Paper>
+            )}
 
           </Stack>
         </Grid>

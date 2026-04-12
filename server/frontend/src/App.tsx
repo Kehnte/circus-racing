@@ -27,6 +27,16 @@ import TelemetryPage from './pages/TelemetryPage.tsx';
 import AdminPage from './pages/AdminPage.tsx';
 import OpenRacesPage from './pages/OpenRacesPage.tsx';
 import DashboardGridPage from './pages/DashboardGridPage.tsx';
+import RegiePage from './pages/RegiePage.tsx';
+import ViewerPage from './pages/ViewerPage.tsx';
+import { Navigate } from 'react-router-dom';
+import { useFeatures } from './context/FeaturesContext.tsx';
+
+// Feature-gated route wrapper — redirects to / when the feature is disabled
+function StreamingRoute({ children }: { children: React.ReactNode }) {
+  const { streaming } = useFeatures();
+  return streaming ? <>{children}</> : <Navigate to="/" replace />;
+}
 
 const router = createBrowserRouter(
   [
@@ -100,6 +110,13 @@ const router = createBrowserRouter(
               ],
             },
             { path: 'profile', element: <ProfilePage /> },
+            { path: 'viewer', element: <StreamingRoute><ViewerPage /></StreamingRoute> },
+            {
+              element: <ModoRoute />,
+              children: [
+                { path: 'regie', element: <StreamingRoute><RegiePage /></StreamingRoute> },
+              ],
+            },
             {
               element: <AdminRoute />,
               children: [

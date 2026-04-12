@@ -6,7 +6,8 @@ import * as http from 'http';
 import { Server } from 'socket.io';
 import * as path from 'path';
 
-import { initEmitter, broadcastRaceState, emitDashboard } from './src/socket/emitter.js';
+import { initEmitter, broadcastRaceState, emitDashboard, emitAll } from './src/socket/emitter.js';
+import { FEATURES } from './src/utils/features.js';
 import authRouter        from './src/api/auth.js';
 import teamsRouter       from './src/api/teams.js';
 import vehiclesRouter    from './src/api/vehicles.js';
@@ -14,9 +15,11 @@ import controlsRouter    from './src/api/controls.js';
 import racetracksRouter  from './src/api/racetracks.js';
 import pilotsRouter      from './src/api/pilots.js';
 import racesRouter       from './src/api/races.js';
-import ocrRouter         from './src/api/ocr.js';
 import raceEventsRouter  from './src/api/race-events.js';
 import adminRouter       from './src/api/admin.js';
+import featuresRouter    from './src/api/features.js';
+import ocrRouter         from './src/api/ocr.js';
+import streamingRouter   from './src/api/streaming.js';
 import { getContext }    from './src/engine/race-context.js';
 import { getOcrStatusMap } from './src/engine/ocr-tracker.js';
 
@@ -49,9 +52,13 @@ app.use('/api/controls',     controlsRouter);
 app.use('/api/racetracks',   racetracksRouter);
 app.use('/api/pilots',       pilotsRouter);
 app.use('/api/races',        racesRouter);
-app.use('/api/ocr',          ocrRouter);
 app.use('/api/race-events',  raceEventsRouter);
 app.use('/api/admin',        adminRouter);
+app.use('/api/features',     featuresRouter);
+
+// Feature-gated routes — modules are imported but routes only registered when enabled
+if (FEATURES.OCR)       app.use('/api/ocr',       ocrRouter);
+if (FEATURES.STREAMING) app.use('/api/streaming',  streamingRouter);
 
 // 500ms broadcast interval — keeps overlays in sync whenever a race is loaded
 setInterval(() => {
@@ -61,12 +68,29 @@ setInterval(() => {
   } catch (err) { console.error('Broadcast error:', err); }
 }, 500);
 
-// 2s OCR status broadcast — dashboard shows which pilots have an active monitor
-setInterval(() => {
-  try {
-    emitDashboard('ocr-status', getOcrStatusMap());
-  } catch (err) { console.error('OCR status broadcast error:', err); }
-}, 2000);
+// 2s OCR status broadcast — only when OCR feature is enabled
+if (FEATURES.OCR) {
+  setInterval(() => {
+    try {
+      emitDashboard('ocr-status', getOcrStatusMap());
+    } catch (err) { console.error('OCR status broadcast error:', err); }
+  }, 2000);
+}
+
+// 5s stream-status broadcast — polls mediamtx API, only when STREAMING is enabled
+const MEDIAMTX_API = process.env.MEDIAMTX_API ?? 'http://localhost:9997';
+if (FEATURES.STREAMING) {
+  setInterval(() => {
+    fetch(`${MEDIAMTX_API}/v3/paths/list`)
+      .then((r) => r.ok ? r.json() : Promise.resolve({ items: [] }))
+      .then((data: unknown) => {
+        const typed = data as { items?: Array<{ name: string; ready: boolean }> };
+        const paths = (typed.items ?? []).filter((p) => p.ready).map((p) => p.name);
+        emitAll('stream-status', { paths });
+      })
+      .catch(() => { /* mediamtx not running — skip silently */ });
+  }, 5000);
+}
 
 // Health check — used by reset.js to wait for server readiness
 app.get('/health', (_req: Request, res: Response) => res.json({ ok: true }));

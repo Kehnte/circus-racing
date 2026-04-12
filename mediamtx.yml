@@ -1,0 +1,50 @@
+# mediamtx.yml — Circus Racing media server configuration.
+# Download mediamtx from https://github.com/bluenviron/mediamtx/releases and run: ./mediamtx mediamtx.yml
+
+# Logging
+logLevel: info
+logDestinations: [stdout]
+
+# API (path list, stream status)
+api: yes
+apiAddress: :9997
+
+# WebRTC — WHIP ingest + WHEP playback
+webrtc: yes
+webrtcAddress: :8889
+
+# HLS — playback for OBS browser sources and ViewerPage
+hls: yes
+hlsAddress: :8080
+hlsAllowOrigin: '*'
+hlsSegmentCount: 3
+hlsSegmentDuration: 1s
+hlsPartDuration: 200ms
+
+# RTMP — disabled (not needed)
+rtmp: no
+
+# SRT — disabled
+srt: no
+
+# RTSP — disabled
+rtsp: no
+
+# Authentication — none for LAN use; add credentials here for public deployments
+authMethod: noAuth
+
+# Path definitions
+# Pilot streams: /pilots/{uuid}  (published via WHIP from browser)
+# Camera streams: /cameras/{id}  (published via WHIP or RTMP from external encoder)
+paths:
+  pilots/~.*:
+    # Maximum ingest resolution enforced via SDP negotiation in the client
+    # No server-side bitrate cap here — quality is constrained client-side (max 1080p)
+    source: publisher
+
+  cameras/~.*:
+    source: publisher
+
+  # Catch-all for any other path
+  ~.*:
+    source: publisher
