@@ -26,17 +26,12 @@ import KeyOutlined from '@mui/icons-material/KeyOutlined';
 import RefreshOutlined from '@mui/icons-material/RefreshOutlined';
 import VisibilityOutlined from '@mui/icons-material/VisibilityOutlined';
 import VisibilityOffOutlined from '@mui/icons-material/VisibilityOffOutlined';
-import FiberManualRecordOutlined from '@mui/icons-material/FiberManualRecordOutlined';
-import StopOutlined from '@mui/icons-material/StopOutlined';
-import VideocamOutlined from '@mui/icons-material/VideocamOutlined';
 import OpenInNewOutlined from '@mui/icons-material/OpenInNewOutlined';
 import { apiFetch, fetcher } from '../api.ts';
 import CountrySelect from '../components/CountrySelect.tsx';
 import PageContainer from '../components/PageContainer.tsx';
 import OpenRacesGrid from '../components/OpenRacesGrid.tsx';
 import useNotifications from '../hooks/useNotifications/useNotifications.tsx';
-import { useFeatures } from '../context/FeaturesContext.tsx';
-import { useStream } from '../context/StreamContext.tsx';
 import type { Controls, Pilot, Team, Vehicle } from '../types.ts';
 
 
@@ -50,7 +45,6 @@ function roleChipColor(role: string): 'error' | 'warning' | 'default' {
 
 export default function ProfilePage() {
   const notifications = useNotifications();
-  const features = useFeatures();
 
   const { data: me, mutate: mutateMe, error: meError } = useSWR<Pilot>('/api/pilots/me', fetcher);
   const { data: teams }     = useSWR<Team[]>('/api/teams', fetcher);
@@ -69,10 +63,6 @@ export default function ProfilePage() {
   const [controlsId, setControlsId] = useState('');
   const [locked, setLocked]         = useState(false);
   const [configSaving, setConfigSaving] = useState(false);
-
-  const whip = useStream();
-  const [streamRes, setStreamRes] = useState(() => localStorage.getItem('stream_res') ?? '720p');
-  const [streamFps, setStreamFps] = useState(() => localStorage.getItem('stream_fps') ?? '30');
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword]         = useState('');
@@ -361,63 +351,6 @@ export default function ProfilePage() {
                 {broadcastLoading ? 'opening…' : 'open portal'}
               </Button>
             </Paper>
-
-            {/* Live stream card — only when STREAMING feature is enabled */}
-            {features.streaming && (
-              <Paper elevation={0} sx={{ p: 2 }}>
-                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2">Live stream</Typography>
-                  {(RTCRtpSender.getCapabilities?.('video')?.codecs ?? []).every((c) => c.mimeType.toLowerCase() !== 'video/h264') && (
-                    <Alert severity="warning" sx={{ py: 0, px: 1, fontSize: 11 }}>H.264 unavailable — use Chrome or Firefox</Alert>
-                  )}
-                  <Chip
-                    size="small"
-                    icon={<FiberManualRecordOutlined sx={{ fontSize: '10px !important' }} />}
-                    label={whip.status === 'live' ? 'live' : whip.status === 'connecting' ? 'connecting' : whip.status === 'requesting' ? 'requesting' : whip.status === 'error' ? 'error' : 'idle'}
-                    color={whip.status === 'live' ? 'error' : whip.status === 'connecting' || whip.status === 'requesting' ? 'warning' : whip.status === 'error' ? 'error' : 'default'}
-                  />
-                </Stack>
-                <Stack direction="row" spacing={1} sx={{ mb: 1.5 }}>
-                  <TextField
-                    select size="small" label="Resolution" value={streamRes}
-                    onChange={(e) => { setStreamRes(e.target.value); localStorage.setItem('stream_res', e.target.value); }}
-                    disabled={whip.status !== 'idle' && whip.status !== 'error'}
-                    sx={{ flex: 1 }}
-                  >
-                    {['360p', '480p', '720p', '1080p'].map((r) => (
-                      <MenuItem key={r} value={r}>{r}</MenuItem>
-                    ))}
-                  </TextField>
-                  <TextField
-                    select size="small" label="FPS" value={streamFps}
-                    onChange={(e) => { setStreamFps(e.target.value); localStorage.setItem('stream_fps', e.target.value); }}
-                    disabled={whip.status !== 'idle' && whip.status !== 'error'}
-                    sx={{ flex: 1 }}
-                  >
-                    <MenuItem value="30">30 fps</MenuItem>
-                    <MenuItem value="60">60 fps</MenuItem>
-                  </TextField>
-                </Stack>
-                {whip.error && <Alert severity="error" sx={{ mb: 1.5 }}>{whip.error}</Alert>}
-                {whip.status === 'live' || whip.status === 'connecting' ? (
-                  <Button variant="outlined" color="error" size="small" startIcon={<StopOutlined />} onClick={whip.stop} fullWidth>
-                    stop
-                  </Button>
-                ) : (
-                  <Button
-                    variant="contained" size="small"
-                    startIcon={whip.status === 'requesting'
-                      ? <CircularProgress size={14} color="inherit" />
-                      : <VideocamOutlined />}
-                    onClick={() => void whip.start(streamRes, Number(streamFps))}
-                    disabled={whip.status === 'requesting'}
-                    fullWidth
-                  >
-                    {whip.status === 'requesting' ? 'selecting screen…' : 'share screen'}
-                  </Button>
-                )}
-              </Paper>
-            )}
 
           </Stack>
         </Grid>
