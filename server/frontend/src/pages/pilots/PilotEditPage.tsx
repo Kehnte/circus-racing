@@ -23,6 +23,7 @@ import Typography from '@mui/material/Typography';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ContentCopyOutlined from '@mui/icons-material/ContentCopyOutlined';
 import LockResetOutlined from '@mui/icons-material/LockResetOutlined';
+import OpenInNewOutlined from '@mui/icons-material/OpenInNewOutlined';
 import { apiFetch, fetcher } from '../../api.ts';
 import CountrySelect from '../../components/CountrySelect.tsx';
 import PageContainer from '../../components/PageContainer.tsx';
@@ -43,6 +44,7 @@ export default function PilotEditPage() {
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
   const [generatedPassphrase, setGeneratedPassphrase] = useState<string | null>(null);
+  const [broadcastLoading, setBroadcastLoading] = useState(false);
 
   const { data: pilot, error } = useSWR<Pilot>(pilotId ? `/api/pilots/${pilotId}` : null, fetcher);
   const { data: teams } = useSWR<Team[]>('/api/teams', fetcher);
@@ -124,6 +126,18 @@ export default function PilotEditPage() {
     notifications.show('Passphrase copied.', { severity: 'success', autoHideDuration: 2000 });
   }
 
+  async function handleOpenBroadcastPortal() {
+    setBroadcastLoading(true);
+    try {
+      const data = await apiFetch(`/api/pilots/${pilotId}/broadcast-sso`) as { redirectUrl: string };
+      window.open(data.redirectUrl, '_blank', 'noopener');
+    } catch (err) {
+      notifications.show((err as Error).message, { severity: 'error', autoHideDuration: 5000 });
+    } finally {
+      setBroadcastLoading(false);
+    }
+  }
+
   function handleCloseResetDialog() {
     setResetDialogOpen(false);
     setGeneratedPassphrase(null);
@@ -187,6 +201,14 @@ export default function PilotEditPage() {
           <Stack direction="row" spacing={2}>
             <Button variant="outlined" color="warning" startIcon={<LockResetOutlined />} onClick={() => setResetDialogOpen(true)}>
               reset password
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={broadcastLoading ? <CircularProgress size={14} color="inherit" /> : <OpenInNewOutlined />}
+              onClick={() => void handleOpenBroadcastPortal()}
+              disabled={broadcastLoading}
+            >
+              broadcast portal
             </Button>
             <Button type="submit" variant="contained" size="large" disabled={submitting}>save</Button>
           </Stack>

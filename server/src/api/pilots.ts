@@ -15,6 +15,7 @@ import { refreshPilotEntrySnapshots } from "../engine/snapshot-refresh.js";
 import { validate } from "../middleware/validate.js";
 import { createPilotSchema, updatePilotSchema } from "../validation/schemas.js";
 import { WORDS } from "../utils/passphraseWords.js";
+import { syncPilot, deactivatePilot, notifyPasswordChanged, issueSsoToken } from "../services/broadcastService.js";
 
 function generatePassphrase(): string {
   const pick = () => WORDS[randomBytes(4).readUInt32BE() % WORDS.length];
@@ -56,23 +57,16 @@ function safePublic(p: typeof pilot.$inferSelect) {
   return safe;
 }
 
-// POST /pilots — admin only
-// Creates a pilot manually for dashboard manual mode.
-// Generates a placeholder email/password; the pilot can be merged with a real
-// self-registered account later via the admin "rebind" flow.
+// POST /pilots — admin only, creates a pilot manually for dashboard manual mode.
 router.post("/", ...requireAdmin, validate(createPilotSchema), async (req, res) => {
   const { displayName, country, avatarUrl, teamId, vehicleId, controlsId, role } = req.body;
 
-  const slug         = displayName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-  const suffix       = randomBytes(4).toString("hex");
-  const email        = `manual-${slug}-${suffix}@circus.local`;
   const password     = randomBytes(16).toString("hex");
   const passwordHash = await hash(password, 12);
   const token        = randomBytes(32).toString("hex");
 
   const [created] = await db.insert(pilot).values({
     displayName: displayName.trim(),
-    email,
     passwordHash,
     token,
     role: role ?? "PILOT",
@@ -83,11 +77,12 @@ router.post("/", ...requireAdmin, validate(createPilotSchema), async (req, res) 
     ...(controlsId ? { controlsId } : {}),
   }).returning();
 
+  void syncPilot(created);
   emitDashboard("data-changed", { resource: "pilots" });
   res.status(201).json(safePublic(created));
 });
 
-/** GET /pilots — admin/modo only (full list with emails) */
+/** GET /pilots — admin/modo only */
 router.get("/", ...requireModo, async (_req, res) => {
   const all = await db.select().from(pilot).all();
   res.json(all.map(safePublic));
@@ -178,27 +173,40 @@ router.post("/bulk", ...requireAdmin, async (req, res) => {
   }
   let created = 0;
   const skipped: string[] = [];
+  const createdPilots: typeof pilot.$inferSelect[] = [];
   for (const item of items) {
     if (!item.displayName) { skipped.push("(missing displayName)"); continue; }
     const exists = await db.select({ id: pilot.id }).from(pilot).where(eq(pilot.displayName, item.displayName)).get();
     if (exists) { skipped.push(item.displayName); continue; }
-    const slug   = item.displayName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-    const suffix = randomBytes(4).toString("hex");
-    const email  = `manual-${slug}-${suffix}@circus.local`;
     const passwordHash = await hash(generatePassphrase(), 12);
     const token  = randomBytes(32).toString("hex");
-    await db.insert(pilot).values({
+    const [inserted] = await db.insert(pilot).values({
       displayName: item.displayName.trim(),
-      email,
       passwordHash,
       token,
       role: (item.role as any) ?? "PILOT",
       country: item.country ?? "un",
-    });
+    }).returning();
+    createdPilots.push(inserted);
     created++;
   }
+  for (const p of createdPilots) void syncPilot(p);
   emitDashboard("data-changed", { resource: "pilots" });
   res.status(201).json({ created, skipped });
+});
+
+/** GET /pilots/:id/broadcast-sso — admin/modo only, issues a share-portal SSO token for the pilot */
+router.get("/:id/broadcast-sso", ...requireModo, async (req, res) => {
+  const found = await db.select({ id: pilot.id }).from(pilot).where(eq(pilot.id, String(req.params.id))).get();
+  if (!found) { res.status(404).json({ error: "Pilot not found" }); return; }
+
+  const result = await issueSsoToken(found.id);
+  if (!result) {
+    res.status(503).json({ error: "Share-portal unavailable or not configured" });
+    return;
+  }
+
+  res.json(result);
 });
 
 /** GET /pilots/:id — admin/modo only */
@@ -250,6 +258,7 @@ router.patch("/me", requireAuth, validate(updatePilotSchema), async (req, res) =
   const configChanged = LOCKABLE_FIELDS.some(f => patch[f] !== undefined)
     || patch.displayName !== undefined || patch.country !== undefined;
   if (configChanged) await refreshPilotEntrySnapshots(pilotId);
+  if (patch.displayName !== undefined) void syncPilot(updated);
   emitDashboard("data-changed", { resource: "pilots" });
   res.json(safePublic(updated));
 });
@@ -258,7 +267,7 @@ router.patch("/me", requireAuth, validate(updatePilotSchema), async (req, res) =
  * PATCH /pilots/:id — admin/modo edits any pilot's profile (no field locks)
  */
 router.patch("/:id", ...requireModo, validate(updatePilotSchema), async (req, res) => {
-  const allowed = [...ALWAYS_EDITABLE, ...LOCKABLE_FIELDS, "role", "email"] as const;
+  const allowed = [...ALWAYS_EDITABLE, ...LOCKABLE_FIELDS, "role"] as const;
   const patch: Record<string, unknown> = {};
   for (const field of allowed) {
     if (req.body[field] !== undefined) patch[field] = req.body[field];
@@ -272,6 +281,7 @@ router.patch("/:id", ...requireModo, validate(updatePilotSchema), async (req, re
   const configChanged = LOCKABLE_FIELDS.some(f => patch[f] !== undefined)
     || patch.displayName !== undefined || patch.country !== undefined;
   if (configChanged) await refreshPilotEntrySnapshots(String(req.params.id));
+  if (patch.displayName !== undefined) void syncPilot(updated);
   emitDashboard("data-changed", { resource: "pilots" });
   res.json(safePublic(updated));
 });
@@ -286,6 +296,7 @@ router.post("/:id/reset-password", ...requireAdmin, async (req, res) => {
     .returning({ id: pilot.id })
     .get();
   if (!updated) { res.status(404).json({ error: "Pilot not found" }); return; }
+  void notifyPasswordChanged(String(req.params.id));
   res.json({ passphrase });
 });
 
@@ -298,7 +309,9 @@ router.delete("/", ...requireAdmin, async (req, res) => {
 
 /** DELETE /pilots/:id — admin only */
 router.delete("/:id", ...requireAdmin, async (req, res) => {
-  await db.delete(pilot).where(eq(pilot.id, String(req.params.id)));
+  const pilotId = String(req.params.id);
+  void deactivatePilot(pilotId);
+  await db.delete(pilot).where(eq(pilot.id, pilotId));
   emitDashboard("data-changed", { resource: "pilots" });
   res.sendStatus(204);
 });

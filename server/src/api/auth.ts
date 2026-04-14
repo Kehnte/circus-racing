@@ -8,6 +8,7 @@ import { pilot } from "../db/schema.js";
 import { signToken, requireAuth } from "../middleware/auth.js";
 import { validate } from "../middleware/validate.js";
 import { registerSchema, loginSchema, changePasswordSchema } from "../validation/schemas.js";
+import { syncPilot, notifyPasswordChanged } from "../services/broadcastService.js";
 
 const router = Router();
 const SALT_ROUNDS = 12;
@@ -48,6 +49,7 @@ router.post("/register", validate(registerSchema), async (req, res) => {
   }).returning();
 
   const jwt = signToken({ id: created.id, role: created.role, tokenVersion: created.tokenVersion });
+  void syncPilot(created);
 
   res.status(201).json({
     token: jwt,
@@ -115,6 +117,7 @@ router.post("/change-password", validate(changePasswordSchema), ...([requireAuth
 
   const newHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
   await db.update(pilot).set({ passwordHash: newHash }).where(eq(pilot.id, req.user!.id));
+  void notifyPasswordChanged(req.user!.id);
 
   res.json({ ok: true });
 });

@@ -46,7 +46,6 @@ export const racetrack = sqliteTable("racetrack", {
 export const pilot = sqliteTable("pilot", {
   id:           text().primaryKey().$defaultFn(() => crypto.randomUUID()),
   displayName:  text().notNull().unique(),
-  email:        text().unique(),
   passwordHash: text().notNull(),
   role:         text().$type<PilotRole>().notNull().default("PILOT"),
   token:        text().notNull().unique(), // OCR auth token + lightweight session id
@@ -117,8 +116,24 @@ export const raceState = sqliteTable("race_state", {
   totalPausedMs: integer().notNull().default(0),
 });
 
+// Streaming settings (singleton, id = 1) — quality constraints for pilot streams
+export const streamSettings = sqliteTable("stream_settings", {
+  id:            integer().primaryKey().default(1),
+  maxResolution: text().notNull().default("1080p"), // "480p" | "720p" | "1080p"
+  maxFps:        integer().notNull().default(30),    // 30 | 60
+});
+
+// Director layout state (singleton, id = 1)
+export const directorState = sqliteTable("director_state", {
+  id:    integer().primaryKey().default(1),
+  mode:  text().notNull().default("single"), // "single" | "side-by-side" | "quad" | "pip"
+  slots: text({ mode: "json" }).$type<Array<{ type: "pilot" | "camera"; id: string } | null>>().notNull().default(sql`'[]'`),
+});
+
 // Inferred types
 
+export type StreamSettings = typeof streamSettings.$inferSelect;
+export type DirectorState  = typeof directorState.$inferSelect;
 export type Team       = typeof team.$inferSelect;
 export type Vehicle    = typeof vehicle.$inferSelect;
 export type Controls   = typeof controls.$inferSelect;

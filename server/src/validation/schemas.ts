@@ -60,7 +60,6 @@ export const createPilotSchema = z.object({
 
 export const updatePilotSchema = z.object({
   displayName: z.string().min(2).max(50).optional(),
-  email:       z.string().email().optional().nullable(),
   country:     z.string().length(2).optional(),
   avatarUrl:   z.string().url().optional().nullable(),
   teamId:      z.string().uuid().optional().nullable(),
