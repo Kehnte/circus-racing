@@ -25,6 +25,8 @@ socket.on("race-state", (data) => {
 
 // Queue incoming events and start processing if idle
 socket.on("race-event", (event) => {
+    const chronoHidden = currentChronoDisplayMode === "hidden" || currentChronoDisplayMode === "static";
+    if (event.type === "fastest-lap" && chronoHidden) return;
     eventQueue.push(event);
     if (!isDisplaying) processQueue();
 });

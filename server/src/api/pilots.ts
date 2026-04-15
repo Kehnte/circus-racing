@@ -1,13 +1,13 @@
 // pilots.ts — Pilot CRUD routes, profile updates, and config file download.
 import { Router } from "express";
 import { eq, ne, sql as drizzleSql } from "drizzle-orm";
-import { randomBytes } from "crypto";
+import { randomBytes, createHash } from "crypto";
 import * as fs from "fs";
 import * as path from "path";
 import multer from "multer";
 import { hash } from "@node-rs/bcrypt";
 import { db } from "../db/db.js";
-import { pilot, raceEntry } from "../db/schema.js";
+import { pilot, raceEntry, deviceToken } from "../db/schema.js";
 import { requireAuth } from "../middleware/auth.js";
 import { requireModo, requireAdmin } from "../middleware/roles.js";
 import { emitDashboard } from "../socket/emitter.js";
@@ -195,6 +195,28 @@ router.post("/bulk", ...requireAdmin, async (req, res) => {
   res.status(201).json({ created, skipped });
 });
 
+/** GET /pilots/me/device-token — returns the pilot's own Stream Deck device token (ADMIN/MODERATOR only) */
+router.get("/me/device-token", ...requireModo, async (req, res) => {
+  const found = await db.select({
+    id: deviceToken.id, tokenRaw: deviceToken.tokenRaw, createdAt: deviceToken.createdAt,
+  }).from(deviceToken).where(eq(deviceToken.pilotId, req.user!.id)).get();
+  res.json(found ?? null);
+});
+
+/** POST /pilots/me/device-token — creates or regenerates the pilot's Stream Deck device token */
+router.post("/me/device-token", ...requireModo, async (req, res) => {
+  const raw  = randomBytes(32).toString("hex");
+  const hash = createHash("sha256").update(raw).digest("hex");
+  const name = `stream-deck:${req.user!.id}`;
+
+  // Delete any existing token for this pilot, then insert fresh
+  await db.delete(deviceToken).where(eq(deviceToken.pilotId, req.user!.id));
+  const [created] = await db.insert(deviceToken).values({
+    name, tokenHash: hash, tokenRaw: raw, pilotId: req.user!.id,
+  }).returning({ id: deviceToken.id, tokenRaw: deviceToken.tokenRaw, createdAt: deviceToken.createdAt });
+  res.status(201).json(created);
+});
+
 /** GET /pilots/me/broadcast-sso — authenticated pilot opens their own share-portal */
 router.get("/me/broadcast-sso", requireAuth, async (req, res) => {
   const found = await db.select().from(pilot).where(eq(pilot.id, req.user!.id)).get();
@@ -299,6 +321,12 @@ router.patch("/:id", ...requireModo, validate(updatePilotSchema), async (req, re
   if (Object.keys(patch).length === 0) {
     res.status(400).json({ error: "No valid fields to update" });
     return;
+  }
+  if (patch.role !== undefined) {
+    patch.tokenVersion = drizzleSql`${pilot.tokenVersion} + 1`;
+    if (patch.role === "PILOT") {
+      await db.delete(deviceToken).where(eq(deviceToken.pilotId, String(req.params.id)));
+    }
   }
   const [updated] = await db.update(pilot).set(patch).where(eq(pilot.id, String(req.params.id))).returning();
   if (!updated) { res.status(404).json({ error: "Pilot not found" }); return; }

@@ -1,0 +1,12 @@
+2026-04-15T10:59:59.097Z ERROR Process encountered uncaught exception 
+Error: Failed to read manifest.json as the file does not exist.
+    at Lazy.<anonymous> (file:///C:/Users/kehnt/AppData/Roaming/Elgato/StreamDeck/Plugins/com.circusracing.streamdeck.sdPlugin/node_modules/@elgato/streamdeck/dist/plugin/manifest.js:9:15)
+    at get value (file:///C:/Users/kehnt/AppData/Roaming/Elgato/StreamDeck/Plugins/com.circusracing.streamdeck.sdPlugin/node_modules/@elgato/utils/dist/lazy.js:26:45)
+    at getManifest (file:///C:/Users/kehnt/AppData/Roaming/Elgato/StreamDeck/Plugins/com.circusracing.streamdeck.sdPlugin/node_modules/@elgato/streamdeck/dist/plugin/manifest.js:51:21)
+    at Lazy.<anonymous> (file:///C:/Users/kehnt/AppData/Roaming/Elgato/StreamDeck/Plugins/com.circusracing.streamdeck.sdPlugin/node_modules/@elgato/streamdeck/dist/plugin/actions/service.js:12:33)
+    at get value (file:///C:/Users/kehnt/AppData/Roaming/Elgato/StreamDeck/Plugins/com.circusracing.streamdeck.sdPlugin/node_modules/@elgato/utils/dist/lazy.js:26:45)
+    at ActionService.registerAction (file:///C:/Users/kehnt/AppData/Roaming/Elgato/StreamDeck/Plugins/com.circusracing.streamdeck.sdPlugin/node_modules/@elgato/streamdeck/dist/plugin/actions/service.js:187:22)
+    at file:///C:/Users/kehnt/AppData/Roaming/Elgato/StreamDeck/Plugins/com.circusracing.streamdeck.sdPlugin/bin/plugin.js:15:20
+    at ModuleJob.run (node:internal/modules/esm/module_job:430:25)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async node:internal/modules/esm/loader:639:26

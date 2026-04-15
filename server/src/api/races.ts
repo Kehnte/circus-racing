@@ -143,9 +143,12 @@ router.get("/:id/entries", ...requireModo, async (req, res) => {
       country: pilot.country,
       avatarUrl: pilot.avatarUrl,
       teamId: pilot.teamId,
+      teamAcronym: team.acronym,
       vehicleId: pilot.vehicleId,
       controlsId: pilot.controlsId,
-    }).from(pilot).where(eq(pilot.id, entry.pilotId)).get();
+    }).from(pilot)
+      .leftJoin(team, eq(pilot.teamId, team.id))
+      .where(eq(pilot.id, entry.pilotId)).get();
     return { ...entry, pilot: p ?? null };
   }));
 

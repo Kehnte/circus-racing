@@ -71,6 +71,12 @@ export default function ProfilePage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordSaving, setPasswordSaving]   = useState(false);
   const [broadcastLoading, setBroadcastLoading] = useState(false);
+
+  const { data: deviceTokenData, mutate: mutateDeviceToken } = useSWR<{ id: string; tokenRaw: string; createdAt: string } | null>(
+    me && (me.role === 'ADMIN' || me.role === 'MODERATOR') ? '/api/pilots/me/device-token' : null,
+    fetcher,
+  );
+  const [deviceTokenLoading, setDeviceTokenLoading] = useState(false);
   const [showNewPassword, setShowNewPassword]         = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -237,6 +243,29 @@ export default function ProfilePage() {
     }
   }
 
+  async function handleGenerateDeviceToken() {
+    setDeviceTokenLoading(true);
+    try {
+      await apiFetch('/api/pilots/me/device-token', { method: 'POST' });
+      void mutateDeviceToken();
+      notifications.show('Stream Deck token generated.', { severity: 'success', autoHideDuration: 3000 });
+    } catch (err) {
+      notifications.show((err as Error).message, { severity: 'error', autoHideDuration: 5000 });
+    } finally {
+      setDeviceTokenLoading(false);
+    }
+  }
+
+  async function handleCopyDeviceToken() {
+    if (!deviceTokenData?.tokenRaw) return;
+    try {
+      await copyToClipboard(deviceTokenData.tokenRaw);
+      notifications.show('Token copied to clipboard.', { severity: 'success', autoHideDuration: 2000 });
+    } catch {
+      notifications.show('Could not copy — select and copy manually.', { severity: 'error' });
+    }
+  }
+
   async function handleCopyServerUrl() {
     try {
       await copyToClipboard(window.location.origin);
@@ -336,6 +365,38 @@ export default function ProfilePage() {
                     Download Monitor (.exe)
                   </Button>
                 </Stack>
+              </Paper>
+            )}
+
+            {/* Stream Deck card */}
+            {(me.role === 'ADMIN' || me.role === 'MODERATOR') && (
+              <Paper elevation={0} sx={{ p: 2 }}>
+                <Typography variant="subtitle2" sx={{ mb: 2 }}>Stream Deck</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                  Paste these values in the Stream Deck plugin settings.
+                </Typography>
+                <Paper variant="outlined" sx={{ p: 1.5, display: 'flex', alignItems: 'center', gap: 1, fontSize: 12, wordBreak: 'break-all', mb: 1 }}>
+                  <Box sx={{ flex: 1, color: 'text.secondary' }}>{window.location.origin}</Box>
+                  <IconButton size="small" onClick={() => void handleCopyServerUrl()} title="Copy server URL">
+                    <ContentCopyOutlined fontSize="small" />
+                  </IconButton>
+                </Paper>
+                <Paper variant="outlined" sx={{ p: 1.5, display: 'flex', alignItems: 'center', gap: 1, fontFamily: 'monospace', fontSize: 12, wordBreak: 'break-all' }}>
+                  <KeyOutlined fontSize="small" sx={{ flexShrink: 0 }} />
+                  <Box sx={{ flex: 1 }}>{deviceTokenData?.tokenRaw ?? '—'}</Box>
+                  <IconButton size="small" onClick={() => void handleCopyDeviceToken()} title="Copy token" disabled={!deviceTokenData?.tokenRaw}>
+                    <ContentCopyOutlined fontSize="small" />
+                  </IconButton>
+                </Paper>
+                <Button
+                  variant="contained" size="small"
+                  startIcon={deviceTokenLoading ? <CircularProgress size={14} color="inherit" /> : <RefreshOutlined />}
+                  onClick={() => void handleGenerateDeviceToken()}
+                  disabled={deviceTokenLoading}
+                  sx={{ mt: 1.5 }}
+                >
+                  {deviceTokenData ? 'regenerate' : 'generate'}
+                </Button>
               </Paper>
             )}
 

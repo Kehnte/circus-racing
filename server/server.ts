@@ -17,6 +17,7 @@ import racesRouter       from './src/api/races.js';
 import ocrRouter         from './src/api/ocr.js';
 import raceEventsRouter  from './src/api/race-events.js';
 import adminRouter       from './src/api/admin.js';
+import { runMigrations } from './src/db/db.js';
 import { getContext }    from './src/engine/race-context.js';
 import { getOcrStatusMap } from './src/engine/ocr-tracker.js';
 
@@ -121,14 +122,16 @@ app.use((err: { status?: number; message: string; stack?: string }, _req: Reques
 // Start
 const PORT = parseInt(process.env.PORT ?? '3000', 10);
 
-server.listen(PORT, () => {
-  console.log('');
-  console.log('🏁 Circus Racing server started');
-  console.log(`   Dashboard:   http://localhost:${PORT}/dashboard/`);
-  console.log(`   Leaderboard: http://localhost:${PORT}/overlays/leaderboard/`);
-  console.log(`   Race Alert:  http://localhost:${PORT}/overlays/race-alert/`);
-  console.log(`   API:         http://localhost:${PORT}/api/`);
-  console.log('');
+runMigrations().then(() => {
+  server.listen(PORT, () => {
+    console.log('');
+    console.log('🏁 Circus Racing server started');
+    console.log(`   Dashboard:   http://localhost:${PORT}/dashboard/`);
+    console.log(`   Leaderboard: http://localhost:${PORT}/overlays/leaderboard/`);
+    console.log(`   Race Alert:  http://localhost:${PORT}/overlays/race-alert/`);
+    console.log(`   API:         http://localhost:${PORT}/api/`);
+    console.log('');
+  });
 });
 
 export { app, io };
