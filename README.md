@@ -170,7 +170,12 @@ Run with `npx tsx <script>` from the `server/` directory.
 | `PORT` | `1959` | Server listen port |
 | `DATABASE_URL` | `file:./db/circus.db` | SQLite file path (use `file:/app/db/circus.db` in Docker) |
 | `JWT_SECRET` | *(required)* | JWT signing key — generate with `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"` |
-| `OCR_POLL_MS` | `2000` | Interval between OCR monitor position pushes (ms) |
+| `FEATURE_OCR` | `true` | Set to `false` to fully disable OCR tracking (routes + UI disappear) |
+| `FEATURE_STREAMING` | `true` | Set to `false` to fully disable pilot streaming (routes + UI disappear) |
+| `OCR_POLL_MS` | `2000` | Interval between OCR monitor position pushes (ms) — only relevant when `FEATURE_OCR=true` |
+| `MEDIAMTX_API` | *(none)* | mediamtx API URL (e.g. `http://localhost:9997`) — only relevant when `FEATURE_STREAMING=true` |
+| `SHARE_PORTAL_API_URL` | *(none)* | Circus Broadcast share-portal base URL — enables pilot SSO and sync |
+| `SHARE_PORTAL_INTEGRATION_KEY` | *(none)* | Integration key for the share-portal API |
 
 ---
 

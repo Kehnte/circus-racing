@@ -28,6 +28,7 @@ import VisibilityOutlined from '@mui/icons-material/VisibilityOutlined';
 import VisibilityOffOutlined from '@mui/icons-material/VisibilityOffOutlined';
 import OpenInNewOutlined from '@mui/icons-material/OpenInNewOutlined';
 import { apiFetch, fetcher } from '../api.ts';
+import { useFeatures } from '../context/FeaturesContext.tsx';
 import CountrySelect from '../components/CountrySelect.tsx';
 import PageContainer from '../components/PageContainer.tsx';
 import OpenRacesGrid from '../components/OpenRacesGrid.tsx';
@@ -45,6 +46,7 @@ function roleChipColor(role: string): 'error' | 'warning' | 'default' {
 
 export default function ProfilePage() {
   const notifications = useNotifications();
+  const { ocr } = useFeatures();
 
   const { data: me, mutate: mutateMe, error: meError } = useSWR<Pilot>('/api/pilots/me', fetcher);
   const { data: teams }     = useSWR<Team[]>('/api/teams', fetcher);
@@ -188,10 +190,9 @@ export default function ProfilePage() {
   }
 
   async function handleOpenBroadcastPortal() {
-    if (!me) return;
     setBroadcastLoading(true);
     try {
-      const data = await apiFetch(`/api/pilots/${me.id}/broadcast-sso`) as { redirectUrl: string };
+      const data = await apiFetch('/api/pilots/me/broadcast-sso') as { redirectUrl: string };
       window.open(data.redirectUrl, '_blank', 'noopener');
     } catch (err) {
       notifications.show((err as Error).message, { severity: 'error', autoHideDuration: 5000 });
@@ -295,44 +296,48 @@ export default function ProfilePage() {
             </Paper>
 
             {/* OCR Token card */}
-            <Paper elevation={0} sx={{ p: 2 }}>
-              <Typography variant="subtitle2" sx={{ mb: 2 }}>OCR Token</Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-                Configure this token in your OCR client to push positions in AUTO mode.
-              </Typography>
-              <Paper variant="outlined" sx={{ p: 1.5, display: 'flex', alignItems: 'center', gap: 1, fontFamily: 'monospace', fontSize: 12, wordBreak: 'break-all' }}>
-                <KeyOutlined fontSize="small" sx={{ flexShrink: 0 }} />
-                <Box sx={{ flex: 1 }}>{me.token ?? '—'}</Box>
-                <IconButton size="small" onClick={() => void handleCopyToken()} title="Copy token">
-                  <ContentCopyOutlined fontSize="small" />
-                </IconButton>
-              </Paper>
-              <Button
-                variant="contained" size="small" startIcon={<RefreshOutlined />}
-                onClick={() => void handleRegenerateToken()} sx={{ mt: 1.5 }}
-              >
-                Regenerate
-              </Button>
-            </Paper>
-
-            {/* Setup Monitor card */}
-            <Paper elevation={0} sx={{ p: 2 }}>
-              <Typography variant="subtitle2" sx={{ mb: 2 }}>Setup Monitor</Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-                Paste these values in the Monitor settings.
-              </Typography>
-              <Stack spacing={1}>
-                <Paper variant="outlined" sx={{ p: 1.5, display: 'flex', alignItems: 'center', gap: 1, fontSize: 12, wordBreak: 'break-all' }}>
-                  <Box sx={{ flex: 1, color: 'text.secondary' }}>{window.location.origin}</Box>
-                  <IconButton size="small" onClick={() => void handleCopyServerUrl()} title="Copy server URL">
+            {ocr && (
+              <Paper elevation={0} sx={{ p: 2 }}>
+                <Typography variant="subtitle2" sx={{ mb: 2 }}>OCR Token</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                  Configure this token in your OCR client to push positions in AUTO mode.
+                </Typography>
+                <Paper variant="outlined" sx={{ p: 1.5, display: 'flex', alignItems: 'center', gap: 1, fontFamily: 'monospace', fontSize: 12, wordBreak: 'break-all' }}>
+                  <KeyOutlined fontSize="small" sx={{ flexShrink: 0 }} />
+                  <Box sx={{ flex: 1 }}>{me.token ?? '—'}</Box>
+                  <IconButton size="small" onClick={() => void handleCopyToken()} title="Copy token">
                     <ContentCopyOutlined fontSize="small" />
                   </IconButton>
                 </Paper>
-                <Button variant="contained" size="small" startIcon={<DownloadOutlined />} onClick={() => window.open('https://github.com/Kehnte/circus-racing/releases/latest', '_blank')} fullWidth>
-                  Download Monitor (.exe)
+                <Button
+                  variant="contained" size="small" startIcon={<RefreshOutlined />}
+                  onClick={() => void handleRegenerateToken()} sx={{ mt: 1.5 }}
+                >
+                  Regenerate
                 </Button>
-              </Stack>
-            </Paper>
+              </Paper>
+            )}
+
+            {/* Setup Monitor card */}
+            {ocr && (
+              <Paper elevation={0} sx={{ p: 2 }}>
+                <Typography variant="subtitle2" sx={{ mb: 2 }}>Setup Monitor</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                  Paste these values in the Monitor settings.
+                </Typography>
+                <Stack spacing={1}>
+                  <Paper variant="outlined" sx={{ p: 1.5, display: 'flex', alignItems: 'center', gap: 1, fontSize: 12, wordBreak: 'break-all' }}>
+                    <Box sx={{ flex: 1, color: 'text.secondary' }}>{window.location.origin}</Box>
+                    <IconButton size="small" onClick={() => void handleCopyServerUrl()} title="Copy server URL">
+                      <ContentCopyOutlined fontSize="small" />
+                    </IconButton>
+                  </Paper>
+                  <Button variant="contained" size="small" startIcon={<DownloadOutlined />} onClick={() => window.open('https://github.com/Kehnte/circus-racing/releases/latest', '_blank')} fullWidth>
+                    Download Monitor (.exe)
+                  </Button>
+                </Stack>
+              </Paper>
+            )}
 
             {/* Broadcast portal card */}
             <Paper elevation={0} sx={{ p: 2 }}>
@@ -398,7 +403,7 @@ export default function ProfilePage() {
                     <MenuItem value="">none</MenuItem>
                     {(vehicles ?? []).map((v) => (
                       <MenuItem key={v.id} value={v.id}>
-                        {v.type.charAt(0).toUpperCase() + v.type.slice(1)} — {v.model}
+                        {v.type.charAt(0).toUpperCase() + v.type.slice(1)} {v.model}
                       </MenuItem>
                     ))}
                   </TextField>

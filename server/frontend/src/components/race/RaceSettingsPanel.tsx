@@ -28,6 +28,7 @@ import EditOutlined from '@mui/icons-material/EditOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import UploadFileOutlined from '@mui/icons-material/UploadFileOutlined';
 import { apiFetch, fetcher } from '../../api.ts';
+import { useFeatures } from '../../context/FeaturesContext.tsx';
 import type { RaceStatePayload, Racetrack } from '../../types.ts';
 
 interface Props {
@@ -63,6 +64,7 @@ function initLocal(raceState: RaceStatePayload): LocalSettings {
 export default function RaceSettingsPanel({ raceState }: Props) {
   const { raceId, status, racetrackId } = raceState;
   const isStarted = status === 'STARTED';
+  const { ocr } = useFeatures();
 
   const [local, setLocal] = useState<LocalSettings>(() => initLocal(raceState));
 
@@ -250,7 +252,7 @@ export default function RaceSettingsPanel({ raceState }: Props) {
                   onChange={(e) => set('trackingMode', e.target.value)}
                 >
                   <MenuItem value="manual">Manual</MenuItem>
-                  <MenuItem value="auto">Auto (OCR)</MenuItem>
+                  {ocr && <MenuItem value="auto">Auto (OCR)</MenuItem>}
                 </Select>
               </FormControl>
             </Grid>

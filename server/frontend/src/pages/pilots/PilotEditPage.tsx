@@ -184,7 +184,7 @@ export default function PilotEditPage() {
               <TextField select label="Vehicle" value={form.vehicleId} onChange={(e) => handleChange('vehicleId', e.target.value)} fullWidth>
                 <MenuItem value="">none</MenuItem>
                 {(vehicles ?? []).map((v) => (
-                  <MenuItem key={v.id} value={v.id}>{v.type.charAt(0).toUpperCase() + v.type.slice(1)} — {v.model}</MenuItem>
+                  <MenuItem key={v.id} value={v.id}>{v.type.charAt(0).toUpperCase() + v.type.slice(1)} {v.model}</MenuItem>
                 ))}
               </TextField>
             </Grid>

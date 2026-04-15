@@ -195,10 +195,34 @@ router.post("/bulk", ...requireAdmin, async (req, res) => {
   res.status(201).json({ created, skipped });
 });
 
+/** GET /pilots/me/broadcast-sso — authenticated pilot opens their own share-portal */
+router.get("/me/broadcast-sso", requireAuth, async (req, res) => {
+  const found = await db.select().from(pilot).where(eq(pilot.id, req.user!.id)).get();
+  if (!found) {
+    res.status(404).json({ error: "Pilot not found" });
+    return;
+  }
+
+  await syncPilot(found);
+
+  const result = await issueSsoToken(found.id);
+  if (!result) {
+    res.status(503).json({ error: "Share-portal unavailable or not configured" });
+    return;
+  }
+
+  res.json(result);
+});
+
 /** GET /pilots/:id/broadcast-sso — admin/modo only, issues a share-portal SSO token for the pilot */
 router.get("/:id/broadcast-sso", ...requireModo, async (req, res) => {
-  const found = await db.select({ id: pilot.id }).from(pilot).where(eq(pilot.id, String(req.params.id))).get();
-  if (!found) { res.status(404).json({ error: "Pilot not found" }); return; }
+  const found = await db.select().from(pilot).where(eq(pilot.id, String(req.params.id))).get();
+  if (!found) {
+    res.status(404).json({ error: "Pilot not found" });
+    return;
+  }
+
+  await syncPilot(found);
 
   const result = await issueSsoToken(found.id);
   if (!result) {

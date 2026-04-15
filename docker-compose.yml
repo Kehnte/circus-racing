@@ -1,6 +1,8 @@
 services:
   circus-racing:
-    image: ghcr.io/kehnte/circus-racing-server:latest
+    build:
+      context: ./server
+      dockerfile: Dockerfile
     ports:
       - "1959:1959"
     env_file: .env

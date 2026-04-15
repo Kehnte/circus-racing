@@ -98,8 +98,16 @@ export async function issueSsoToken(
     }
 
     const data = await response.json() as { token: string; expiresAt: number; target: string };
-    const redirectUrl = `${API_URL}/auth/sso/consume?token=${encodeURIComponent(data.token)}`;
-    return { token: data.token, expiresAt: data.expiresAt, redirectUrl };
+
+    const targetPath = data.target || "/";
+    const redirect = new URL(targetPath, `${API_URL}/`);
+    redirect.searchParams.set("token", data.token);
+
+    return {
+      token: data.token,
+      expiresAt: data.expiresAt,
+      redirectUrl: redirect.toString(),
+    };
   } catch (err) {
     console.warn("[broadcast] issueSsoToken failed:", (err as Error).message);
     return null;

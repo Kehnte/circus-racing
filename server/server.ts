@@ -20,6 +20,9 @@ import adminRouter       from './src/api/admin.js';
 import { getContext }    from './src/engine/race-context.js';
 import { getOcrStatusMap } from './src/engine/ocr-tracker.js';
 
+const FEATURE_OCR       = process.env.FEATURE_OCR !== 'false';
+const FEATURE_STREAMING = process.env.FEATURE_STREAMING !== 'false';
+
 const app: Express      = express();
 const server: http.Server = http.createServer(app);
 const io: Server        = new Server(server);
@@ -49,9 +52,13 @@ app.use('/api/controls',     controlsRouter);
 app.use('/api/racetracks',   racetracksRouter);
 app.use('/api/pilots',       pilotsRouter);
 app.use('/api/races',        racesRouter);
-app.use('/api/ocr',          ocrRouter);
+if (FEATURE_OCR) app.use('/api/ocr', ocrRouter);
 app.use('/api/race-events',  raceEventsRouter);
 app.use('/api/admin',        adminRouter);
+
+app.get('/api/features', (_req: Request, res: Response) => {
+  res.json({ ocr: FEATURE_OCR, streaming: FEATURE_STREAMING });
+});
 
 // 500ms broadcast interval — keeps overlays in sync whenever a race is loaded
 setInterval(() => {
@@ -61,12 +68,13 @@ setInterval(() => {
   } catch (err) { console.error('Broadcast error:', err); }
 }, 500);
 
-// 2s OCR status broadcast — dashboard shows which pilots have an active monitor
-setInterval(() => {
-  try {
-    emitDashboard('ocr-status', getOcrStatusMap());
-  } catch (err) { console.error('OCR status broadcast error:', err); }
-}, 2000);
+if (FEATURE_OCR) {
+  setInterval(() => {
+    try {
+      emitDashboard('ocr-status', getOcrStatusMap());
+    } catch (err) { console.error('OCR status broadcast error:', err); }
+  }, 2000);
+}
 
 // Health check — used by reset.js to wait for server readiness
 app.get('/health', (_req: Request, res: Response) => res.json({ ok: true }));

@@ -11,6 +11,7 @@ import { RouterProvider } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { AuthProvider } from './context/AuthContext.tsx';
+import { FeaturesProvider } from './context/FeaturesContext.tsx';
 import NotificationsProvider from './hooks/useNotifications/NotificationsProvider.tsx';
 import DialogsProvider from './hooks/useDialogs/DialogsProvider.tsx';
 import theme from './theme.ts';
@@ -21,11 +22,13 @@ createRoot(document.getElementById('root')!).render(
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <AuthProvider>
-        <NotificationsProvider>
-          <DialogsProvider>
-            <RouterProvider router={router} />
-          </DialogsProvider>
-        </NotificationsProvider>
+        <FeaturesProvider>
+          <NotificationsProvider>
+            <DialogsProvider>
+              <RouterProvider router={router} />
+            </DialogsProvider>
+          </NotificationsProvider>
+        </FeaturesProvider>
       </AuthProvider>
     </ThemeProvider>
   </StrictMode>,

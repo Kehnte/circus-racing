@@ -31,6 +31,7 @@ import TuneOutlined from '@mui/icons-material/TuneOutlined';
 import useSWR from 'swr';
 import { fetcher } from '../api.ts';
 import { useAuth } from '../context/AuthContext.tsx';
+import { useFeatures } from '../context/FeaturesContext.tsx';
 import { useRaceSocket } from '../hooks/useRaceSocket.ts';
 import type { Pilot } from '../types.ts';
 
@@ -40,25 +41,10 @@ const MINI_WIDTH = 64;
 interface NavItem { label: string; path: string; href?: string; icon: ReactNode }
 interface NavSection { label: string; items: NavItem[] }
 
-const NAV_SECTIONS_MODO: NavSection[] = [
-  {
-    label: 'Race',
-    items: [
-      { label: 'Dashboard', path: '/', icon: <SpaceDashboardOutlined /> },
-      { label: 'Telemetry', path: '/telemetry', icon: <SensorsOutlined /> },
-      { label: 'Leaderboard', path: '', href: '/overlays/leaderboard/', icon: <LeaderboardOutlined /> },
-      { label: 'Race Alert', path: '', href: '/overlays/race-alert/', icon: <CampaignOutlined /> },
-    ],
-  },
-  {
-    label: 'Roster',
-    items: [
-      { label: 'Pilots', path: '/pilots', icon: <PersonOutlined /> },
-      { label: 'Teams', path: '/teams', icon: <GroupsOutlined /> },
-      { label: 'Vehicles', path: '/vehicles', icon: <RocketLaunchOutlined /> },
-      { label: 'Controls', path: '/controls', icon: <TuneOutlined /> },
-    ],
-  },
+const BASE_RACE_ITEMS: NavItem[] = [
+  { label: 'Dashboard', path: '/', icon: <SpaceDashboardOutlined /> },
+  { label: 'Leaderboard', path: '', href: '/overlays/leaderboard/', icon: <LeaderboardOutlined /> },
+  { label: 'Race Alert', path: '', href: '/overlays/race-alert/', icon: <CampaignOutlined /> },
 ];
 
 const NAV_SECTIONS_PILOT: NavSection[] = [
@@ -74,6 +60,7 @@ const NAV_SECTIONS_PILOT: NavSection[] = [
 export default function AppLayout() {
   useRaceSocket();
   const { logout, displayName, role } = useAuth();
+  const { ocr } = useFeatures();
   const { data: me } = useSWR<Pilot>('/api/pilots/me', fetcher);
   const isAdmin = role === 'ADMIN';
   const isPilot = role === 'PILOT';
@@ -81,6 +68,21 @@ export default function AppLayout() {
     label: 'Admin',
     items: [{ label: 'Admin', path: '/admin', icon: <AdminPanelSettingsOutlined /> }],
   };
+  const modoRaceItems = ocr
+    ? [...BASE_RACE_ITEMS.slice(0, 1), { label: 'Telemetry', path: '/telemetry', icon: <SensorsOutlined /> }, ...BASE_RACE_ITEMS.slice(1)]
+    : BASE_RACE_ITEMS;
+  const NAV_SECTIONS_MODO: NavSection[] = [
+    { label: 'Race', items: modoRaceItems },
+    {
+      label: 'Roster',
+      items: [
+        { label: 'Pilots', path: '/pilots', icon: <PersonOutlined /> },
+        { label: 'Teams', path: '/teams', icon: <GroupsOutlined /> },
+        { label: 'Vehicles', path: '/vehicles', icon: <RocketLaunchOutlined /> },
+        { label: 'Controls', path: '/controls', icon: <TuneOutlined /> },
+      ],
+    },
+  ];
   const navSections: NavSection[] = [
     ...(isPilot ? NAV_SECTIONS_PILOT : NAV_SECTIONS_MODO),
     ...(isAdmin ? [adminSection] : []),
