@@ -1,4 +1,4 @@
-// admin.ts — Admin-only reset endpoints for clearing race data or the full database.
+// admin.ts — Admin-only reset endpoints.
 import { Router } from "express";
 import { ne } from "drizzle-orm";
 import { db } from "../db/db.js";

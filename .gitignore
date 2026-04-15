@@ -42,3 +42,10 @@ doc/
 # Env
 .env
 server/.env
+
+# Runtime artifacts
+logs/
+mediamtx.exe
+
+# Stream Deck
+streamdeck/node_modules/

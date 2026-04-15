@@ -130,8 +130,19 @@ export const directorState = sqliteTable("director_state", {
   slots: text({ mode: "json" }).$type<Array<{ type: "pilot" | "camera"; id: string } | null>>().notNull().default(sql`'[]'`),
 });
 
+// Device tokens — static credentials for physical devices (e.g. Stream Deck)
+export const deviceToken = sqliteTable("device_token", {
+  id:        text().primaryKey().$defaultFn(() => crypto.randomUUID()),
+  name:      text().notNull(),        // human label, e.g. "Stream Deck salle 1"
+  tokenHash: text().notNull().unique(), // SHA-256 hex of the raw token
+  tokenRaw:  text("token_raw"),        // raw token stored for self-service display (LAN/internal use)
+  pilotId:   text("pilot_id").references(() => pilot.id, { onDelete: "cascade" }), // set when pilot-owned
+  createdAt: text().notNull().default(sql`(datetime('now'))`),
+});
+
 // Inferred types
 
+export type DeviceToken  = typeof deviceToken.$inferSelect;
 export type StreamSettings = typeof streamSettings.$inferSelect;
 export type DirectorState  = typeof directorState.$inferSelect;
 export type Team       = typeof team.$inferSelect;

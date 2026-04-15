@@ -128,6 +128,16 @@ router.delete("/:id", ...requireModo, async (req, res) => {
 
 // Race entries
 
+/** GET /races/:id/state — returns live pilot states (lap, position, status) */
+router.get("/:id/state", ...requireModo, async (req, res) => {
+  const ctx = getContext();
+  if (!ctx || ctx.raceId !== String(req.params.id)) {
+    res.json({});
+    return;
+  }
+  res.json(ctx.pilotStates);
+});
+
 /** GET /races/:id/entries — modo+ */
 router.get("/:id/entries", ...requireModo, async (req, res) => {
   const entries = await db
@@ -143,9 +153,12 @@ router.get("/:id/entries", ...requireModo, async (req, res) => {
       country: pilot.country,
       avatarUrl: pilot.avatarUrl,
       teamId: pilot.teamId,
+      teamAcronym: team.acronym,
       vehicleId: pilot.vehicleId,
       controlsId: pilot.controlsId,
-    }).from(pilot).where(eq(pilot.id, entry.pilotId)).get();
+    }).from(pilot)
+      .leftJoin(team, eq(pilot.teamId, team.id))
+      .where(eq(pilot.id, entry.pilotId)).get();
     return { ...entry, pilot: p ?? null };
   }));
 

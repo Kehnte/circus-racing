@@ -1,9 +1,10 @@
-// auth.ts — JWT authentication middleware (extracts user from Bearer token).
+// auth.ts — JWT and device-token authentication middleware.
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import type { Request, Response, NextFunction } from "express";
 import { eq } from "drizzle-orm";
 import { db } from "../db/db.js";
-import { pilot, type PilotRole } from "../db/schema.js";
+import { pilot, deviceToken, type PilotRole } from "../db/schema.js";
 
 export interface AuthUser {
   id: string;
@@ -21,8 +22,9 @@ declare global {
 }
 
 /**
- * requireAuth — verifies the JWT and checks tokenVersion against the DB.
- * Attaches req.user = { id, role } on success, returns 401 otherwise.
+ * requireAuth — accepts either a pilot JWT or a device token (Bearer prefix).
+ * Device tokens are recognised by their SHA-256 hash stored in device_token table.
+ * On success attaches req.user = { id, role } and calls next().
  */
 export function requireAuth(req: Request, res: Response, next: NextFunction) {
   const header = req.headers.authorization;
@@ -31,30 +33,43 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
     return;
   }
 
-  const token = header.slice(7);
+  const raw    = header.slice(7);
   const secret = process.env.JWT_SECRET;
   if (!secret) throw new Error("JWT_SECRET is not configured");
 
-  let payload: AuthUser;
+  // Try JWT first
+  let payload: AuthUser | null = null;
   try {
-    payload = jwt.verify(token, secret) as AuthUser;
-  } catch {
-    res.status(401).json({ error: "Invalid or expired token" });
+    payload = jwt.verify(raw, secret) as AuthUser;
+  } catch { /* not a JWT — may be a device token */ }
+
+  if (payload) {
+    db.select({ tokenVersion: pilot.tokenVersion })
+      .from(pilot)
+      .where(eq(pilot.id, payload.id))
+      .get()
+      .then((found) => {
+        if (!found) { res.status(401).json({ error: "Account not found" }); return; }
+        if (payload!.tokenVersion !== undefined && found.tokenVersion !== payload!.tokenVersion) {
+          res.status(401).json({ error: "Session expired" });
+          return;
+        }
+        req.user = { id: payload!.id, role: payload!.role };
+        next();
+      })
+      .catch(() => { res.status(500).json({ error: "Auth check failed" }); });
     return;
   }
 
-  // Verify tokenVersion to detect revoked tokens (e.g. after admin password reset).
-  db.select({ tokenVersion: pilot.tokenVersion })
-    .from(pilot)
-    .where(eq(pilot.id, payload.id))
+  // Fall back to device token (SHA-256 hash lookup)
+  const hash = crypto.createHash("sha256").update(raw).digest("hex");
+  db.select({ id: deviceToken.id })
+    .from(deviceToken)
+    .where(eq(deviceToken.tokenHash, hash))
     .get()
     .then((found) => {
-      if (!found) { res.status(401).json({ error: "Account not found" }); return; }
-      if (payload.tokenVersion !== undefined && found.tokenVersion !== payload.tokenVersion) {
-        res.status(401).json({ error: "Session expired" });
-        return;
-      }
-      req.user = { id: payload.id, role: payload.role };
+      if (!found) { res.status(401).json({ error: "Invalid token" }); return; }
+      req.user = { id: `device:${found.id}`, role: "MODERATOR" as PilotRole };
       next();
     })
     .catch(() => { res.status(500).json({ error: "Auth check failed" }); });

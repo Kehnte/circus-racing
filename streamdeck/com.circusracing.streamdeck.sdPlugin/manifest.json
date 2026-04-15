@@ -1,0 +1,122 @@
+{
+  "Name": "Circus Racing",
+  "Version": "1.1.0",
+  "Author": "Kehnte",
+  "Description": "Manual race control panel for Circus Racing events.",
+  "Category": "Circus Racing",
+  "CategoryIcon": "imgs/plugin-icon",
+  "CodePath": "bin/plugin.js",
+  "PropertyInspectorPath": "ui/global-settings.html",
+  "SDKVersion": 2,
+  "Software": { "MinimumVersion": "6.4" },
+  "OS": [{ "Platform": "windows", "MinimumVersion": "10" }],
+  "Nodejs": { "Version": "20", "Debug": "enabled" },
+  "Actions": [
+    {
+      "Name": "Race Control",
+      "UUID": "com.circusracing.streamdeck.race-control",
+      "Icon": "imgs/actions/race-control",
+      "Tooltip": "Start, pause, or resume the active race",
+      "SupportedInMultiActions": true,
+      "Controllers": ["Keypad"],
+      "States": [
+        { "Title": "Start", "TitleAlignment": "middle", "TitleColor": "#ffffff", "FontSize": "16" },
+        { "Title": "—", "TitleAlignment": "middle", "TitleColor": "#888888", "FontSize": "16" }
+      ]
+    },
+    {
+      "Name": "Race Finish",
+      "UUID": "com.circusracing.streamdeck.race-finish",
+      "Icon": "imgs/actions/race-finish",
+      "Tooltip": "Finish the active race",
+      "SupportedInMultiActions": true,
+      "Controllers": ["Keypad"],
+      "States": [
+        { "Title": "", "TitleAlignment": "middle", "TitleColor": "#ffffff", "FontSize": "16" }
+      ]
+    },
+    {
+      "Name": "Race Reset",
+      "UUID": "com.circusracing.streamdeck.race-reset",
+      "Icon": "imgs/actions/race-finish",
+      "Tooltip": "Reset the race back to pending",
+      "SupportedInMultiActions": true,
+      "Controllers": ["Keypad"],
+      "States": [
+        { "Title": "", "TitleAlignment": "middle", "TitleColor": "#ffffff", "FontSize": "16" }
+      ]
+    },
+    {
+      "Name": "Pilot Info",
+      "UUID": "com.circusracing.streamdeck.pilot-info",
+      "Icon": "imgs/actions/pilot-info",
+      "Tooltip": "Shows pilot name, position and lap count",
+      "PropertyInspectorPath": "ui/pilot-slot.html",
+      "SupportedInMultiActions": false,
+      "Controllers": ["Keypad"],
+      "States": [
+        { "Title": "", "TitleAlignment": "middle", "TitleColor": "#ffffff", "FontSize": "14" }
+      ]
+    },
+    {
+      "Name": "Pilot Lap +",
+      "UUID": "com.circusracing.streamdeck.pilot-lap-up",
+      "Icon": "imgs/actions/pilot-lap",
+      "Tooltip": "Add a lap for the pilot",
+      "PropertyInspectorPath": "ui/pilot-slot.html",
+      "SupportedInMultiActions": true,
+      "Controllers": ["Keypad"],
+      "States": [
+        { "Title": "", "TitleAlignment": "middle", "TitleColor": "#ffffff", "FontSize": "14" }
+      ]
+    },
+    {
+      "Name": "Pilot Lap -",
+      "UUID": "com.circusracing.streamdeck.pilot-lap-down",
+      "Icon": "imgs/actions/pilot-lap",
+      "Tooltip": "Remove a lap for the pilot",
+      "PropertyInspectorPath": "ui/pilot-slot.html",
+      "SupportedInMultiActions": true,
+      "Controllers": ["Keypad"],
+      "States": [
+        { "Title": "", "TitleAlignment": "middle", "TitleColor": "#ffffff", "FontSize": "14" }
+      ]
+    },
+    {
+      "Name": "Pilot Position +",
+      "UUID": "com.circusracing.streamdeck.pilot-pos-up",
+      "Icon": "imgs/actions/pilot-info",
+      "Tooltip": "Move pilot up one position",
+      "PropertyInspectorPath": "ui/pilot-slot.html",
+      "SupportedInMultiActions": true,
+      "Controllers": ["Keypad"],
+      "States": [
+        { "Title": "", "TitleAlignment": "middle", "TitleColor": "#ffffff", "FontSize": "14" }
+      ]
+    },
+    {
+      "Name": "Pilot Position -",
+      "UUID": "com.circusracing.streamdeck.pilot-pos-down",
+      "Icon": "imgs/actions/pilot-info",
+      "Tooltip": "Move pilot down one position",
+      "PropertyInspectorPath": "ui/pilot-slot.html",
+      "SupportedInMultiActions": true,
+      "Controllers": ["Keypad"],
+      "States": [
+        { "Title": "", "TitleAlignment": "middle", "TitleColor": "#ffffff", "FontSize": "14" }
+      ]
+    },
+    {
+      "Name": "Pilot DNF",
+      "UUID": "com.circusracing.streamdeck.pilot-dnf",
+      "Icon": "imgs/actions/pilot-lap",
+      "Tooltip": "Mark pilot as DNF",
+      "PropertyInspectorPath": "ui/pilot-slot.html",
+      "SupportedInMultiActions": true,
+      "Controllers": ["Keypad"],
+      "States": [
+        { "Title": "", "TitleAlignment": "middle", "TitleColor": "#ffffff", "FontSize": "14" }
+      ]
+    }
+  ]
+}

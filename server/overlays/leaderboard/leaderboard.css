@@ -305,6 +305,10 @@ body {
     display: none;
 }
 
+.pilot-row.chrono-hidden {
+    min-width: 285px;
+}
+
 .pilot-row.chrono-hidden .pilot-infos {
     width: auto;
     flex: 1;

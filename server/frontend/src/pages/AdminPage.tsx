@@ -1,5 +1,6 @@
-// AdminPage — Admin-only page for dangerous database reset operations.
+// AdminPage — Admin-only page: database resets.
 
+import { useState } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Divider from '@mui/material/Divider';
@@ -14,6 +15,7 @@ import useNotifications from '../hooks/useNotifications/useNotifications.tsx';
 export default function AdminPage() {
   const dialogs = useDialogs();
   const notifications = useNotifications();
+  const [resetting, setResetting] = useState(false);
 
   async function handleResetRaces() {
     const confirmed = await dialogs.confirm(
@@ -21,11 +23,14 @@ export default function AdminPage() {
       { title: 'Reset race data', confirmLabel: 'reset races', confirmColor: 'error' }
     );
     if (!confirmed) return;
+    setResetting(true);
     try {
       await apiFetch('/api/admin/reset-races', { method: 'POST' });
       notifications.show('Race data cleared.', { severity: 'success', autoHideDuration: 3000 });
     } catch (err) {
       notifications.show(`Reset failed: ${(err as Error).message}`, { severity: 'error', autoHideDuration: 5000 });
+    } finally {
+      setResetting(false);
     }
   }
 
@@ -35,11 +40,14 @@ export default function AdminPage() {
       { title: 'Reset roster', confirmLabel: 'reset roster', confirmColor: 'error' }
     );
     if (!confirmed) return;
+    setResetting(true);
     try {
       await apiFetch('/api/admin/reset-roster', { method: 'POST' });
       notifications.show('Roster cleared.', { severity: 'success', autoHideDuration: 3000 });
     } catch (err) {
       notifications.show(`Reset failed: ${(err as Error).message}`, { severity: 'error', autoHideDuration: 5000 });
+    } finally {
+      setResetting(false);
     }
   }
 
@@ -54,11 +62,14 @@ export default function AdminPage() {
       { title: 'Confirm full reset', confirmLabel: 'proceed', confirmColor: 'error' }
     );
     if (!second) return;
+    setResetting(true);
     try {
       await apiFetch('/api/admin/reset-all', { method: 'POST' });
       notifications.show('Full reset complete.', { severity: 'success', autoHideDuration: 3000 });
     } catch (err) {
       notifications.show(`Reset failed: ${(err as Error).message}`, { severity: 'error', autoHideDuration: 5000 });
+    } finally {
+      setResetting(false);
     }
   }
 
@@ -76,7 +87,7 @@ export default function AdminPage() {
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
               Deletes all races, race entries and race states. Pilots, teams, vehicles, controls and racetracks are preserved.
             </Typography>
-            <Button variant="outlined" color="error" size="small" startIcon={<DeleteSweepOutlined />} onClick={() => void handleResetRaces()}>
+            <Button variant="outlined" color="error" size="small" startIcon={<DeleteSweepOutlined />} onClick={() => void handleResetRaces()} disabled={resetting}>
               reset race data
             </Button>
           </Box>
@@ -88,7 +99,7 @@ export default function AdminPage() {
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
               Deletes all pilots (except your account), teams, vehicles and controls. Races are preserved.
             </Typography>
-            <Button variant="outlined" color="error" size="small" startIcon={<DeleteSweepOutlined />} onClick={() => void handleResetRoster()}>
+            <Button variant="outlined" color="error" size="small" startIcon={<DeleteSweepOutlined />} onClick={() => void handleResetRoster()} disabled={resetting}>
               reset roster
             </Button>
           </Box>
@@ -100,7 +111,7 @@ export default function AdminPage() {
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
               Deletes everything except your account — races, pilots, teams, vehicles, controls, racetracks.
             </Typography>
-            <Button variant="contained" color="error" size="small" startIcon={<DeleteSweepOutlined />} onClick={() => void handleResetAll()}>
+            <Button variant="contained" color="error" size="small" startIcon={<DeleteSweepOutlined />} onClick={() => void handleResetAll()} disabled={resetting}>
               full reset
             </Button>
           </Box>
