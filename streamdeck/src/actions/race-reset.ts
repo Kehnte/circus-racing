@@ -1,6 +1,6 @@
 // race-reset.ts — Reset the active race back to PENDING.
 
-import streamDeck, { action, KeyAction, KeyDownEvent, SingletonAction, WillAppearEvent } from "@elgato/streamdeck";
+import streamDeck, { action, KeyDownEvent, SingletonAction, WillAppearEvent } from "@elgato/streamdeck";
 import { getSnapshot, onStateChange } from "../race-state.js";
 import { resetRace } from "../api.js";
 
@@ -14,12 +14,8 @@ export class RaceResetAction extends SingletonAction {
   }
   onWillDisappear(): void { this.unsub?.(); }
 
-  private refresh(ev: WillAppearEvent): void {
-    const key  = ev.action as KeyAction;
-    const snap = getSnapshot();
-    const active = snap && ["STARTED", "PAUSED", "FINISHED"].includes(snap.raceStatus);
-    void key.setTitle("Reset");
-    void key.setState(active ? 0 : 1);
+  private refresh(_ev: WillAppearEvent): void {
+    // no state to manage — single-state action
   }
 
   async onKeyDown(_ev: KeyDownEvent): Promise<void> {

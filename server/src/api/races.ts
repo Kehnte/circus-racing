@@ -128,6 +128,16 @@ router.delete("/:id", ...requireModo, async (req, res) => {
 
 // Race entries
 
+/** GET /races/:id/state — returns live pilot states (lap, position, status) */
+router.get("/:id/state", ...requireModo, async (req, res) => {
+  const ctx = getContext();
+  if (!ctx || ctx.raceId !== String(req.params.id)) {
+    res.json({});
+    return;
+  }
+  res.json(ctx.pilotStates);
+});
+
 /** GET /races/:id/entries — modo+ */
 router.get("/:id/entries", ...requireModo, async (req, res) => {
   const entries = await db

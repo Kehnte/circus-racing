@@ -3082,6 +3082,9 @@ async function getActiveRace() {
 async function getRaceEntries(raceId) {
     return request("GET", `/api/races/${raceId}/entries`);
 }
+async function getRaceState(raceId) {
+    return request("GET", `/api/races/${raceId}/state`);
+}
 // Lifecycle
 const startRace = (id) => request("POST", `/api/races/${id}/start`);
 const pauseRace = (id) => request("POST", `/api/races/${id}/pause`);
@@ -3095,15 +3098,15 @@ const manualPosition = (raceId, pilotId, position) => request("POST", `/api/race
 
 // race-state.ts — Shared in-memory state polled from the server, with change callbacks.
 let current = null;
-const listeners$1 = [];
+const listeners = [];
 let timer = null;
 function getSnapshot() { return current; }
 function onStateChange(fn) {
-    listeners$1.push(fn);
-    return () => { const i = listeners$1.indexOf(fn); if (i !== -1)
-        listeners$1.splice(i, 1); };
+    listeners.push(fn);
+    return () => { const i = listeners.indexOf(fn); if (i !== -1)
+        listeners.splice(i, 1); };
 }
-function notify$1() { for (const fn of listeners$1)
+function notify() { for (const fn of listeners)
     fn(current); }
 async function poll() {
     try {
@@ -3111,20 +3114,38 @@ async function poll() {
         if (!race) {
             if (current !== null) {
                 current = null;
-                notify$1();
+                notify();
             }
             return;
         }
-        const entries = await getRaceEntries(race.id);
-        const sorted = [...entries].sort((a, b) => (a.gridPosition ?? 99) - (b.gridPosition ?? 99));
-        const pilots = sorted.map(e => ({
-            pilotId: e.pilotId,
-            displayName: e.pilot?.displayName ?? e.pilotId.slice(0, 8),
-            teamAcronym: e.pilot?.teamAcronym ?? null,
-            lap: 0,
-            status: "RUNNING",
-            position: e.gridPosition,
-        }));
+        let entries, states;
+        try {
+            [entries, states] = await Promise.all([
+                getRaceEntries(race.id),
+                getRaceState(race.id),
+            ]);
+        }
+        catch (err) {
+            streamDeck.logger.error("poll fetch error: " + String(err));
+            if (current !== null) {
+                current = null;
+                notify();
+            }
+            return;
+        }
+        // Sort by pilotId — stable order regardless of live position changes
+        const sorted = [...entries].sort((a, b) => a.pilotId.localeCompare(b.pilotId));
+        const pilots = sorted.map((e) => {
+            const s = states[e.pilotId];
+            return {
+                pilotId: e.pilotId,
+                displayName: e.pilot?.displayName ?? e.pilotId.slice(0, 8),
+                teamAcronym: e.pilot?.teamAcronym ?? null,
+                lap: s?.lap ?? 0,
+                status: (s?.status ?? "RUNNING"),
+                position: s?.gridPosition ?? e.gridPosition,
+            };
+        });
         const next = {
             raceId: race.id,
             raceName: race.name,
@@ -3134,11 +3155,11 @@ async function poll() {
         const changed = JSON.stringify(next) !== JSON.stringify(current);
         if (changed) {
             current = next;
-            notify$1();
+            notify();
         }
     }
-    catch {
-        // server unreachable — keep last known state
+    catch (err) {
+        streamDeck.logger.error("poll error: " + String(err));
     }
 }
 function startPolling() {
@@ -3248,11 +3269,8 @@ let RaceFinishAction = (() => {
             this.refresh(ev);
         }
         onWillDisappear() { this.unsubscribe?.(); }
-        refresh(ev) {
-            const snap = getSnapshot();
-            const active = snap?.raceStatus === "STARTED" || snap?.raceStatus === "PAUSED";
-            ev.action.setTitle("Finish");
-            ev.action.setState(active ? 0 : 1);
+        refresh(_ev) {
+            // no state to manage — single-state action
         }
         async onKeyDown(_ev) {
             const snap = getSnapshot();
@@ -3286,12 +3304,8 @@ let RaceResetAction = (() => {
             this.refresh(ev);
         }
         onWillDisappear() { this.unsub?.(); }
-        refresh(ev) {
-            const key = ev.action;
-            const snap = getSnapshot();
-            const active = snap && ["STARTED", "PAUSED", "FINISHED"].includes(snap.raceStatus);
-            void key.setTitle("Reset");
-            void key.setState(active ? 0 : 1);
+        refresh(_ev) {
+            // no state to manage — single-state action
         }
         async onKeyDown(_ev) {
             const snap = getSnapshot();
@@ -3311,23 +3325,8 @@ let RaceResetAction = (() => {
 // pilot-pager.ts — Manages which pilot page is currently visible (5 pilots per page).
 const PILOTS_PER_PAGE = 5;
 let currentPage = 0;
-const listeners = [];
-function getCurrentPage() { return currentPage; }
 function onPageChange(fn) {
-    listeners.push(fn);
-    return () => { const i = listeners.indexOf(fn); if (i !== -1)
-        listeners.splice(i, 1); };
-}
-function notify() { for (const fn of listeners)
-    fn(currentPage); }
-function nextPage(totalPilots) {
-    const maxPage = Math.max(0, Math.ceil(totalPilots / PILOTS_PER_PAGE) - 1);
-    currentPage = Math.min(currentPage + 1, maxPage);
-    notify();
-}
-function prevPage() {
-    currentPage = Math.max(0, currentPage - 1);
-    notify();
+    return () => { };
 }
 // Returns the pilot at slot index [0..4] for the current page, or null.
 function getPilotAtSlot(pilots, slotIndex) {
@@ -3357,7 +3356,7 @@ let PilotInfoAction = (() => {
         onWillAppear(ev) {
             this.lastEv = ev;
             this.unsubState = onStateChange(() => this.refresh());
-            this.unsubPage = onPageChange(() => this.refresh());
+            this.unsubPage = onPageChange();
             this.refresh();
         }
         onWillDisappear() {
@@ -3377,13 +3376,11 @@ let PilotInfoAction = (() => {
             const pilot = snap ? getPilotAtSlot(snap.pilots, slot) : null;
             const key = ev.action;
             if (!pilot) {
-                void key.setTitle("—");
-                void key.setState(1);
+                void key.setTitle("Info");
                 return;
             }
             const pos = pilot.position != null ? `P${pilot.position}` : "—";
-            void key.setTitle(`${pilot.displayName}\n${pos}`);
-            void key.setState(pilot.status === "DNF" ? 1 : 0);
+            void key.setTitle(`${pilot.displayName}\n${pos}\nL${pilot.lap}`);
         }
     });
     return _classThis;
@@ -3426,12 +3423,10 @@ let PilotLapUpAction = (() => {
             const pilot = snap ? getPilotAtSlot(snap.pilots, slot) : null;
             const key = ev.action;
             if (!pilot) {
-                void key.setTitle("—\nL+");
-                void key.setState(1);
+                void key.setTitle("Lap+");
                 return;
             }
             void key.setTitle(`${pilot.displayName}\nL${pilot.lap}+`);
-            void key.setState(pilot.status === "DNF" ? 1 : 0);
         }
         async onKeyDown(ev) {
             const snap = getSnapshot();
@@ -3484,12 +3479,10 @@ let PilotLapDownAction = (() => {
             const pilot = snap ? getPilotAtSlot(snap.pilots, slot) : null;
             const key = ev.action;
             if (!pilot) {
-                void key.setTitle("—\nL-");
-                void key.setState(1);
+                void key.setTitle("Lap-");
                 return;
             }
             void key.setTitle(`${pilot.displayName}\nL${pilot.lap}-`);
-            void key.setState(pilot.status === "DNF" ? 1 : 0);
         }
         async onKeyDown(ev) {
             const snap = getSnapshot();
@@ -3542,13 +3535,11 @@ let PilotPosUpAction = (() => {
             const pilot = snap ? getPilotAtSlot(snap.pilots, slot) : null;
             const key = ev.action;
             if (!pilot) {
-                void key.setTitle("—\nP+");
-                void key.setState(1);
+                void key.setTitle("Pos+");
                 return;
             }
             const pos = pilot.position != null ? `P${pilot.position}` : "—";
             void key.setTitle(`${pilot.displayName}\n${pos}▲`);
-            void key.setState(pilot.status === "DNF" ? 1 : 0);
         }
         async onKeyDown(ev) {
             const snap = getSnapshot();
@@ -3601,13 +3592,11 @@ let PilotPosDownAction = (() => {
             const pilot = snap ? getPilotAtSlot(snap.pilots, slot) : null;
             const key = ev.action;
             if (!pilot) {
-                void key.setTitle("—\nP-");
-                void key.setState(1);
+                void key.setTitle("Pos-");
                 return;
             }
             const pos = pilot.position != null ? `P${pilot.position}` : "—";
             void key.setTitle(`${pilot.displayName}\n${pos}▼`);
-            void key.setState(pilot.status === "DNF" ? 1 : 0);
         }
         async onKeyDown(ev) {
             const snap = getSnapshot();
@@ -3660,12 +3649,10 @@ let PilotDnfAction = (() => {
             const pilot = snap ? getPilotAtSlot(snap.pilots, slot) : null;
             const key = ev.action;
             if (!pilot) {
-                void key.setTitle("—\nDNF");
-                void key.setState(1);
+                void key.setTitle("DNF");
                 return;
             }
             void key.setTitle(`${pilot.displayName}\nDNF`);
-            void key.setState(pilot.status === "DNF" ? 1 : 0);
         }
         async onKeyDown(ev) {
             const snap = getSnapshot();
@@ -3676,63 +3663,6 @@ let PilotDnfAction = (() => {
             if (!pilot || pilot.status === "DNF")
                 return;
             await manualDnf(snap.raceId, pilot.pilotId);
-        }
-    });
-    return _classThis;
-})();
-
-// pilot-page.ts — Navigate to the previous or next pilot page.
-// Settings: { direction: "prev" | "next" }
-let PilotPageAction = (() => {
-    let _classDecorators = [action({ UUID: "com.circusracing.streamdeck.pilot-page" })];
-    let _classDescriptor;
-    let _classExtraInitializers = [];
-    let _classThis;
-    let _classSuper = SingletonAction;
-    (class extends _classSuper {
-        static { _classThis = this; }
-        static {
-            const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(_classSuper[Symbol.metadata] ?? null) : void 0;
-            __esDecorate(null, _classDescriptor = { value: _classThis }, _classDecorators, { kind: "class", name: _classThis.name, metadata: _metadata }, null, _classExtraInitializers);
-            _classThis = _classDescriptor.value;
-            if (_metadata) Object.defineProperty(_classThis, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
-            __runInitializers(_classThis, _classExtraInitializers);
-        }
-        unsubState;
-        unsubPage;
-        lastEv;
-        onWillAppear(ev) {
-            this.lastEv = ev;
-            this.unsubState = onStateChange(() => this.refresh());
-            this.unsubPage = onPageChange(() => this.refresh());
-            this.refresh();
-        }
-        onWillDisappear() {
-            this.unsubState?.();
-            this.unsubPage?.();
-        }
-        onDidReceiveSettings(ev) {
-            this.lastEv = ev;
-            this.refresh();
-        }
-        refresh() {
-            const ev = this.lastEv;
-            if (!ev)
-                return;
-            const snap = getSnapshot();
-            const dir = ev.payload.settings.direction ?? "next";
-            const page = getCurrentPage();
-            const total = snap ? Math.ceil(snap.pilots.length / PILOTS_PER_PAGE) : 1;
-            const symbol = dir === "next" ? "▶" : "◀";
-            void ev.action.setTitle(`${symbol}\n${page + 1}/${total}`);
-        }
-        onKeyDown(ev) {
-            const snap = getSnapshot();
-            const dir = ev.payload.settings.direction ?? "next";
-            if (dir === "next")
-                nextPage(snap?.pilots.length ?? 0);
-            else
-                prevPage();
         }
     });
     return _classThis;
@@ -3751,7 +3681,6 @@ streamDeck.actions.registerAction(new PilotLapDownAction());
 streamDeck.actions.registerAction(new PilotPosUpAction());
 streamDeck.actions.registerAction(new PilotPosDownAction());
 streamDeck.actions.registerAction(new PilotDnfAction());
-streamDeck.actions.registerAction(new PilotPageAction());
 startPolling();
 streamDeck.connect().then(() => {
     streamDeck.logger.info("Plugin connected");

@@ -31,9 +31,8 @@ export class PilotLapDownAction extends SingletonAction<Settings> {
     const slot  = parseInt(String(ev.payload.settings.slotIndex ?? 0), 10) || 0;
     const pilot = snap ? getPilotAtSlot(snap.pilots, slot) : null;
     const key   = ev.action as KeyAction;
-    if (!pilot) { void key.setTitle("—\nL-"); void key.setState(1); return; }
+    if (!pilot) { void key.setTitle("Lap-"); return; }
     void key.setTitle(`${pilot.displayName}\nL${pilot.lap}-`);
-    void key.setState(pilot.status === "DNF" ? 1 : 0);
   }
 
   async onKeyDown(ev: KeyDownEvent<Settings>): Promise<void> {

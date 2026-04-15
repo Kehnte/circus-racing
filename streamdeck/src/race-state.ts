@@ -1,22 +1,23 @@
 // race-state.ts — Shared in-memory state polled from the server, with change callbacks.
 
-import { getActiveRace, getRaceEntries, type Race, type PilotEntry, type RaceStatus } from "./api.js";
+import streamDeck from "@elgato/streamdeck";
+import { getActiveRace, getRaceEntries, getRaceState, type PilotEntry, type RaceStatus } from "./api.js";
 import { config } from "./config.js";
 
 export interface PilotSlot {
-  pilotId: string;
+  pilotId:     string;
   displayName: string;
   teamAcronym: string | null;
-  lap: number;
-  status: "RUNNING" | "FINISHED" | "DNF";
-  position: number | null;
+  lap:         number;
+  status:      "RUNNING" | "FINISHED" | "DNF";
+  position:    number | null; // live gridPosition (rank in race)
 }
 
 export interface RaceSnapshot {
   raceId:     string;
   raceName:   string;
   raceStatus: RaceStatus;
-  pilots:     PilotSlot[];  // sorted by gridPosition
+  pilots:     PilotSlot[]; // sorted by entry order (gridPosition at race start), stable
 }
 
 type ChangeListener = (snapshot: RaceSnapshot | null) => void;
@@ -42,17 +43,32 @@ async function poll() {
       return;
     }
 
-    const entries = await getRaceEntries(race.id);
-    const sorted  = [...entries].sort((a, b) => (a.gridPosition ?? 99) - (b.gridPosition ?? 99));
+    let entries, states;
+    try {
+      [entries, states] = await Promise.all([
+        getRaceEntries(race.id),
+        getRaceState(race.id),
+      ]);
+    } catch (err) {
+      streamDeck.logger.error("poll fetch error: " + String(err));
+      if (current !== null) { current = null; notify(); }
+      return;
+    }
 
-    const pilots: PilotSlot[] = sorted.map(e => ({
-      pilotId:     e.pilotId,
-      displayName: e.pilot?.displayName ?? e.pilotId.slice(0, 8),
-      teamAcronym: e.pilot?.teamAcronym ?? null,
-      lap:         0,
-      status:      "RUNNING",
-      position:    e.gridPosition,
-    }));
+    // Sort by pilotId — stable order regardless of live position changes
+    const sorted = [...entries].sort((a, b) => a.pilotId.localeCompare(b.pilotId));
+
+    const pilots: PilotSlot[] = sorted.map((e: PilotEntry) => {
+      const s = states[e.pilotId];
+      return {
+        pilotId:     e.pilotId,
+        displayName: e.pilot?.displayName ?? e.pilotId.slice(0, 8),
+        teamAcronym: e.pilot?.teamAcronym ?? null,
+        lap:         s?.lap ?? 0,
+        status:      (s?.status ?? "RUNNING") as "RUNNING" | "FINISHED" | "DNF",
+        position:    s?.gridPosition ?? e.gridPosition,
+      };
+    });
 
     const next: RaceSnapshot = {
       raceId:     race.id,
@@ -63,8 +79,8 @@ async function poll() {
 
     const changed = JSON.stringify(next) !== JSON.stringify(current);
     if (changed) { current = next; notify(); }
-  } catch {
-    // server unreachable — keep last known state
+  } catch (err) {
+    streamDeck.logger.error("poll error: " + String(err));
   }
 }
 

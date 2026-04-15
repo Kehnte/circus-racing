@@ -10,7 +10,6 @@ import { PilotLapDownAction } from "./actions/pilot-lap-down.js";
 import { PilotPosUpAction }   from "./actions/pilot-pos-up.js";
 import { PilotPosDownAction } from "./actions/pilot-pos-down.js";
 import { PilotDnfAction }     from "./actions/pilot-dnf.js";
-import { PilotPageAction }    from "./actions/pilot-page.js";
 import { startPolling }       from "./race-state.js";
 import { applyGlobalSettings } from "./config.js";
 
@@ -27,7 +26,6 @@ streamDeck.actions.registerAction(new PilotLapDownAction());
 streamDeck.actions.registerAction(new PilotPosUpAction());
 streamDeck.actions.registerAction(new PilotPosDownAction());
 streamDeck.actions.registerAction(new PilotDnfAction());
-streamDeck.actions.registerAction(new PilotPageAction());
 
 startPolling();
 

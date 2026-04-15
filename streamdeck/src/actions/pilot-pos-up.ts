@@ -31,10 +31,9 @@ export class PilotPosUpAction extends SingletonAction<Settings> {
     const slot  = parseInt(String(ev.payload.settings.slotIndex ?? 0), 10) || 0;
     const pilot = snap ? getPilotAtSlot(snap.pilots, slot) : null;
     const key   = ev.action as KeyAction;
-    if (!pilot) { void key.setTitle("—\nP+"); void key.setState(1); return; }
+    if (!pilot) { void key.setTitle("Pos+"); return; }
     const pos = pilot.position != null ? `P${pilot.position}` : "—";
     void key.setTitle(`${pilot.displayName}\n${pos}▲`);
-    void key.setState(pilot.status === "DNF" ? 1 : 0);
   }
 
   async onKeyDown(ev: KeyDownEvent<Settings>): Promise<void> {

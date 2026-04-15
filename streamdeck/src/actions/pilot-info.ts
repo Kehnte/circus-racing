@@ -42,13 +42,11 @@ export class PilotInfoAction extends SingletonAction<PilotInfoSettings> {
     const key   = ev.action as KeyAction;
 
     if (!pilot) {
-      void key.setTitle("—");
-      void key.setState(1);
+      void key.setTitle("Info");
       return;
     }
 
     const pos = pilot.position != null ? `P${pilot.position}` : "—";
-    void key.setTitle(`${pilot.displayName}\n${pos}`);
-    void key.setState(pilot.status === "DNF" ? 1 : 0);
+    void key.setTitle(`${pilot.displayName}\n${pos}\nL${pilot.lap}`);
   }
 }

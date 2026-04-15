@@ -38,13 +38,6 @@ export interface PilotState {
   gridPosition: number | null;
 }
 
-export interface RaceContext {
-  raceId: string;
-  raceStatus: RaceStatus;
-  pilotStates: Record<string, PilotState>;
-  pilotProfiles: Record<string, { displayName: string }>;
-}
-
 // Fetch the most relevant race: active first, then scheduled/pending
 export async function getActiveRace(): Promise<Race | null> {
   const active = await request("GET", "/api/races?status=STARTED,PAUSED") as Race[];
@@ -55,6 +48,10 @@ export async function getActiveRace(): Promise<Race | null> {
 
 export async function getRaceEntries(raceId: string): Promise<PilotEntry[]> {
   return request("GET", `/api/races/${raceId}/entries`) as Promise<PilotEntry[]>;
+}
+
+export async function getRaceState(raceId: string): Promise<Record<string, PilotState>> {
+  return request("GET", `/api/races/${raceId}/state`) as Promise<Record<string, PilotState>>;
 }
 
 // Lifecycle

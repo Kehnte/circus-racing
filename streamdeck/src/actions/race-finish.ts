@@ -1,6 +1,6 @@
 // race-finish.ts — Finish the active race.
 
-import { action, KeyAction, KeyDownEvent, SingletonAction, WillAppearEvent } from "@elgato/streamdeck";
+import { action, KeyDownEvent, SingletonAction, WillAppearEvent } from "@elgato/streamdeck";
 import { getSnapshot, onStateChange } from "../race-state.js";
 import { finishRace } from "../api.js";
 
@@ -15,11 +15,8 @@ export class RaceFinishAction extends SingletonAction {
 
   onWillDisappear(): void { this.unsubscribe?.(); }
 
-  private refresh(ev: WillAppearEvent): void {
-    const snap = getSnapshot();
-    const active = snap?.raceStatus === "STARTED" || snap?.raceStatus === "PAUSED";
-    (ev.action as KeyAction).setTitle("Finish");
-    (ev.action as KeyAction).setState(active ? 0 : 1);
+  private refresh(_ev: WillAppearEvent): void {
+    // no state to manage — single-state action
   }
 
   async onKeyDown(_ev: KeyDownEvent): Promise<void> {

@@ -32,8 +32,7 @@
       "SupportedInMultiActions": true,
       "Controllers": ["Keypad"],
       "States": [
-        { "Title": "Finish", "TitleAlignment": "middle", "TitleColor": "#ffffff", "FontSize": "16" },
-        { "Title": "Finish", "TitleAlignment": "middle", "TitleColor": "#888888", "FontSize": "16" }
+        { "Title": "", "TitleAlignment": "middle", "TitleColor": "#ffffff", "FontSize": "16" }
       ]
     },
     {
@@ -44,8 +43,7 @@
       "SupportedInMultiActions": true,
       "Controllers": ["Keypad"],
       "States": [
-        { "Title": "Reset", "TitleAlignment": "middle", "TitleColor": "#ffffff", "FontSize": "16" },
-        { "Title": "Reset", "TitleAlignment": "middle", "TitleColor": "#888888", "FontSize": "16" }
+        { "Title": "", "TitleAlignment": "middle", "TitleColor": "#ffffff", "FontSize": "16" }
       ]
     },
     {
@@ -57,8 +55,7 @@
       "SupportedInMultiActions": false,
       "Controllers": ["Keypad"],
       "States": [
-        { "Title": "Pilot\n—", "TitleAlignment": "middle", "TitleColor": "#ffffff", "FontSize": "14" },
-        { "Title": "Pilot\n—", "TitleAlignment": "middle", "TitleColor": "#888888", "FontSize": "14" }
+        { "Title": "", "TitleAlignment": "middle", "TitleColor": "#ffffff", "FontSize": "14" }
       ]
     },
     {
@@ -70,8 +67,7 @@
       "SupportedInMultiActions": true,
       "Controllers": ["Keypad"],
       "States": [
-        { "Title": "—\nL+", "TitleAlignment": "middle", "TitleColor": "#ffffff", "FontSize": "14" },
-        { "Title": "—\nL+", "TitleAlignment": "middle", "TitleColor": "#888888", "FontSize": "14" }
+        { "Title": "", "TitleAlignment": "middle", "TitleColor": "#ffffff", "FontSize": "14" }
       ]
     },
     {
@@ -83,8 +79,7 @@
       "SupportedInMultiActions": true,
       "Controllers": ["Keypad"],
       "States": [
-        { "Title": "—\nL-", "TitleAlignment": "middle", "TitleColor": "#ffffff", "FontSize": "14" },
-        { "Title": "—\nL-", "TitleAlignment": "middle", "TitleColor": "#888888", "FontSize": "14" }
+        { "Title": "", "TitleAlignment": "middle", "TitleColor": "#ffffff", "FontSize": "14" }
       ]
     },
     {
@@ -96,8 +91,7 @@
       "SupportedInMultiActions": true,
       "Controllers": ["Keypad"],
       "States": [
-        { "Title": "—\nP+", "TitleAlignment": "middle", "TitleColor": "#ffffff", "FontSize": "14" },
-        { "Title": "—\nP+", "TitleAlignment": "middle", "TitleColor": "#888888", "FontSize": "14" }
+        { "Title": "", "TitleAlignment": "middle", "TitleColor": "#ffffff", "FontSize": "14" }
       ]
     },
     {
@@ -109,8 +103,7 @@
       "SupportedInMultiActions": true,
       "Controllers": ["Keypad"],
       "States": [
-        { "Title": "—\nP-", "TitleAlignment": "middle", "TitleColor": "#ffffff", "FontSize": "14" },
-        { "Title": "—\nP-", "TitleAlignment": "middle", "TitleColor": "#888888", "FontSize": "14" }
+        { "Title": "", "TitleAlignment": "middle", "TitleColor": "#ffffff", "FontSize": "14" }
       ]
     },
     {
@@ -122,19 +115,7 @@
       "SupportedInMultiActions": true,
       "Controllers": ["Keypad"],
       "States": [
-        { "Title": "—\nDNF", "TitleAlignment": "middle", "TitleColor": "#ffffff", "FontSize": "14" },
-        { "Title": "—\nDNF", "TitleAlignment": "middle", "TitleColor": "#888888", "FontSize": "14" }
-      ]
-    },
-    {
-      "Name": "Pilots Next/Prev",
-      "UUID": "com.circusracing.streamdeck.pilot-page",
-      "Icon": "imgs/actions/pilot-page",
-      "Tooltip": "Navigate pilot pages (prev / next)",
-      "SupportedInMultiActions": false,
-      "Controllers": ["Keypad"],
-      "States": [
-        { "Title": "Page", "TitleAlignment": "middle", "TitleColor": "#ffffff", "FontSize": "16" }
+        { "Title": "", "TitleAlignment": "middle", "TitleColor": "#ffffff", "FontSize": "14" }
       ]
     }
   ]
