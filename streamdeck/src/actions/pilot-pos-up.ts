@@ -1,15 +1,15 @@
-// pilot-dnf.ts — Mark the pilot at this slot as DNF.
+// pilot-pos-up.ts — Move pilot up one position (position number decreases).
 
 import { action, KeyAction, KeyDownEvent, SingletonAction, WillAppearEvent, DidReceiveSettingsEvent } from "@elgato/streamdeck";
 import type { JsonObject } from "@elgato/utils";
 import { getSnapshot, onStateChange } from "../race-state.js";
 import { getPilotAtSlot } from "../pilot-pager.js";
-import { manualDnf } from "../api.js";
+import { manualPosition } from "../api.js";
 
 type Settings = JsonObject & { slotIndex?: number };
 
-@action({ UUID: "com.circusracing.streamdeck.pilot-dnf" })
-export class PilotDnfAction extends SingletonAction<Settings> {
+@action({ UUID: "com.circusracing.streamdeck.pilot-pos-up" })
+export class PilotPosUpAction extends SingletonAction<Settings> {
   private unsub?: () => void;
   private lastEv?: WillAppearEvent<Settings>;
 
@@ -31,8 +31,9 @@ export class PilotDnfAction extends SingletonAction<Settings> {
     const slot  = parseInt(String(ev.payload.settings.slotIndex ?? 0), 10) || 0;
     const pilot = snap ? getPilotAtSlot(snap.pilots, slot) : null;
     const key   = ev.action as KeyAction;
-    if (!pilot) { void key.setTitle("—\nDNF"); void key.setState(1); return; }
-    void key.setTitle(`${pilot.displayName}\nDNF`);
+    if (!pilot) { void key.setTitle("—\nP+"); void key.setState(1); return; }
+    const pos = pilot.position != null ? `P${pilot.position}` : "—";
+    void key.setTitle(`${pilot.displayName}\n${pos}▲`);
     void key.setState(pilot.status === "DNF" ? 1 : 0);
   }
 
@@ -41,7 +42,7 @@ export class PilotDnfAction extends SingletonAction<Settings> {
     if (!snap || snap.raceStatus !== "STARTED") return;
     const slot  = parseInt(String(ev.payload.settings.slotIndex ?? 0), 10) || 0;
     const pilot = getPilotAtSlot(snap.pilots, slot);
-    if (!pilot || pilot.status === "DNF") return;
-    await manualDnf(snap.raceId, pilot.pilotId);
+    if (!pilot || pilot.position == null || pilot.position <= 1) return;
+    await manualPosition(snap.raceId, pilot.pilotId, pilot.position - 1);
   }
 }

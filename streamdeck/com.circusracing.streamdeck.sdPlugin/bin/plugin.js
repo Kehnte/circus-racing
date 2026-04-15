@@ -3087,8 +3087,11 @@ const startRace = (id) => request("POST", `/api/races/${id}/start`);
 const pauseRace = (id) => request("POST", `/api/races/${id}/pause`);
 const resumeRace = (id) => request("POST", `/api/races/${id}/resume`);
 const finishRace = (id) => request("POST", `/api/races/${id}/finish`);
+const resetRace = (id) => request("POST", `/api/races/${id}/reset`);
 // Pilot actions
 const manualLap = (raceId, pilotId, delta) => request("POST", `/api/race-events/races/${raceId}/manual-lap`, { pilotId, delta });
+const manualDnf = (raceId, pilotId) => request("POST", `/api/race-events/races/${raceId}/manual-dnf`, { pilotId });
+const manualPosition = (raceId, pilotId, position) => request("POST", `/api/race-events/races/${raceId}/manual-position`, { pilotId, position });
 
 // race-state.ts — Shared in-memory state polled from the server, with change callbacks.
 let current = null;
@@ -3261,6 +3264,50 @@ let RaceFinishAction = (() => {
     return _classThis;
 })();
 
+// race-reset.ts — Reset the active race back to PENDING.
+let RaceResetAction = (() => {
+    let _classDecorators = [action({ UUID: "com.circusracing.streamdeck.race-reset" })];
+    let _classDescriptor;
+    let _classExtraInitializers = [];
+    let _classThis;
+    let _classSuper = SingletonAction;
+    (class extends _classSuper {
+        static { _classThis = this; }
+        static {
+            const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(_classSuper[Symbol.metadata] ?? null) : void 0;
+            __esDecorate(null, _classDescriptor = { value: _classThis }, _classDecorators, { kind: "class", name: _classThis.name, metadata: _metadata }, null, _classExtraInitializers);
+            _classThis = _classDescriptor.value;
+            if (_metadata) Object.defineProperty(_classThis, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
+            __runInitializers(_classThis, _classExtraInitializers);
+        }
+        unsub;
+        onWillAppear(ev) {
+            this.unsub = onStateChange(() => this.refresh(ev));
+            this.refresh(ev);
+        }
+        onWillDisappear() { this.unsub?.(); }
+        refresh(ev) {
+            const key = ev.action;
+            const snap = getSnapshot();
+            const active = snap && ["STARTED", "PAUSED", "FINISHED"].includes(snap.raceStatus);
+            void key.setTitle("Reset");
+            void key.setState(active ? 0 : 1);
+        }
+        async onKeyDown(_ev) {
+            const snap = getSnapshot();
+            if (!snap)
+                return;
+            try {
+                await resetRace(snap.raceId);
+            }
+            catch (err) {
+                streamDeck.logger.error("race-reset error: " + String(err));
+            }
+        }
+    });
+    return _classThis;
+})();
+
 // pilot-pager.ts — Manages which pilot page is currently visible (5 pilots per page).
 const PILOTS_PER_PAGE = 5;
 let currentPage = 0;
@@ -3342,10 +3389,9 @@ let PilotInfoAction = (() => {
     return _classThis;
 })();
 
-// pilot-lap.ts — Add (+1) or remove (-1) a lap for the pilot at this slot.
-// Settings: { slotIndex: 0-4, delta: 1 | -1 }
-let PilotLapAction = (() => {
-    let _classDecorators = [action({ UUID: "com.circusracing.streamdeck.pilot-lap" })];
+// pilot-lap-up.ts — Add a lap (+1) for the pilot at this slot.
+let PilotLapUpAction = (() => {
+    let _classDecorators = [action({ UUID: "com.circusracing.streamdeck.pilot-lap-up" })];
     let _classDescriptor;
     let _classExtraInitializers = [];
     let _classThis;
@@ -3359,19 +3405,14 @@ let PilotLapAction = (() => {
             if (_metadata) Object.defineProperty(_classThis, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
             __runInitializers(_classThis, _classExtraInitializers);
         }
-        unsubState;
-        unsubPage;
+        unsub;
         lastEv;
         onWillAppear(ev) {
             this.lastEv = ev;
-            this.unsubState = onStateChange(() => this.refresh());
-            this.unsubPage = onPageChange(() => this.refresh());
+            this.unsub = onStateChange(() => this.refresh());
             this.refresh();
         }
-        onWillDisappear() {
-            this.unsubState?.();
-            this.unsubPage?.();
-        }
+        onWillDisappear() { this.unsub?.(); }
         onDidReceiveSettings(ev) {
             this.lastEv = ev;
             this.refresh();
@@ -3385,12 +3426,11 @@ let PilotLapAction = (() => {
             const pilot = snap ? getPilotAtSlot(snap.pilots, slot) : null;
             const key = ev.action;
             if (!pilot) {
-                void key.setTitle("—");
+                void key.setTitle("—\nL+");
                 void key.setState(1);
                 return;
             }
-            const team = pilot.teamAcronym ?? "—";
-            void key.setTitle(`${team}\nL${pilot.lap}`);
+            void key.setTitle(`${pilot.displayName}\nL${pilot.lap}+`);
             void key.setState(pilot.status === "DNF" ? 1 : 0);
         }
         async onKeyDown(ev) {
@@ -3398,11 +3438,244 @@ let PilotLapAction = (() => {
             if (!snap || snap.raceStatus !== "STARTED")
                 return;
             const slot = parseInt(String(ev.payload.settings.slotIndex ?? 0), 10) || 0;
-            const delta = ev.payload.settings.delta === -1 ? -1 : 1;
             const pilot = getPilotAtSlot(snap.pilots, slot);
             if (!pilot)
                 return;
-            await manualLap(snap.raceId, pilot.pilotId, delta);
+            await manualLap(snap.raceId, pilot.pilotId, 1);
+        }
+    });
+    return _classThis;
+})();
+
+// pilot-lap-down.ts — Remove a lap (-1) for the pilot at this slot.
+let PilotLapDownAction = (() => {
+    let _classDecorators = [action({ UUID: "com.circusracing.streamdeck.pilot-lap-down" })];
+    let _classDescriptor;
+    let _classExtraInitializers = [];
+    let _classThis;
+    let _classSuper = SingletonAction;
+    (class extends _classSuper {
+        static { _classThis = this; }
+        static {
+            const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(_classSuper[Symbol.metadata] ?? null) : void 0;
+            __esDecorate(null, _classDescriptor = { value: _classThis }, _classDecorators, { kind: "class", name: _classThis.name, metadata: _metadata }, null, _classExtraInitializers);
+            _classThis = _classDescriptor.value;
+            if (_metadata) Object.defineProperty(_classThis, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
+            __runInitializers(_classThis, _classExtraInitializers);
+        }
+        unsub;
+        lastEv;
+        onWillAppear(ev) {
+            this.lastEv = ev;
+            this.unsub = onStateChange(() => this.refresh());
+            this.refresh();
+        }
+        onWillDisappear() { this.unsub?.(); }
+        onDidReceiveSettings(ev) {
+            this.lastEv = ev;
+            this.refresh();
+        }
+        refresh() {
+            const ev = this.lastEv;
+            if (!ev)
+                return;
+            const snap = getSnapshot();
+            const slot = parseInt(String(ev.payload.settings.slotIndex ?? 0), 10) || 0;
+            const pilot = snap ? getPilotAtSlot(snap.pilots, slot) : null;
+            const key = ev.action;
+            if (!pilot) {
+                void key.setTitle("—\nL-");
+                void key.setState(1);
+                return;
+            }
+            void key.setTitle(`${pilot.displayName}\nL${pilot.lap}-`);
+            void key.setState(pilot.status === "DNF" ? 1 : 0);
+        }
+        async onKeyDown(ev) {
+            const snap = getSnapshot();
+            if (!snap || snap.raceStatus !== "STARTED")
+                return;
+            const slot = parseInt(String(ev.payload.settings.slotIndex ?? 0), 10) || 0;
+            const pilot = getPilotAtSlot(snap.pilots, slot);
+            if (!pilot)
+                return;
+            await manualLap(snap.raceId, pilot.pilotId, -1);
+        }
+    });
+    return _classThis;
+})();
+
+// pilot-pos-up.ts — Move pilot up one position (position number decreases).
+let PilotPosUpAction = (() => {
+    let _classDecorators = [action({ UUID: "com.circusracing.streamdeck.pilot-pos-up" })];
+    let _classDescriptor;
+    let _classExtraInitializers = [];
+    let _classThis;
+    let _classSuper = SingletonAction;
+    (class extends _classSuper {
+        static { _classThis = this; }
+        static {
+            const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(_classSuper[Symbol.metadata] ?? null) : void 0;
+            __esDecorate(null, _classDescriptor = { value: _classThis }, _classDecorators, { kind: "class", name: _classThis.name, metadata: _metadata }, null, _classExtraInitializers);
+            _classThis = _classDescriptor.value;
+            if (_metadata) Object.defineProperty(_classThis, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
+            __runInitializers(_classThis, _classExtraInitializers);
+        }
+        unsub;
+        lastEv;
+        onWillAppear(ev) {
+            this.lastEv = ev;
+            this.unsub = onStateChange(() => this.refresh());
+            this.refresh();
+        }
+        onWillDisappear() { this.unsub?.(); }
+        onDidReceiveSettings(ev) {
+            this.lastEv = ev;
+            this.refresh();
+        }
+        refresh() {
+            const ev = this.lastEv;
+            if (!ev)
+                return;
+            const snap = getSnapshot();
+            const slot = parseInt(String(ev.payload.settings.slotIndex ?? 0), 10) || 0;
+            const pilot = snap ? getPilotAtSlot(snap.pilots, slot) : null;
+            const key = ev.action;
+            if (!pilot) {
+                void key.setTitle("—\nP+");
+                void key.setState(1);
+                return;
+            }
+            const pos = pilot.position != null ? `P${pilot.position}` : "—";
+            void key.setTitle(`${pilot.displayName}\n${pos}▲`);
+            void key.setState(pilot.status === "DNF" ? 1 : 0);
+        }
+        async onKeyDown(ev) {
+            const snap = getSnapshot();
+            if (!snap || snap.raceStatus !== "STARTED")
+                return;
+            const slot = parseInt(String(ev.payload.settings.slotIndex ?? 0), 10) || 0;
+            const pilot = getPilotAtSlot(snap.pilots, slot);
+            if (!pilot || pilot.position == null || pilot.position <= 1)
+                return;
+            await manualPosition(snap.raceId, pilot.pilotId, pilot.position - 1);
+        }
+    });
+    return _classThis;
+})();
+
+// pilot-pos-down.ts — Move pilot down one position (position number increases).
+let PilotPosDownAction = (() => {
+    let _classDecorators = [action({ UUID: "com.circusracing.streamdeck.pilot-pos-down" })];
+    let _classDescriptor;
+    let _classExtraInitializers = [];
+    let _classThis;
+    let _classSuper = SingletonAction;
+    (class extends _classSuper {
+        static { _classThis = this; }
+        static {
+            const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(_classSuper[Symbol.metadata] ?? null) : void 0;
+            __esDecorate(null, _classDescriptor = { value: _classThis }, _classDecorators, { kind: "class", name: _classThis.name, metadata: _metadata }, null, _classExtraInitializers);
+            _classThis = _classDescriptor.value;
+            if (_metadata) Object.defineProperty(_classThis, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
+            __runInitializers(_classThis, _classExtraInitializers);
+        }
+        unsub;
+        lastEv;
+        onWillAppear(ev) {
+            this.lastEv = ev;
+            this.unsub = onStateChange(() => this.refresh());
+            this.refresh();
+        }
+        onWillDisappear() { this.unsub?.(); }
+        onDidReceiveSettings(ev) {
+            this.lastEv = ev;
+            this.refresh();
+        }
+        refresh() {
+            const ev = this.lastEv;
+            if (!ev)
+                return;
+            const snap = getSnapshot();
+            const slot = parseInt(String(ev.payload.settings.slotIndex ?? 0), 10) || 0;
+            const pilot = snap ? getPilotAtSlot(snap.pilots, slot) : null;
+            const key = ev.action;
+            if (!pilot) {
+                void key.setTitle("—\nP-");
+                void key.setState(1);
+                return;
+            }
+            const pos = pilot.position != null ? `P${pilot.position}` : "—";
+            void key.setTitle(`${pilot.displayName}\n${pos}▼`);
+            void key.setState(pilot.status === "DNF" ? 1 : 0);
+        }
+        async onKeyDown(ev) {
+            const snap = getSnapshot();
+            if (!snap || snap.raceStatus !== "STARTED")
+                return;
+            const slot = parseInt(String(ev.payload.settings.slotIndex ?? 0), 10) || 0;
+            const pilot = getPilotAtSlot(snap.pilots, slot);
+            if (!pilot || pilot.position == null)
+                return;
+            await manualPosition(snap.raceId, pilot.pilotId, pilot.position + 1);
+        }
+    });
+    return _classThis;
+})();
+
+// pilot-dnf.ts — Mark the pilot at this slot as DNF.
+let PilotDnfAction = (() => {
+    let _classDecorators = [action({ UUID: "com.circusracing.streamdeck.pilot-dnf" })];
+    let _classDescriptor;
+    let _classExtraInitializers = [];
+    let _classThis;
+    let _classSuper = SingletonAction;
+    (class extends _classSuper {
+        static { _classThis = this; }
+        static {
+            const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(_classSuper[Symbol.metadata] ?? null) : void 0;
+            __esDecorate(null, _classDescriptor = { value: _classThis }, _classDecorators, { kind: "class", name: _classThis.name, metadata: _metadata }, null, _classExtraInitializers);
+            _classThis = _classDescriptor.value;
+            if (_metadata) Object.defineProperty(_classThis, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
+            __runInitializers(_classThis, _classExtraInitializers);
+        }
+        unsub;
+        lastEv;
+        onWillAppear(ev) {
+            this.lastEv = ev;
+            this.unsub = onStateChange(() => this.refresh());
+            this.refresh();
+        }
+        onWillDisappear() { this.unsub?.(); }
+        onDidReceiveSettings(ev) {
+            this.lastEv = ev;
+            this.refresh();
+        }
+        refresh() {
+            const ev = this.lastEv;
+            if (!ev)
+                return;
+            const snap = getSnapshot();
+            const slot = parseInt(String(ev.payload.settings.slotIndex ?? 0), 10) || 0;
+            const pilot = snap ? getPilotAtSlot(snap.pilots, slot) : null;
+            const key = ev.action;
+            if (!pilot) {
+                void key.setTitle("—\nDNF");
+                void key.setState(1);
+                return;
+            }
+            void key.setTitle(`${pilot.displayName}\nDNF`);
+            void key.setState(pilot.status === "DNF" ? 1 : 0);
+        }
+        async onKeyDown(ev) {
+            const snap = getSnapshot();
+            if (!snap || snap.raceStatus !== "STARTED")
+                return;
+            const slot = parseInt(String(ev.payload.settings.slotIndex ?? 0), 10) || 0;
+            const pilot = getPilotAtSlot(snap.pilots, slot);
+            if (!pilot || pilot.status === "DNF")
+                return;
+            await manualDnf(snap.raceId, pilot.pilotId);
         }
     });
     return _classThis;
@@ -3466,25 +3739,26 @@ let PilotPageAction = (() => {
 })();
 
 // plugin.ts — Entry point. Loads global settings, registers actions, starts the state poller.
-// Apply saved settings whenever they change or are received
 streamDeck.settings.onDidReceiveGlobalSettings((ev) => {
     applyGlobalSettings(ev.settings);
 });
 streamDeck.actions.registerAction(new RaceControlAction());
 streamDeck.actions.registerAction(new RaceFinishAction());
+streamDeck.actions.registerAction(new RaceResetAction());
 streamDeck.actions.registerAction(new PilotInfoAction());
-streamDeck.actions.registerAction(new PilotLapAction());
+streamDeck.actions.registerAction(new PilotLapUpAction());
+streamDeck.actions.registerAction(new PilotLapDownAction());
+streamDeck.actions.registerAction(new PilotPosUpAction());
+streamDeck.actions.registerAction(new PilotPosDownAction());
+streamDeck.actions.registerAction(new PilotDnfAction());
 streamDeck.actions.registerAction(new PilotPageAction());
 startPolling();
-// Connect, then immediately fetch persisted global settings
 streamDeck.connect().then(() => {
     streamDeck.logger.info("Plugin connected");
     void streamDeck.settings.getGlobalSettings().then((s) => {
-        streamDeck.logger.info("Global settings received: " + JSON.stringify(s));
         applyGlobalSettings(s);
     });
 });
-// Prevent unhandled promise rejections from crashing the plugin
 process.on("unhandledRejection", (reason) => {
     streamDeck.logger.error("Unhandled rejection: " + String(reason));
 });
