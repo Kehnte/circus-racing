@@ -28,8 +28,9 @@ import RocketLaunchOutlined from '@mui/icons-material/RocketLaunchOutlined';
 import SensorsOutlined from '@mui/icons-material/SensorsOutlined';
 import SpaceDashboardOutlined from '@mui/icons-material/SpaceDashboardOutlined';
 import TuneOutlined from '@mui/icons-material/TuneOutlined';
+import OpenInNewOutlined from '@mui/icons-material/OpenInNewOutlined';
 import useSWR from 'swr';
-import { fetcher } from '../api.ts';
+import { apiFetch, fetcher } from '../api.ts';
 import { useAuth } from '../context/AuthContext.tsx';
 import { useFeatures } from '../context/FeaturesContext.tsx';
 import { useRaceSocket } from '../hooks/useRaceSocket.ts';
@@ -60,7 +61,7 @@ const NAV_SECTIONS_PILOT: NavSection[] = [
 export default function AppLayout() {
   useRaceSocket();
   const { logout, displayName, role } = useAuth();
-  const { ocr } = useFeatures();
+  const { ocr, broadcast } = useFeatures();
   const { data: me } = useSWR<Pilot>('/api/pilots/me', fetcher);
   const isAdmin = role === 'ADMIN';
   const isPilot = role === 'PILOT';
@@ -76,7 +77,7 @@ export default function AppLayout() {
     {
       label: 'Roster',
       items: [
-        { label: 'Pilots', path: '/pilots', icon: <PersonOutlined /> },
+        { label: 'Roster', path: '/pilots', icon: <PersonOutlined /> },
         { label: 'Teams', path: '/teams', icon: <GroupsOutlined /> },
         { label: 'Vehicles', path: '/vehicles', icon: <RocketLaunchOutlined /> },
         { label: 'Controls', path: '/controls', icon: <TuneOutlined /> },
@@ -91,6 +92,14 @@ export default function AppLayout() {
   const { pathname } = useLocation();
   const [open, setOpen] = useState(true);
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+
+  async function handleOpenBroadcastPortal() {
+    try {
+      const data = await apiFetch('/api/pilots/me/broadcast-sso') as { redirectUrl: string };
+      window.open(data.redirectUrl, '_blank', 'noopener');
+    } catch { /* portal unavailable — silently ignore */ }
+    setAnchorEl(null);
+  }
 
 
 
@@ -185,6 +194,11 @@ export default function AppLayout() {
             anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
           >
             <MenuItem onClick={() => { void navigate('/profile'); setAnchorEl(null); }}>Profile</MenuItem>
+            {broadcast && (
+              <MenuItem onClick={() => void handleOpenBroadcastPortal()} sx={{ gap: 1 }}>
+                Open portal <OpenInNewOutlined fontSize="small" sx={{ ml: 'auto', opacity: 0.5 }} />
+              </MenuItem>
+            )}
             <MenuItem onClick={() => { logout(); setAnchorEl(null); }}>Logout</MenuItem>
           </Menu>
         </Toolbar>

@@ -7,13 +7,14 @@ import { fetcher } from '../api.ts';
 interface Features {
   ocr: boolean;
   streaming: boolean;
+  broadcast: boolean;
 }
 
-const FeaturesContext = createContext<Features>({ ocr: true, streaming: true });
+const FeaturesContext = createContext<Features>({ ocr: true, streaming: true, broadcast: false });
 
 export function FeaturesProvider({ children }: { children: ReactNode }) {
   const { data } = useSWR<Features>('/api/features', fetcher, { revalidateOnFocus: false });
-  const features: Features = data ?? { ocr: true, streaming: true };
+  const features: Features = data ?? { ocr: true, streaming: true, broadcast: false };
 
   return (
     <FeaturesContext.Provider value={features}>

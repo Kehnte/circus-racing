@@ -72,7 +72,7 @@ export const race = sqliteTable("race", {
   sessionMode:       text().$type<SessionMode>().notNull().default("laps"),
   sessionDurationMs: integer(),                           // only if sessionMode = "timed"
   teamDisplayMode:   text().$type<TeamDisplayMode>().notNull().default("color-bar"),
-  chronoDisplayMode: text().$type<ChronoDisplayMode>().notNull().default("gap"),
+  chronoDisplayMode: text().$type<ChronoDisplayMode>().notNull().default("hidden"),
   timingEnabled:     integer({ mode: "boolean" }).notNull().default(true),
   eventDuration:     integer().notNull().default(5),      // seconds for overlay alerts
   status:            text().$type<RaceStatus>().notNull().default("PENDING"),

@@ -15,6 +15,7 @@ import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
 import TextField from '@mui/material/TextField';
 import { apiFetch } from '../../api.ts';
+import { useFeatures } from '../../context/FeaturesContext.tsx';
 import type { RaceMeta } from '../../types.ts';
 
 interface Props {
@@ -24,6 +25,7 @@ interface Props {
 }
 
 export default function CreateRaceDialog({ open, onClose, onCreated }: Props) {
+  const { ocr } = useFeatures();
   const [name, setName] = useState('');
   const [trackingMode, setTrackingMode] = useState<'manual' | 'auto'>('manual');
   const [session, setSession] = useState('Race');
@@ -77,7 +79,7 @@ export default function CreateRaceDialog({ open, onClose, onCreated }: Props) {
               <InputLabel>Tracking</InputLabel>
               <Select value={trackingMode} label="Tracking" onChange={(e) => setTrackingMode(e.target.value as 'manual' | 'auto')}>
                 <MenuItem value="manual">Manual</MenuItem>
-                <MenuItem value="auto">Auto (OCR)</MenuItem>
+                {ocr && <MenuItem value="auto">Auto (OCR)</MenuItem>}
               </Select>
             </FormControl>
           </Grid>

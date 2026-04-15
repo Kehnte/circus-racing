@@ -22,6 +22,7 @@ import { getOcrStatusMap } from './src/engine/ocr-tracker.js';
 
 const FEATURE_OCR       = process.env.FEATURE_OCR !== 'false';
 const FEATURE_STREAMING = process.env.FEATURE_STREAMING !== 'false';
+const FEATURE_BROADCAST = Boolean(process.env.SHARE_PORTAL_API_URL && process.env.SHARE_PORTAL_INTEGRATION_KEY);
 
 const app: Express      = express();
 const server: http.Server = http.createServer(app);
@@ -57,7 +58,7 @@ app.use('/api/race-events',  raceEventsRouter);
 app.use('/api/admin',        adminRouter);
 
 app.get('/api/features', (_req: Request, res: Response) => {
-  res.json({ ocr: FEATURE_OCR, streaming: FEATURE_STREAMING });
+  res.json({ ocr: FEATURE_OCR, streaming: FEATURE_STREAMING, broadcast: FEATURE_BROADCAST });
 });
 
 // 500ms broadcast interval — keeps overlays in sync whenever a race is loaded

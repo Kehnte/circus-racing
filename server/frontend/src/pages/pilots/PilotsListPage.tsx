@@ -169,7 +169,7 @@ export default function PilotsListPage() {
       minWidth: 120,
       renderCell: (params: GridRenderCellParams<Pilot, string | null>) => {
         const v = params.value ? vehicleById[params.value] : null;
-        if (!v) return <Typography color="text.disabled">—</Typography>;
+        if (!v) return <Box sx={{ display: 'flex', alignItems: 'center', height: '100%', color: 'text.disabled' }}>—</Box>;
         return (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, height: '100%' }}>
             <Chip label={v.type.charAt(0).toUpperCase() + v.type.slice(1)} size="small" />
@@ -204,7 +204,7 @@ export default function PilotsListPage() {
 
   return (
     <PageContainer
-      title="Pilots"
+      title="Roster"
       actions={
         canCreate ? (
           <Box sx={{ display: 'flex', gap: 1 }}>

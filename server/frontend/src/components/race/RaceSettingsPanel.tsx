@@ -33,6 +33,8 @@ import type { RaceStatePayload, Racetrack } from '../../types.ts';
 
 interface Props {
   raceState: RaceStatePayload;
+  expanded: boolean;
+  onExpandedChange: (v: boolean) => void;
 }
 
 interface LocalSettings {
@@ -61,7 +63,7 @@ function initLocal(raceState: RaceStatePayload): LocalSettings {
   };
 }
 
-export default function RaceSettingsPanel({ raceState }: Props) {
+export default function RaceSettingsPanel({ raceState, expanded, onExpandedChange }: Props) {
   const { raceId, status, racetrackId } = raceState;
   const isStarted = status === 'STARTED';
   const { ocr } = useFeatures();
@@ -191,7 +193,7 @@ export default function RaceSettingsPanel({ raceState }: Props) {
 
   return (
     <>
-      <Accordion disableGutters elevation={0} defaultExpanded={true} sx={{ mb: 1 }}>
+      <Accordion disableGutters elevation={0} expanded={expanded} onChange={(_, v) => onExpandedChange(v)} sx={{ mb: 1 }}>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
           <Typography variant="overline">Race settings</Typography>
         </AccordionSummary>

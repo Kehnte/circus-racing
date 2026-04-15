@@ -56,7 +56,7 @@ router.post("/", ...requireModo, validate(createRaceSchema), async (req, res) =>
     sessionMode:       sessionMode       ?? "laps",
     sessionDurationMs: sessionDurationMs ?? null,
     teamDisplayMode:   teamDisplayMode   ?? "color-bar",
-    chronoDisplayMode: chronoDisplayMode ?? "gap",
+    chronoDisplayMode: chronoDisplayMode ?? "hidden",
     timingEnabled:     timingEnabled     ?? true,
     eventDuration:     eventDuration     ?? 5,
   }).returning();

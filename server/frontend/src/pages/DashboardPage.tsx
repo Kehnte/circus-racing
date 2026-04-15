@@ -18,7 +18,7 @@ import RaceSelector from '../components/race/RaceSelector.tsx';
 import RaceSettingsPanel from '../components/race/RaceSettingsPanel.tsx';
 
 export default function DashboardPage() {
-  const { raceState, entryCancelledPilot, setEntryCancelledPilot } = useRaceStore();
+  const { raceState, entryCancelledPilot, setEntryCancelledPilot, raceSettingsOpen, setRaceSettingsOpen, overlaySettingsOpen, setOverlaySettingsOpen } = useRaceStore();
   const { role } = useAuth();
   const notifications = useNotifications();
 
@@ -37,8 +37,8 @@ export default function DashboardPage() {
         <RaceSelector />
         {raceState && isModo && (
           <>
-            <RaceSettingsPanel raceState={raceState} />
-            <OverlaySettingsPanel raceState={raceState} />
+            <RaceSettingsPanel raceState={raceState} expanded={raceSettingsOpen} onExpandedChange={setRaceSettingsOpen} />
+            <OverlaySettingsPanel raceState={raceState} expanded={overlaySettingsOpen} onExpandedChange={setOverlaySettingsOpen} />
             <RaceControlBar raceState={raceState} />
           </>
         )}

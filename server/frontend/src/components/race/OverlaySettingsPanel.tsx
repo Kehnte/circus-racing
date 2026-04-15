@@ -24,9 +24,11 @@ import type { RaceStatePayload } from '../../types.ts';
 
 interface Props {
   raceState: RaceStatePayload;
+  expanded: boolean;
+  onExpandedChange: (v: boolean) => void;
 }
 
-export default function OverlaySettingsPanel({ raceState }: Props) {
+export default function OverlaySettingsPanel({ raceState, expanded, onExpandedChange }: Props) {
   const { raceId, status } = raceState;
   const canCountdown = status === 'PENDING' || status === 'SCHEDULED';
 
@@ -91,7 +93,7 @@ export default function OverlaySettingsPanel({ raceState }: Props) {
   }
 
   return (
-    <Accordion disableGutters elevation={0} sx={{ mb: 1 }}>
+    <Accordion disableGutters elevation={0} expanded={expanded} onChange={(_, v) => onExpandedChange(v)} sx={{ mb: 1 }}>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
         <Typography variant="overline">Overlay</Typography>
       </AccordionSummary>
